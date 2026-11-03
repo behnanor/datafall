@@ -1,0 +1,184 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Rajdhani', sans-serif;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* Neon Cyberpunk Palette */
+  --color-background: hsl(230 25% 5%);
+  --color-foreground: hsl(210 40% 98%);
+
+  --color-card: hsl(230 25% 8%);
+  --color-card-foreground: hsl(210 40% 98%);
+
+  --color-popover: hsl(230 25% 8%);
+  --color-popover-foreground: hsl(210 40% 98%);
+
+  --color-primary: hsl(180 100% 50%); /* Cyan Neon */
+  --color-primary-foreground: hsl(230 25% 5%);
+
+  --color-secondary: hsl(300 100% 50%); /* Magenta Neon */
+  --color-secondary-foreground: hsl(210 40% 98%);
+
+  --color-muted: hsl(230 25% 15%);
+  --color-muted-foreground: hsl(215 20% 65%);
+
+  --color-accent: hsl(45 100% 50%); /* Amber/Gold */
+  --color-accent-foreground: hsl(230 25% 5%);
+
+  --color-destructive: hsl(0 100% 50%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+
+  --color-border: hsl(230 25% 20%);
+  --color-input: hsl(230 25% 20%);
+  --color-ring: hsl(180 100% 50%);
+
+  --color-chart-1: hsl(180 100% 50%);
+  --color-chart-2: hsl(300 100% 50%);
+  --color-chart-3: hsl(45 100% 50%);
+  --color-chart-4: hsl(280 65% 60%);
+  --color-chart-5: hsl(340 75% 55%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground selection:bg-primary selection:text-primary-foreground;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+/* Custom Scrollbar for that "App" feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(230 25% 5%);
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(230 25% 20%);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(230 25% 30%);
+}
+
+/* CRT Scanline Effect Overlay */
+.scanlines {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0,0,0,0.1) 50%,
+    rgba(0,0,0,0.1)
+  );
+  background-size: 100% 4px;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.22;
+}
+
+.glow-text {
+  text-shadow: 0 0 10px currentColor;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px currentColor); }
+  50% { filter: drop-shadow(0 0 16px currentColor); }
+}
+
+@keyframes tutorialPulse {
+  0%, 100% { 
+    box-shadow: 0 0 4px rgba(0, 255, 255, 0.4), 0 0 8px rgba(0, 255, 255, 0.2);
+  }
+  50% { 
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.6), 0 0 24px rgba(0, 255, 255, 0.3);
+  }
+}
+
+.tutorial-highlight {
+  animation: tutorialPulse 2s ease-in-out infinite;
+  position: relative;
+}
+
+.tutorial-highlight::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.1), transparent);
+  pointer-events: none;
+}
+
+@keyframes ascendGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.5), 0 0 16px rgba(168, 85, 247, 0.3), inset 0 0 8px rgba(168, 85, 247, 0.2);
+    border-color: rgba(168, 85, 247, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.8), 0 0 32px rgba(168, 85, 247, 0.5), inset 0 0 12px rgba(168, 85, 247, 0.4);
+    border-color: rgba(168, 85, 247, 0.9);
+  }
+}
+
+.ascend-glow {
+  animation: ascendGlow 2s ease-in-out infinite;
+}
+
+/* Custom Cyberpunk Cursor (glow tier increases with click-upgrade progress) */
+.cyberpunk-cursor {
+  --cyberpunk-cursor-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='10' cy='10' r='5' fill='rgba(0,246,255,0.12)'/><path d='M4 4 L4 22 L10 16 L15 27 L17 26 L12 15 L22 15 Z' fill='%2300f6ff' stroke='%2300f6ff' stroke-width='0.9'/><path d='M10 10 L20 10 M10 10 L10 20' stroke='%23ff4fd8' stroke-width='1.1' opacity='0.8'/><circle cx='10' cy='10' r='1.2' fill='%23fef08a'/></svg>");
+  cursor: var(--cyberpunk-cursor-image) 4 4, auto;
+}
+
+.cyberpunk-cursor--glow-1 {
+  --cyberpunk-cursor-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='10' cy='10' r='6.3' fill='rgba(0,246,255,0.2)'/><circle cx='10' cy='10' r='9.2' fill='rgba(255,79,216,0.08)'/><path d='M4 4 L4 22 L10 16 L15 27 L17 26 L12 15 L22 15 Z' fill='%2300f6ff' stroke='%2300f6ff' stroke-width='1'/><path d='M10 10 L21 10 M10 10 L10 21' stroke='%23ff4fd8' stroke-width='1.2' opacity='0.9'/><circle cx='10' cy='10' r='1.4' fill='%23fef08a'/></svg>");
+}
+
+.cyberpunk-cursor--glow-2 {
+  --cyberpunk-cursor-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='10' cy='10' r='7.5' fill='rgba(0,246,255,0.26)'/><circle cx='10' cy='10' r='10.5' fill='rgba(255,79,216,0.14)'/><path d='M4 4 L4 22 L10 16 L15 27 L17 26 L12 15 L22 15 Z' fill='%2300f6ff' stroke='%2300f6ff' stroke-width='1.05'/><path d='M10 10 L22 10 M10 10 L10 22' stroke='%23ff4fd8' stroke-width='1.25' opacity='0.95'/><circle cx='10' cy='10' r='1.5' fill='%23fef08a'/></svg>");
+}
+
+.cyberpunk-cursor--glow-3 {
+  --cyberpunk-cursor-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='10' cy='10' r='8.8' fill='rgba(0,246,255,0.33)'/><circle cx='10' cy='10' r='12' fill='rgba(255,79,216,0.2)'/><path d='M4 4 L4 22 L10 16 L15 27 L17 26 L12 15 L22 15 Z' fill='%2300f6ff' stroke='%2300f6ff' stroke-width='1.1'/><path d='M10 10 L22.5 10 M10 10 L10 22.5' stroke='%23ff4fd8' stroke-width='1.35'/><circle cx='10' cy='10' r='1.7' fill='%23fef08a'/></svg>");
+}
+
+.cyberpunk-cursor--glow-4 {
+  --cyberpunk-cursor-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='10' cy='10' r='10.2' fill='rgba(0,246,255,0.4)'/><circle cx='10' cy='10' r='13.6' fill='rgba(255,79,216,0.27)'/><path d='M4 4 L4 22 L10 16 L15 27 L17 26 L12 15 L22 15 Z' fill='%2300f6ff' stroke='%2300f6ff' stroke-width='1.2'/><path d='M10 10 L23 10 M10 10 L10 23' stroke='%23ff4fd8' stroke-width='1.45'/><circle cx='10' cy='10' r='1.9' fill='%23fef08a'/></svg>");
+}
+
+.cyberpunk-cursor--glow-5 {
+  --cyberpunk-cursor-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='10' cy='10' r='11.8' fill='rgba(0,246,255,0.5)'/><circle cx='10' cy='10' r='15.4' fill='rgba(255,79,216,0.34)'/><circle cx='10' cy='10' r='5' fill='rgba(250,204,21,0.22)'/><path d='M4 4 L4 22 L10 16 L15 27 L17 26 L12 15 L22 15 Z' fill='%2300f6ff' stroke='%2300f6ff' stroke-width='1.25'/><path d='M10 10 L23.5 10 M10 10 L10 23.5' stroke='%23ff4fd8' stroke-width='1.6'/><circle cx='10' cy='10' r='2.1' fill='%23fef08a'/></svg>");
+}
+
+/* Ensure cursor stays the same on all interactive elements and overrides any conflicting styles */
+.cyberpunk-cursor *,
+.cyberpunk-cursor button,
+.cyberpunk-cursor a,
+.cyberpunk-cursor input,
+.cyberpunk-cursor textarea,
+.cyberpunk-cursor select,
+.cyberpunk-cursor [role="button"],
+.cyberpunk-cursor [onclick] {
+  cursor: inherit !important;
+}

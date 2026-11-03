@@ -1,7 +1,11 @@
 // Global frame-rate cap.
-// Animations (framer-motion and our own loops) all go through requestAnimationFrame,
-// which normally runs at the monitor refresh rate (144/240Hz on gaming monitors).
+// requestAnimationFrame normally runs at the monitor refresh rate (144/240Hz on gaming monitors).
 // We wrap requestAnimationFrame so callbacks run at most `cap` times per second.
+// Two kinds of animation bypass requestAnimationFrame and run on the compositor at full refresh:
+//  - framer-motion's hardware-accelerated (WAAPI) opacity/transform animations: we hide
+//    Element.prototype.animate so framer falls back to its rAF-driven JS animations.
+//  - infinite CSS keyframe animations (animate-pulse, animate-spin, index.css loops): we pause
+//    them and step their currentTime from the capped loop.
 // MUST be imported before anything that captures requestAnimationFrame (see main.tsx).
 
 export const FPS_CAP_OPTIONS = [30, 60, 120, 0] as const; // 0 = unlimited
@@ -24,10 +28,22 @@ export function getFpsCap(): FpsCap {
   return currentCap as FpsCap;
 }
 
+let onCapChange = () => {};
+
 export function setFpsCap(cap: FpsCap) {
   currentCap = cap;
   try {
     localStorage.setItem(STORAGE_KEY, String(cap));
+  } catch {
+    // ignore
+  }
+  onCapChange();
+}
+
+// framer-motion checks Object.hasOwnProperty(Element.prototype, 'animate') once, on first animation.
+if (typeof Element !== 'undefined' && Object.prototype.hasOwnProperty.call(Element.prototype, 'animate')) {
+  try {
+    delete (Element.prototype as { animate?: unknown }).animate;
   } catch {
     // ignore
   }
@@ -78,4 +94,64 @@ if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'fu
       scheduled = 0;
     }
   };
+
+  // Infinite CSS animations we paused and now step manually.
+  const steppedCss = new Set<Animation>();
+  let cssLoopActive = false;
+  let lastCssTick = 0;
+
+  const isInfiniteCss = (a: Animation) =>
+    typeof CSSAnimation !== 'undefined' &&
+    a instanceof CSSAnimation &&
+    a.effect?.getTiming().iterations === Infinity;
+
+  const releaseCss = () => {
+    steppedCss.forEach((a) => {
+      try {
+        a.play();
+      } catch {
+        // ignore
+      }
+    });
+    steppedCss.clear();
+  };
+
+  const cssTick = (now: number) => {
+    if (currentCap <= 0 || typeof document.getAnimations !== 'function') {
+      cssLoopActive = false;
+      releaseCss();
+      return;
+    }
+    const elapsed = lastCssTick ? now - lastCssTick : 0;
+    lastCssTick = now;
+
+    const live = new Set<Animation>();
+    for (const a of document.getAnimations()) {
+      if (!isInfiniteCss(a)) continue;
+      live.add(a);
+      if (!steppedCss.has(a)) {
+        if (a.playState !== 'running') continue; // paused by the game's own CSS
+        a.pause();
+        steppedCss.add(a);
+      } else {
+        a.currentTime = (Number(a.currentTime) || 0) + elapsed;
+      }
+    }
+    // Forget animations whose element was removed or whose class changed.
+    steppedCss.forEach((a) => {
+      if (!live.has(a)) steppedCss.delete(a);
+    });
+
+    window.requestAnimationFrame(cssTick);
+  };
+
+  const startCssLoop = () => {
+    if (cssLoopActive || currentCap <= 0) return;
+    cssLoopActive = true;
+    lastCssTick = 0;
+    window.requestAnimationFrame(cssTick);
+  };
+
+  onCapChange = startCssLoop;
+  startCssLoop();
 }

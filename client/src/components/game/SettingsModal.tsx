@@ -256,7 +256,7 @@ export function SettingsModal({
 
               {/* Game Info */}
               <div className="text-center mb-6 space-y-1">
-                <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">datafall v1.0</p>
+                <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">datafall v1.0.1</p>
                 <p className="text-[10px] font-mono text-[#ffffff]">Auto-saves every 5 seconds</p>
               </div>
 

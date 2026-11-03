@@ -293,8 +293,7 @@ function FpsCapSelector() {
   const [cap, setCap] = useState<FpsCap>(getFpsCap());
   return (
     <div className="space-y-2">
-      <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Animation FPS (lower = less CPU)</p>
-      <p className="text-[9px] font-mono text-slate-500">Limits the game's animations. Your FPS counter may still show your monitor's refresh rate. For a full cap, set "Max Frame Rate" for DataFall in your GPU control panel.</p>
+      <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">FPS Limit (lower = less CPU/GPU)</p>
       <div className="grid grid-cols-4 gap-2">
         {FPS_CAP_OPTIONS.map((opt) => (
           <Button

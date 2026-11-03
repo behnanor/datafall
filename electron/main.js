@@ -13,6 +13,13 @@ app.commandLine.appendSwitch("disable-gpu-sandbox");
 app.commandLine.appendSwitch("in-process-gpu");
 app.commandLine.appendSwitch("disable-direct-composition");
 
+// Steam Deck / Linux (Proton): players reported no sound. Chromium's out-of-process
+// audio service is known to fail under Wine, so run audio in-process there only.
+const isProton = !!(process.env.STEAM_COMPAT_DATA_PATH || process.env.WINEPREFIX || process.env.WINELOADERNOEXEC);
+if (isProton) {
+  app.commandLine.appendSwitch("disable-features", "AudioServiceOutOfProcess");
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -396,6 +403,43 @@ ipcMain.handle("df:is-steam-ready", () => !!steamInitialized);
 ipcMain.handle("is-steam-ready", () => !!steamInitialized);
 
 // -------------------- Steam Cloud (Auto-Cloud) file I/O --------------------
+// Crash-safe write: write to a temp file, keep the previous good save as .bak,
+// then atomically rename. A crash mid-write can no longer leave an empty/corrupt save.
+function writeSaveAtomic(file, payload) {
+  const tmp = file + ".tmp";
+  const bak = file + ".bak";
+  fs.writeFileSync(tmp, payload, "utf8");
+  try {
+    if (fs.existsSync(file)) {
+      const current = fs.readFileSync(file, "utf8");
+      if (isValidSaveJson(current)) fs.copyFileSync(file, bak);
+    }
+  } catch {}
+  fs.renameSync(tmp, file);
+}
+
+function isValidSaveJson(text) {
+  if (!text || !text.trim()) return false;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed === null || typeof parsed === "object";
+  } catch {
+    return false;
+  }
+}
+
+function readSaveWithBackup(file) {
+  const candidates = [file, file + ".bak"];
+  for (const f of candidates) {
+    try {
+      if (!fs.existsSync(f)) continue;
+      const data = fs.readFileSync(f, "utf8");
+      if (isValidSaveJson(data)) return { data, from: f };
+      console.log("[cloud] corrupt save ignored =>", f);
+    } catch {}
+  }
+  return { data: null, from: null };
+}
 function getAutoCloudSavePath() {
   const base =
     process.env.LOCALAPPDATA ||
@@ -414,7 +458,7 @@ ipcMain.handle("df:save-file", async (_event, jsonString) => {
     const payload =
       typeof jsonString === "string" ? jsonString : JSON.stringify(jsonString ?? null);
 
-    fs.writeFileSync(file, payload, "utf8");
+    writeSaveAtomic(file, payload);
 
     console.log("[cloud] save OK =>", file, "| bytes =", Buffer.byteLength(payload, "utf8"));
     return { ok: true, file };
@@ -427,13 +471,13 @@ ipcMain.handle("df:save-file", async (_event, jsonString) => {
 ipcMain.handle("df:load-file", async () => {
   try {
     const { file } = getAutoCloudSavePath();
-    if (!fs.existsSync(file)) {
-      console.log("[cloud] load: no file =>", file);
+    const { data, from } = readSaveWithBackup(file);
+    if (!data) {
+      console.log("[cloud] load: no valid save =>", file);
       return { ok: true, data: null, file };
     }
-    const data = fs.readFileSync(file, "utf8");
-    console.log("[cloud] load OK =>", file, "| bytes =", Buffer.byteLength(data, "utf8"));
-    return { ok: true, data, file };
+    console.log("[cloud] load OK =>", from, "| bytes =", Buffer.byteLength(data, "utf8"));
+    return { ok: true, data, file: from };
   } catch (e) {
     console.log("[cloud] load failed:", e?.message || e);
     return { ok: false, data: null, reason: e?.message || String(e) };
@@ -582,7 +626,7 @@ ipcMain.on("steam-cloud-save", async (event, jsonString) => {
     const payload =
       typeof jsonString === "string" ? jsonString : JSON.stringify(jsonString ?? null);
 
-    fs.writeFileSync(file, payload, "utf8");
+    writeSaveAtomic(file, payload);
 
     console.log("[cloud] legacy save OK =>", file, "| bytes =", Buffer.byteLength(payload, "utf8"));
     event.sender.send("steam-cloud-save-result", { success: true, file });

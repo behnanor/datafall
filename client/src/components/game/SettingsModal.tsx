@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Volume2, VolumeX, Music, LogOut, Settings, BookOpen, SkipForward, RotateCcw } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
+import { useState } from 'react';
+import { FPS_CAP_OPTIONS, getFpsCap, setFpsCap, type FpsCap } from '@/lib/fpsLimiter';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -246,6 +248,7 @@ export function SettingsModal({
                     WINDOWED
                   </Button>
                 </div>
+                <FpsCapSelector />
               </div>
 
               {/* Divider */}
@@ -282,5 +285,35 @@ export function SettingsModal({
         </>
       )}
     </AnimatePresence>
+  );
+}
+
+
+function FpsCapSelector() {
+  const [cap, setCap] = useState<FpsCap>(getFpsCap());
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">FPS Limit (lower = less CPU/GPU)</p>
+      <div className="grid grid-cols-4 gap-2">
+        {FPS_CAP_OPTIONS.map((opt) => (
+          <Button
+            key={opt}
+            onClick={() => {
+              setFpsCap(opt);
+              setCap(opt);
+            }}
+            size="sm"
+            data-testid={`fps-cap-${opt}`}
+            className={
+              cap === opt
+                ? 'h-8 text-[10px] font-mono bg-cyan-600/40 text-cyan-200 border border-cyan-400'
+                : 'h-8 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600'
+            }
+          >
+            {opt === 0 ? 'UNLIMITED' : opt}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }

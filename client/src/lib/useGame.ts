@@ -5557,53 +5557,51 @@ useEffect(() => {
     window.removeEventListener('contextmenu', onContextMenuCapture, true);
   };
 }, []);
-// Auto-save every 5 seconds
+// Auto-save every 5 seconds.
+  // NOTE: the previous version re-created this interval whenever any game state changed.
+  // Resources change every 100ms, so the 5s timer was reset before it ever fired and
+  // autosave effectively never ran (players lost progress on crash). We now keep the
+  // latest state in a ref and run ONE stable interval.
+  const buildSaveSnapshot = (): SaveData => ({
+    resources,
+    upgrades,
+    prestigeUpgrades,
+    achievements,
+    stats,
+    elapsedTime,
+    masterVolume,
+    musicVolume,
+    sfxVolume,
+    isMusicPlaying,
+    cosmetics,
+    contracts,
+    roomLayout,
+    tutorial,
+    version: 3,
+    lastSaveTimestamp: Date.now(),
+  });
+  const latestSnapshotRef = useRef<() => SaveData>(buildSaveSnapshot);
+  latestSnapshotRef.current = buildSaveSnapshot;
+
   useEffect(() => {
-    const saveInterval = setInterval(() => {
-      if (!loadReadyRef.current) return;
-      saveGameState({
-        resources,
-        upgrades,
-        prestigeUpgrades,
-        achievements,
-        stats,
-        elapsedTime,
-        masterVolume,
-        musicVolume,
-        sfxVolume,
-        isMusicPlaying,
-        cosmetics,
-        contracts,
-        roomLayout,
-        tutorial,
-        version: 3,
-        lastSaveTimestamp: Date.now()
-      });
+    let saving = false;
+    const saveInterval = setInterval(async () => {
+      if (!loadReadyRef.current || saving) return;
+      saving = true;
+      try {
+        await saveGameState(latestSnapshotRef.current());
+      } finally {
+        saving = false;
+      }
     }, 5000);
     return () => clearInterval(saveInterval);
-  }, [resources, upgrades, prestigeUpgrades, achievements, stats, elapsedTime, masterVolume, musicVolume, sfxVolume, isMusicPlaying, cosmetics, contracts, roomLayout, tutorial]);
+  }, [saveGameState]);
+
   // Best-effort flush when the window is being hidden/closed. This mainly ensures the local fallback is written.
   useEffect(() => {
     const flush = () => {
       if (!loadReadyRef.current) return;
-      void saveGameState({
-        resources,
-        upgrades,
-        prestigeUpgrades,
-        achievements,
-        stats,
-        elapsedTime,
-        masterVolume,
-        musicVolume,
-        sfxVolume,
-        isMusicPlaying,
-        cosmetics,
-        contracts,
-        roomLayout,
-        tutorial,
-        version: 3,
-        lastSaveTimestamp: Date.now(),
-      });
+      void saveGameState(latestSnapshotRef.current());
     };
 
     const onVisibilityChange = () => {
@@ -5619,7 +5617,7 @@ useEffect(() => {
       window.removeEventListener('pagehide', flush);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [resources, upgrades, prestigeUpgrades, achievements, stats, elapsedTime, masterVolume, musicVolume, sfxVolume, isMusicPlaying, cosmetics, contracts, roomLayout, tutorial, saveGameState]);
+  }, [saveGameState]);
 
 
   const toggleMasterVolume = useCallback(() => {

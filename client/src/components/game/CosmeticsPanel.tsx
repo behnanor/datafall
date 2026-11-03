@@ -71,6 +71,7 @@ interface CosmeticsPanelProps {
   onEquipClickEffect: (effectId: string) => void;
   onEquipBoxSkin: (boxSkinId: string) => void;
   onEquipAscensionPet: (petId: string) => void;
+  activeBoosts?: BoostStats;
 }
 
 function formatNumber(num: number): string {
@@ -813,6 +814,29 @@ interface BoostStats {
   interestBoost?: number;
 }
 
+// Plain-language bonus labels. Production/click/crypto multiply your output;
+// crit and interest ADD percentage points to your chance/cap.
+const BOOST_LABELS: { key: keyof BoostStats; label: string; short: string }[] = [
+  { key: 'productionBoost', label: 'more data production', short: 'Prod' },
+  { key: 'clickBoost', label: 'more data per click', short: 'Click' },
+  { key: 'critBoost', label: 'crit chance (added)', short: 'Crit' },
+  { key: 'cryptoBoost', label: 'more crypto gain', short: 'Crypto' },
+  { key: 'interestBoost', label: 'max interest (added)', short: 'Int' },
+];
+
+function BoostLines({ boost, compact = false }: { boost?: BoostStats; compact?: boolean }) {
+  if (!boost) return null;
+  const lines = BOOST_LABELS.filter(({ key }) => boost[key]);
+  if (lines.length === 0) return null;
+  return (
+    <>
+      {lines.map(({ key, label, short }) => (
+        <div key={key}>+{boost[key]}% {compact ? short : label}</div>
+      ))}
+    </>
+  );
+}
+
 function CosmeticCard({ 
   name, 
   price, 
@@ -880,11 +904,7 @@ function CosmeticCard({
       
       {boost && (boost.productionBoost || boost.clickBoost || boost.critBoost || boost.cryptoBoost || boost.interestBoost) && (
         <div className="text-[10px] text-center text-slate-300 mb-1 space-y-0.5">
-          {boost.productionBoost ? <div>+{boost.productionBoost}% Production</div> : null}
-          {boost.clickBoost ? <div>+{boost.clickBoost}% Clicks</div> : null}
-          {boost.critBoost ? <div>+{boost.critBoost}% Crit</div> : null}
-          {boost.cryptoBoost ? <div>+{boost.cryptoBoost}% Crypto</div> : null}
-          {boost.interestBoost ? <div>+{boost.interestBoost}% Interest</div> : null}
+          <BoostLines boost={boost} />
         </div>
       )}
       
@@ -989,6 +1009,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
   onEquipClickEffect,
   onEquipBoxSkin,
   onEquipAscensionPet,
+  activeBoosts,
 }: CosmeticsPanelProps) {
   const [activeTab, setActiveTab] = useState<'character' | 'rooms' | 'pets' | 'ascension'>('character');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1022,6 +1043,18 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
           <Crown className="w-4 h-4 text-amber-400" />
           <span className="text-white" data-testid="cosmetics-ascension">{formatNumber(ascension)}</span>
         </div>
+      </div>
+
+      <div className="mb-4 rounded-lg border border-cyan-500/30 bg-slate-900/60 p-2 text-[11px]" data-testid="cosmetics-active-bonuses">
+        <p className="mb-1 font-mono uppercase tracking-wider text-cyan-400">Your active bonuses</p>
+        {activeBoosts && BOOST_LABELS.some(({ key }) => activeBoosts[key]) ? (
+          <div className="grid grid-cols-1 gap-0.5 text-slate-200 sm:grid-cols-2">
+            <BoostLines boost={activeBoosts} />
+          </div>
+        ) : (
+          <p className="text-slate-400">None yet. Equip items with bonuses to get them.</p>
+        )}
+        <p className="mt-1 text-[10px] text-slate-500">Only equipped items count, one per slot. Owning an item without equipping it gives no bonus.</p>
       </div>
 
       <div className="flex gap-1 mb-4 p-1 bg-slate-800/50 rounded-lg">
@@ -1169,8 +1202,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                         <h4 className="mb-1 text-center text-sm font-semibold text-cyan-300">{effect.name}</h4>
                         <p className="mb-2 text-center text-[10px] text-slate-400">{effect.description}</p>
                         <div className="mb-2 space-y-0.5 text-center text-[10px] text-slate-300">
-                          <div>+{effect.boost.clickBoost || 0}% Clicks</div>
-                          <div>+{effect.boost.critBoost || 0}% Crit</div>
+                          <BoostLines boost={effect.boost} />
                         </div>
                         {!owned ? (
                           <div className="flex items-center justify-center gap-1 text-xs text-amber-300">
@@ -1490,11 +1522,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                         <p className="text-[10px] text-center text-slate-400 mb-2">{pet.description}</p>
                         {isUnlocked && pet.boost && (pet.boost.productionBoost || pet.boost.clickBoost || pet.boost.critBoost || pet.boost.cryptoBoost || pet.boost.interestBoost) && (
                           <div className="text-[9px] text-center text-slate-300 mb-2 space-y-0.5">
-                            {pet.boost.productionBoost ? <div>+{pet.boost.productionBoost}% Prod</div> : null}
-                            {pet.boost.clickBoost ? <div>+{pet.boost.clickBoost}% Click</div> : null}
-                            {pet.boost.critBoost ? <div>+{pet.boost.critBoost}% Crit</div> : null}
-                            {pet.boost.cryptoBoost ? <div>+{pet.boost.cryptoBoost}% Crypto</div> : null}
-                            {pet.boost.interestBoost ? <div>+{pet.boost.interestBoost}% Int</div> : null}
+                            <BoostLines boost={pet.boost} compact />
                           </div>
                         )}
                         {isUnlocked ? (

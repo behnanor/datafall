@@ -1994,6 +1994,7 @@ export default function GamePage() {
               <div className="min-h-0 overflow-hidden">
                 <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
                   <CosmeticsPanel
+                    activeBoosts={getPetBoosts()}
                     data={resources.data.amount}
                     credits={resources.credits.amount}
                     crypto={resources.crypto.amount}

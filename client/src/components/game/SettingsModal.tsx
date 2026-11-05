@@ -438,7 +438,7 @@ export function SettingsModal({
                 >
                   <RotateCcw className="w-3 h-3 mr-1" />
                   {resetArmed
-                    ? (language === 'tr' ? 'Sifirlamayi Onayla' : language === 'pt-BR' ? 'Confirmar Reset' : language === 'es' ? 'Confirmar Reinicio' : language === 'ru' ? 'Подтвердить сброс' : language === 'zh-CN' ? '确认重置' : 'Confirm Reset')
+                    ? (language === 'tr' ? 'Sıfırlamayı Onayla' : language === 'pt-BR' ? 'Confirmar Reset' : language === 'es' ? 'Confirmar Reinicio' : language === 'ru' ? 'Подтвердить сброс' : language === 'zh-CN' ? '确认重置' : 'Confirm Reset')
                     : (language === 'tr' ? 'Veriyi Sıfırla' : language === 'pt-BR' ? 'Resetar Dados' : language === 'es' ? 'Restablecer Datos' : language === 'ru' ? 'Сбросить данные' : language === 'zh-CN' ? '重置数据' : 'Reset Data')}
                 </Button>
               </div>
@@ -446,7 +446,7 @@ export function SettingsModal({
               <div className="h-px bg-gradient-to-r from-cyan-500/0 via-cyan-500/50 to-cyan-500/0 mb-6" />
 
               <div className="text-center mb-6 space-y-1">
-                <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">{import.meta.env.VITE_TEST_BUILD === 'true' ? 'DataFall V1.03 TEST' : 'DataFall V1.03'}</p>
+                <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">{`DataFall V${__APP_VERSION__}${import.meta.env.VITE_TEST_BUILD === 'true' ? ' TEST' : ''}`}</p>
                 <p className="text-[10px] font-mono text-[#ffffff]">{t('settings.autoSave')}</p>
                 {canOpenLogsFolder() && (
                   <button
@@ -518,7 +518,7 @@ export function SettingsModal({
                   className="bg-red-600 text-white hover:bg-red-500"
                   onClick={confirmResetData}
                 >
-                  {language === 'tr' ? 'Her seyi sil' : language === 'pt-BR' ? 'Apagar tudo' : language === 'es' ? 'Borrar todo' : language === 'ru' ? 'Удалить все' : language === 'zh-CN' ? '全部删除' : 'Delete everything'}
+                  {language === 'tr' ? 'Her şeyi sil' : language === 'pt-BR' ? 'Apagar tudo' : language === 'es' ? 'Borrar todo' : language === 'ru' ? 'Удалить все' : language === 'zh-CN' ? '全部删除' : 'Delete everything'}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

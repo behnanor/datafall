@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Resource, ResourceType, formatNumber, Upgrade, getAscensionCost, type PrestigeGainBreakdown, type AutomationSettings, AUTO_BUY_MODES, AUTOMATION_UNLOCK_ASCENSION, AUTO_ASCEND_MULTIPLE_OPTIONS, type ChallengeId, type ChallengeState, CHALLENGES, CHALLENGE_UNLOCK_ASCENSION, CHALLENGE_SPRINT_LIMIT_SECONDS, FINALE_UNLOCK_ASCENSION, getEndlessDepth } from "@/lib/useGame";
 import { getBoostLines } from "@/lib/gameLocale";
 import { NextGoal } from "./NextGoal";
@@ -33,7 +33,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { UpgradePathVisualizer } from "./UpgradePathVisualizer";
 import { CurrencyIcon } from "@/components/game/CurrencyIcon";
-import { localizeInlineText, useI18n } from "@/lib/i18n";
+import { localizeInlineText, upperForLanguage, useI18n } from "@/lib/i18n";
 import { getResourceLabel } from "@/lib/gameText";
 
 interface ResourcePanelProps {
@@ -71,6 +71,8 @@ interface ResourcePanelProps {
   ascensionLevel: number;
   onOpenPrestige: () => void;
   onAscendTutorialStep?: () => void;
+  /** Lets the page hold back other pop-ups (tutorial reward) while the Ascend window is open. */
+  onAscendDialogOpenChange?: (open: boolean) => void;
   onCryptoRelicsClick?: () => void;
   cryptoRelicShopUnlocked?: boolean;
   cryptoRelicUnlockRequirement?: number;
@@ -133,6 +135,7 @@ export const ResourcePanel = memo(function ResourcePanel({
   ascensionLevel,
   onOpenPrestige,
   onAscendTutorialStep,
+  onAscendDialogOpenChange,
   onCryptoRelicsClick,
   cryptoRelicShopUnlocked = false,
   cryptoRelicUnlockRequirement = 5,
@@ -197,6 +200,10 @@ export const ResourcePanel = memo(function ResourcePanel({
   const missingCrypto = Math.max(0, ascensionCost - resources.crypto.amount);
   const isBlackMarketUnlocked = blackMarketUnlocked || ascensionLevel >= blackMarketUnlockRequirement;
   
+  useEffect(() => {
+    onAscendDialogOpenChange?.(isAscendDialogOpen);
+  }, [isAscendDialogOpen, onAscendDialogOpenChange]);
+
   const handleAscendClick = () => {
     onAscendTutorialStep?.();
     if (canAscend) {
@@ -240,7 +247,7 @@ export const ResourcePanel = memo(function ResourcePanel({
         </div>
         <div className="rounded-md border border-purple-500/30 bg-purple-950/20 px-2.5 py-1.5 text-xs font-mono text-purple-200/90 flex items-center justify-between gap-2 whitespace-nowrap">
           <span className="min-w-0">
-            {t('resourcePanel.required')}: <span className="font-semibold text-purple-300">{formatNumber(ascensionCost)} {t('common.crypto').toUpperCase()}</span>
+            {t('resourcePanel.required')}: <span className="font-semibold text-purple-300">{formatNumber(ascensionCost)} {upperForLanguage(t('common.crypto'))}</span>
           </span>
           <span className={`font-semibold ${canAscend ? 'text-emerald-300' : 'text-purple-300/70'}`}>
             {canAscend ? t('common.ready') : t('common.locked')}
@@ -286,7 +293,7 @@ export const ResourcePanel = memo(function ResourcePanel({
               <span className="text-[10px] font-bold text-cyan-400 uppercase">{t('resourcePanel.convertLabel')}</span>
             </div>
             <span className="text-xs font-mono font-semibold tracking-wide text-cyan-200/90">
-              {formatNumber(conversionDataCost)} {t('common.data').toUpperCase()} = {formatConversionOutput(1)} {t('common.nodes').toUpperCase()}
+              {formatNumber(conversionDataCost)} {upperForLanguage(t('common.data'))} = {formatConversionOutput(1)} {upperForLanguage(t('common.nodes'))}
             </span>
           </div>
           <div className={`grid grid-cols-6 gap-1 rounded ${['sell_button','convert','conversion'].includes(String(tutorialHighlight || '')) ? 'tutorial-highlight' : ''}`}>
@@ -665,7 +672,7 @@ export const ResourcePanel = memo(function ResourcePanel({
             data-testid="button-stats"
           >
             <BarChart3 className="w-3 h-3" />
-            <span>{t('common.stats').toUpperCase()}</span>
+            <span>{upperForLanguage(t('common.stats'))}</span>
           </Button>
         </div>
         <Button 
@@ -754,7 +761,7 @@ export const ResourcePanel = memo(function ResourcePanel({
           data-testid="button-settings"
         >
           <Settings className="w-3 h-3" />
-          {t('common.settings').toUpperCase()}
+          {upperForLanguage(t('common.settings'))}
         </Button>
 
         <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">

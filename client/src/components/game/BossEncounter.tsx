@@ -248,8 +248,18 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, maxHealth, variant]);
   
+  // Reset the encounter only when it opens (or another boss is shown). Upgrades bought while the
+  // boss screen is open (manual buys, auto-buy) used to re-run this mid-fight: full HP again, back to
+  // the intro and a refilled free retry. Damage and HP are taken fresh when a fight starts instead.
+  const openedForRef = useRef<unknown>(null);
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) {
+      openedForRef.current = null;
+      return;
+    }
+    if (openedForRef.current === currentBoss) return;
+    openedForRef.current = currentBoss;
+    {
       setPhase('intro');
       const health = calculateBossHealth();
       setBossHealth(health);
@@ -266,7 +276,16 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       setRetriesLeft(BOSS_RETRIES_PER_FIGHT);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, currentBoss, calculateBossHealth, dataPerClick]);
+  }, [isOpen, currentBoss]);
+  // On the intro screen, keep the shown numbers in step with upgrades bought before the fight starts.
+  useEffect(() => {
+    if (!isOpen || phase !== 'intro') return;
+    const health = calculateBossHealth();
+    setBossHealth(health);
+    setMaxHealth(health);
+    setDamagePerClick(dataPerClick * powerMultiplier);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, phase, calculateBossHealth, dataPerClick, powerMultiplier]);
   
   useEffect(() => {
     if (phase !== 'battle') return;
@@ -484,6 +503,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   // Every fight (first try or retry) starts from full HP with the current Assist choice.
   const startBattle = () => {
     const health = getBattleHealth();
+    setDamagePerClick(dataPerClick * powerMultiplier);
     setBossHealth(health);
     setMaxHealth(health);
     setTimeLeft(timeLimit);

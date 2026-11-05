@@ -134,7 +134,7 @@ const getMissingCostLine = (costs: Record<string, number>, resources: Record<Res
 
   if (deficits.length === 0) return null;
   const missingSegments = deficits.map(
-    ({ res, missing }) => `${formatNumber(Math.floor(missing))} ${toResourceLabel(res, language)}`
+    ({ res, missing }) => `${formatNumber(Math.ceil(missing))} ${toResourceLabel(res, language)}`
   );
   return translate(language, 'upgradePanel.needResources', { resources: missingSegments.join(' + ') });
 };
@@ -286,6 +286,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
           })}
         </div>
 
+        {upgrade.effect.type !== 'unlock' && (
         <div className="w-full mt-2 space-y-1">
           <div className="text-[10px] text-muted-foreground font-mono">
             {translate(language, 'upgradePanel.checkpoint')}: {checkpointProgress.current} / {checkpointProgress.max}
@@ -300,6 +301,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
             {translate(language, 'upgradePanel.nextMultiplier', { level: checkpointProgress.nextCheckpoint })}
           </div>
         </div>
+        )}
       </Button>
     </div>
   );

@@ -2419,13 +2419,17 @@ const CharacterReactionText = React.memo(function CharacterReactionText({ reacti
   
   const getText = () => {
     switch (reaction) {
-      case 'checkpoint': return 'CHECKPOINT!';
+      case 'checkpoint':
+        if (language === 'ru') return 'КОНТРОЛЬНАЯ ТОЧКА!';
+        if (language === 'zh-CN') return '检查点！';
+        return 'CHECKPOINT!';
       case 'crit': return 'CRIT!';
       case 'achievement':
         if (language === 'tr') return 'BASARI!';
         if (language === 'pt-BR') return 'CONQUISTA!';
         if (language === 'es') return 'LOGRO!';
         if (language === 'ru') return 'ДОСТИЖЕНИЕ!';
+        if (language === 'zh-CN') return '成就！';
         return 'ACHIEVEMENT!';
       case 'pickup': return 'BONUS!';
       default: return '';
@@ -4435,10 +4439,10 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
           transition={{ delay: 1 }}
         >
           <p className="text-cyan-400/50 text-sm font-mono tracking-wide">
-            {language === 'tr' ? '[ LAB BOŞ ]' : language === 'pt-BR' ? '[ LAB VAZIO ]' : language === 'es' ? '[ LAB VACIO ]' : language === 'ru' ? '[ ЛАБ ПУСТА ]' : '[ LAB EMPTY ]'}
+            {language === 'tr' ? '[ LAB BOŞ ]' : language === 'pt-BR' ? '[ LAB VAZIO ]' : language === 'es' ? '[ LAB VACIO ]' : language === 'ru' ? '[ ЛАБ ПУСТА ]' : language === 'zh-CN' ? '[ 实验室为空 ]' : '[ LAB EMPTY ]'}
           </p>
           <p className="text-muted-foreground/50 text-xs mt-1">
-            {language === 'tr' ? 'Makinelerin ortaya çıkması için yükseltme satın al' : language === 'pt-BR' ? 'Compre upgrades para fazer as maquinas surgirem' : language === 'es' ? 'Compra mejoras para hacer aparecer las maquinas' : language === 'ru' ? 'Купите улучшения, чтобы появились машины' : 'Purchase upgrades to spawn machines'}
+            {language === 'tr' ? 'Makinelerin ortaya çıkması için yükseltme satın al' : language === 'pt-BR' ? 'Compre upgrades para fazer as maquinas surgirem' : language === 'es' ? 'Compra mejoras para hacer aparecer las maquinas' : language === 'ru' ? 'Купите улучшения, чтобы появились машины' : language === 'zh-CN' ? '购买升级以生成机器' : 'Purchase upgrades to spawn machines'}
           </p>
         </motion.div>
       )}

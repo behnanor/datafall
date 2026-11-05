@@ -69,10 +69,20 @@ function writeLog(level, ...args) {
   } catch {}
 }
 
+// Autosave runs every few seconds; writing every "save OK" / rotating-backup line filled the 1 MB log in
+// about half a day and pushed crash details out. Only the first save of a session goes to the file.
+let firstSaveLogged = false;
+function isRoutineLogLine(first) {
+  if (typeof first !== "string" || !first.startsWith("[cloud] save OK")) return false;
+  if (!firstSaveLogged) { firstSaveLogged = true; return false; }
+  return true;
+}
+
 for (const [method, level] of [["log", "info"], ["warn", "warn"], ["error", "error"]]) {
   const original = console[method].bind(console);
   console[method] = (...args) => {
     original(...args);
+    if (level === "info" && isRoutineLogLine(args[0])) return;
     writeLog(level, ...args);
   };
 }
@@ -487,7 +497,15 @@ async function migrateLegacyLocalStorage() {
     try { protocol.unhandle("http"); } catch {}
   }
 
-  if (allRead && copied !== null) {
+  // A profile that can't be read keeps failing; don't add 10-15 s to every launch forever.
+  const attemptsFile = path.join(userData, "legacy-migration-attempts.json");
+  let attempts = 0;
+  try { attempts = Number(JSON.parse(fs.readFileSync(attemptsFile, "utf8"))?.attempts) || 0; } catch {}
+  attempts += 1;
+  if (!allRead || copied === null) {
+    try { fs.mkdirSync(userData, { recursive: true }); fs.writeFileSync(attemptsFile, JSON.stringify({ attempts }), "utf8"); } catch {}
+  }
+  if ((allRead && copied !== null) || attempts >= 3) {
     try {
       fs.mkdirSync(userData, { recursive: true });
       fs.writeFileSync(
@@ -821,6 +839,7 @@ function saveProgress(text) {
       namespace: typeof parsed.saveNamespace === "string" ? parsed.saveNamespace : null,
       ascensions: Number(parsed?.stats?.totalAscensions) || 0,
       elapsed: Number(parsed?.elapsedTime) || 0,
+      challenge: typeof parsed?.challenges?.active === "string" ? parsed.challenges.active : null,
     };
   } catch {
     return null;
@@ -834,6 +853,8 @@ function isProgressLoss(oldText, newText) {
   if (!after) return true; // reset (null) or junk over a real save
   if (before.namespace && after.namespace && before.namespace !== after.namespace) return true;
   if (after.ascensions < before.ascensions) return true;
+  // Entering or leaving a challenge restarts the run (play time 0) on purpose; that's not a loss.
+  if (after.challenge !== before.challenge) return false;
   return after.ascensions === before.ascensions && after.elapsed + 60 < before.elapsed;
 }
 
@@ -851,8 +872,9 @@ function writeSaveAtomic(file, payload) {
   try {
     if (fs.existsSync(file)) {
       const current = fs.readFileSync(file, "utf8");
-      takeRotatingBackups(file);
       if (isValidSaveJson(current)) {
+        // Only valid saves go into the rotating backups, so a corrupt file can't fill them up.
+        takeRotatingBackups(file);
         if (isProgressLoss(current, payload)) {
           // Keep the better save out of reach of the next writes; .bak keeps the previous good save too.
           snapshotSave(file, "rollback");
@@ -885,28 +907,64 @@ function readSaveWithBackup(file) {
 
 // Like readSaveWithBackup, but also falls back to the rotating backups, and tells "no save" apart from
 // "there is a save but it could not be read" so the game never starts fresh over an unreadable save.
-function readSaveForGame(file) {
-  let sawFile = false;
-  let lastError = null;
+// - save.json exists but can't be READ (locked by antivirus/OneDrive/Steam Cloud, no permission):
+//   report an error instead of quietly loading an older .bak (the next write would bury the newer file).
+// - save.json is corrupt: fall back to .bak, then the newest backups.
+// - save.json is "null" (Reset Data): no save; never bring the pre-reset save back from .bak.
+// - save.json holds another save slot (namespace), e.g. the v8 file of the bad v1.0.1 build: look for
+//   the newest copy of the wanted slot in .bak and backups/ before giving up.
+// Only save.json and .bak decide "error": unreadable files in backups/ alone never lock the game out
+// (after "continue without this file" those two are moved away, and the game must then start).
+function readSaveForGame(file, namespace) {
+  const parseSave = (text) => {
+    try { return JSON.parse(text); } catch { return undefined; }
+  };
+  const slotOf = (parsed) =>
+    parsed && typeof parsed === "object" && typeof parsed.saveNamespace === "string" ? parsed.saveNamespace : null;
+
+  let sawPrimary = false;
+  let primaryError = null;
+  let foreign = null; // a valid save of another slot, returned if nothing better is found
+  const matches = [];
   const candidates = [file, `${file}.bak`, ...listBackups(file).map((b) => b.full)];
-  for (const f of candidates) {
+  for (let i = 0; i < candidates.length; i++) {
+    const f = candidates[i];
+    const isPrimary = i < 2;
+    let data;
     try {
       if (!fs.existsSync(f)) continue;
-      sawFile = true;
-      const data = fs.readFileSync(f, "utf8");
-      if (isValidSaveJson(data)) {
-        if (f !== file) console.log("[cloud] save.json missing or unreadable, using", f);
-        return { status: "ok", data, from: f };
-      }
-      lastError = "corrupt";
-      console.log("[cloud] corrupt save ignored =>", f);
+      if (isPrimary) sawPrimary = true;
+      data = fs.readFileSync(f, "utf8");
     } catch (e) {
-      lastError = e?.code || e?.message || String(e);
+      const reason = e?.code || e?.message || String(e);
       console.log("[cloud] read failed =>", f, e?.message || e);
+      if (f === file) return { status: "error", data: null, from: null, reason };
+      if (isPrimary) primaryError = primaryError || reason;
+      continue;
     }
+    if (!isValidSaveJson(data)) {
+      console.log("[cloud] corrupt save ignored =>", f);
+      if (isPrimary) primaryError = primaryError || "corrupt";
+      continue;
+    }
+    const parsed = parseSave(data);
+    if (f === file && parsed === null) return { status: "ok", data, from: f }; // reset: no save
+    if (parsed === null) continue;
+    if (!namespace || slotOf(parsed) === namespace) {
+      if (f === file || !namespace) return { status: "ok", data, from: f };
+      matches.push({ data, from: f, ts: Number(parsed.lastSaveTimestamp) || 0 });
+      continue;
+    }
+    if (!foreign) foreign = { data, from: f };
   }
-  if (!sawFile) return { status: "none", data: null, from: null };
-  return { status: "error", data: null, from: null, reason: lastError || "unreadable" };
+  if (matches.length) {
+    matches.sort((a, b) => b.ts - a.ts);
+    console.log("[cloud] save.json missing, unreadable or another slot; using", matches[0].from);
+    return { status: "ok", data: matches[0].data, from: matches[0].from };
+  }
+  if (foreign) return { status: "ok", data: foreign.data, from: foreign.from };
+  if (sawPrimary && primaryError) return { status: "error", data: null, from: null, reason: primaryError };
+  return { status: "none", data: null, from: null };
 }
 
 function getAutoCloudSavePath(fileName = "save.json") {
@@ -954,8 +1012,12 @@ ipcMain.handle("df:load-file", async (_event, payloadInput) => {
       payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput)
         ? payloadInput.fileName
         : undefined;
+    const namespace =
+      payloadInput && typeof payloadInput === "object" && typeof payloadInput.namespace === "string"
+        ? payloadInput.namespace
+        : undefined;
     const { file } = getAutoCloudSavePath(fileName);
-    const result = readSaveForGame(file);
+    const result = readSaveForGame(file, namespace);
     if (result.status === "error") {
       console.log("[cloud] load: save exists but could not be read =>", file, result.reason);
       return { ok: false, data: null, file, reason: result.reason };

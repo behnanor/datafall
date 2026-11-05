@@ -178,6 +178,7 @@ function SkinPreview({ id, palette }: { id?: string; palette: { primary: string;
 }
 
 function ThemePreview({ colors, themeId }: { colors: { background: string; nebula1: string; nebula2: string; floorLight: string; floorDark: string; gridBorder: string }; themeId?: string }) {
+  const { language } = useI18n();
   if (themeId === 'paragon_singularity_vault') {
     return (
       <div className="relative w-16 h-12 rounded overflow-hidden mx-auto border border-cyan-400/30 bg-[#040617]">
@@ -185,7 +186,7 @@ function ThemePreview({ colors, themeId }: { colors: { background: string; nebul
         <div className="absolute right-1.5 top-1.5 h-3.5 w-3.5 rounded-full border border-cyan-100/70 bg-slate-950 shadow-[0_0_10px_rgba(167,139,250,0.45)]" />
         <div className="absolute inset-x-1 bottom-1 h-5 [transform:perspective(120px)_rotateX(62deg)] rounded-sm border border-cyan-400/25 bg-[linear-gradient(180deg,rgba(34,211,238,0.12),rgba(76,29,149,0.28))]" />
         <div className="absolute inset-x-2 bottom-2 h-[1px] bg-cyan-200/70" />
-        <div className="absolute left-2 bottom-1.5 text-[6px] font-mono uppercase tracking-[0.18em] text-cyan-100/90">VAULT</div>
+        <div className="absolute left-2 bottom-1.5 text-[6px] font-mono uppercase tracking-[0.18em] text-cyan-100/90">{language === 'tr' ? 'KASA' : language === 'pt-BR' ? 'COFRE' : language === 'es' ? 'BÓVEDA' : language === 'ru' ? 'ХРАНИЛИЩЕ' : language === 'zh-CN' ? '金库' : 'VAULT'}</div>
       </div>
     );
   }

@@ -904,7 +904,7 @@ export default function GamePage() {
           <div className="absolute right-2 top-2 h-4 w-4 rounded-full border border-cyan-100/70 bg-slate-950 shadow-[0_0_10px_rgba(167,139,250,0.45)]" />
           <div className="absolute inset-x-2 bottom-2 h-7 [transform:perspective(180px)_rotateX(62deg)] rounded-sm border border-cyan-400/25 bg-[linear-gradient(180deg,rgba(34,211,238,0.12),rgba(76,29,149,0.28))]" />
           <div className="absolute inset-x-4 bottom-4 h-[1px] bg-cyan-200/70" />
-          <div className="absolute left-2 bottom-1 text-[8px] font-mono uppercase tracking-[0.16em] text-cyan-100/90">VAULT</div>
+          <div className="absolute left-2 bottom-1 text-[8px] font-mono uppercase tracking-[0.16em] text-cyan-100/90">{language === 'tr' ? 'KASA' : language === 'pt-BR' ? 'COFRE' : language === 'es' ? 'BÓVEDA' : language === 'ru' ? 'ХРАНИЛИЩЕ' : language === 'zh-CN' ? '金库' : 'VAULT'}</div>
         </>
       );
     }
@@ -943,7 +943,7 @@ export default function GamePage() {
         />
       </div>
     );
-  }, [paragonEliteOffers, paragonPreviewPalette]);
+  }, [paragonEliteOffers, paragonPreviewPalette, language]);
 
   const isRelicOwned = useCallback((slot: 'skin' | 'headstyle' | 'accessory' | 'wing', cosmeticId: string) => {
     if (slot === 'skin') return ownedSkinsSet.has(cosmeticId);
@@ -1109,6 +1109,10 @@ export default function GamePage() {
   const formatPrestigeEffect = useCallback((upgrade: (typeof prestigeUpgrades)[number], level: number): string => {
     if (level <= 0) return t('prestigePanel.noBonus');
 
+    const unitH = language === 'ru' ? 'ч' : language === 'zh-CN' ? '小时' : 'h';
+    const unitM = language === 'ru' ? ' мин' : language === 'zh-CN' ? '分钟' : 'm';
+    const unitS = language === 'ru' ? ' с' : language === 'zh-CN' ? '秒' : 's';
+    const unitMin = language === 'ru' ? 'мин' : language === 'zh-CN' ? '分钟' : 'min';
     const totalValue = upgrade.effect.value * level;
     switch (upgrade.effect.type) {
       case 'click_boost':
@@ -1133,13 +1137,13 @@ export default function GamePage() {
           const hours = Math.floor(totalMinutes / 60);
           const minutes = totalMinutes % 60;
           return minutes === 0
-            ? `${hours}h ${t('prestigePanel.timeWarpOutput')}`
-            : `${hours}h ${minutes}m ${t('prestigePanel.timeWarpOutput')}`;
+            ? `${hours}${unitH} ${t('prestigePanel.timeWarpOutput')}`
+            : `${hours}${unitH} ${minutes}${unitM} ${t('prestigePanel.timeWarpOutput')}`;
         }
-        return `${totalMinutes}m ${t('prestigePanel.timeWarpOutput')}`;
+        return `${totalMinutes}${unitM} ${t('prestigePanel.timeWarpOutput')}`;
       }
       case 'time_warp_cooldown':
-        return `-${Math.floor(totalValue)}s ${t('prestigePanel.timeWarpCooldown')}`;
+        return `-${Math.floor(totalValue)}${unitS} ${t('prestigePanel.timeWarpCooldown')}`;
       case 'prestige_mult':
         return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.prestigeGain')}`;
       case 'offline_boost':
@@ -1149,15 +1153,15 @@ export default function GamePage() {
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
         return minutes === 0
-          ? `+${hours}h ${t('prestigePanel.maxOfflineTime')}`
-          : `+${hours}h ${minutes}m ${t('prestigePanel.maxOfflineTime')}`;
+          ? `+${hours}${unitH} ${t('prestigePanel.maxOfflineTime')}`
+          : `+${hours}${unitH} ${minutes}${unitM} ${t('prestigePanel.maxOfflineTime')}`;
       }
       case 'crypto_boost':
         return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.cryptoProduction')}`;
       case 'sell_boost':
         return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.dataConversion')}`;
       case 'starting_bonus':
-        return `+${formatNumber(Math.floor(totalValue / 60))} min ${t('prestigePanel.startingData')}`;
+        return `+${formatNumber(Math.floor(totalValue / 60))} ${unitMin} ${t('prestigePanel.startingData')}`;
       case 'cost_reduction':
         return `-${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.upgradeCost')}`;
       case 'checkpoint_speed':
@@ -1165,7 +1169,7 @@ export default function GamePage() {
       default:
         return upgrade.description;
     }
-  }, [t]);
+  }, [t, language]);
 
   const prestigeShopSummary = useMemo(() => {
     const totalLevels = prestigeUpgrades.reduce((sum, upgrade) => sum + upgrade.count, 0);
@@ -1811,6 +1815,9 @@ export default function GamePage() {
     }
   }, [sellAllResource, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
 
+  // The tutorial ends by opening the Ascend window; show its reward after that window closes,
+  // not stacked on top of it.
+  const [isAscendDialogOpen, setIsAscendDialogOpen] = useState(false);
   const handleAscendTutorialStep = useCallback(() => {
     if (!tutorial.skipped && !isTutorialComplete) {
       completeTutorialObjective('open_ascend');
@@ -2208,6 +2215,7 @@ export default function GamePage() {
             ascensionLevel={stats.totalAscensions}
             onOpenPrestige={handleOpenPrestige}
             onAscendTutorialStep={handleAscendTutorialStep}
+            onAscendDialogOpenChange={setIsAscendDialogOpen}
             onCryptoRelicsClick={handleOpenCryptoRelicShop}
             cryptoRelicShopUnlocked={isCryptoRelicShopUnlocked}
             cryptoRelicUnlockRequirement={CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}
@@ -2431,7 +2439,7 @@ export default function GamePage() {
       {/* Tutorial Completion Reward Modal */}
       <Suspense fallback={null}>
         <TutorialRewardDialog
-          open={!!newlyUnlockedTutorialReward}
+          open={!!newlyUnlockedTutorialReward && !isAscendDialogOpen && !isBossEncounterActive}
           onOpenChange={(open: boolean) => {
             if (!open) claimTutorialRewardUnlock();
           }}

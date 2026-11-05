@@ -178,7 +178,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
     clicking: l('Clicking', 'Tıklama', 'Cliques', 'Clics'),
     resources: l('Resources', 'Kaynaklar', 'Recursos', 'Recursos'),
     upgrades: l('Upgrades', 'Yükseltmeler', 'Upgrades', 'Mejoras'),
-    prestige: l('Prestige', 'Prestij', 'Prestigio', 'Prestigio'),
+    prestige: l('Prestige', 'Prestij', 'Prestígio', 'Prestigio'),
     special: l('Special', 'Özel', 'Especiais', 'Especiales'),
   };
   const {
@@ -275,7 +275,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
       Icon: MousePointerClick,
     },
     {
-      label: l('Crits', 'Kritikler', 'Criticos', 'Criticos'),
+      label: l('Crits', 'Kritikler', 'Críticos', 'Críticos'),
       value: formatNumber(stats.totalCrits),
       tone: 'text-fuchsia-100',
       border: 'border-fuchsia-500/30 bg-fuchsia-500/10',

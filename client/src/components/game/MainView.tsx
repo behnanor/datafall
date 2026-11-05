@@ -303,16 +303,16 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
   const dataLabel = l('Data', 'Veri', 'Dados', 'Datos');
   const nodesLabel = l('Nodes', 'Dizin', 'Nodes', 'Nodos');
   const clickPowerLabel = l('Click Power', 'Tıklama Gücü', 'Poder de Clique', 'Poder de Clic');
-  const productionRateLabel = l('Production Rate', 'Üretim Hızı', 'Taxa de Producao', 'Tasa de Produccion');
+  const productionRateLabel = l('Production Rate', 'Üretim Hızı', 'Taxa de Produção', 'Tasa de Producción');
   const autoClickActiveLabel = l('Auto-Click Active', 'Oto-Tıklama Aktif', 'Auto-Clique Ativo', 'Auto-Clic Activo');
-  const autoFiringLabel = l('Auto firing', 'Otomatik ates', 'Disparo automático', 'Disparo automático');
-  const critBoostActiveLabel = l('Crit Boost Active', 'Kritik Takviye Aktif', 'Impulso Critico Ativo', 'Impulso Critico Activo');
-  const critWindowLabel = l('Guaranteed crit window', 'Garantili kritik penceresi', 'Janela critica garantida', 'Ventana critica garantizada');
+  const autoFiringLabel = l('Auto firing', 'Otomatik ateş', 'Disparo automático', 'Disparo automático');
+  const critBoostActiveLabel = l('Crit Boost Active', 'Kritik Takviye Aktif', 'Impulso Crítico Ativo', 'Impulso Crítico Activo');
+  const critWindowLabel = l('Guaranteed crit window', 'Garantili kritik penceresi', 'Janela crítica garantida', 'Ventana crítica garantizada');
   const timeWarpAnomalyLabel = l('Time Warp Anomaly', 'Time Warp Anomalisi', 'Anomalia do Time Warp', 'Anomalia de Time Warp');
-  const collapseLabel = l('Collapse in', 'Cokmesine kalan', 'Colapso em', 'Colapso en');
+  const collapseLabel = l('Collapse in', 'Çökmesine kalan', 'Colapso em', 'Colapso en');
   const warpReleasedLabel = l('Time Warp Released', 'Time Warp Serbest', 'Time Warp Liberado', 'Time Warp Liberado');
-  const liveEditLabel = l('Arrange Room', 'Odayi Duzenle', 'Organizar Sala', 'Organizar Sala');
-  const exitEditLabel = l('Exit Edit', 'Duzenlemeyi Kapat', 'Sair da Edicao', 'Salir de Edicion');
+  const liveEditLabel = l('Arrange Room', 'Odayı Düzenle', 'Organizar Sala', 'Organizar Sala');
+  const exitEditLabel = l('Exit Edit', 'Düzenlemeyi Kapat', 'Sair da Edição', 'Salir de Edición');
   const containerRef = useRef<HTMLDivElement>(null);
   const blackMarketShipRef = useRef<HTMLButtonElement>(null);
   const cryptoRelicShipRef = useRef<HTMLButtonElement>(null);
@@ -559,7 +559,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
 
   const createClickLabel = useCallback((value: number, isCrit: boolean) => {
     return language === 'tr'
-      ? `+${value.toFixed(1)} VERI${isCrit ? ' KRIT!' : ''}`
+      ? `+${value.toFixed(1)} VERİ${isCrit ? ' KRİT!' : ''}`
       : language === 'pt-BR'
         ? `+${value.toFixed(1)} DADOS${isCrit ? ' CRIT!' : ''}`
         : language === 'es'
@@ -1063,7 +1063,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
           onOpen: onOpenParagonShop,
           left: '58%',
           top: '14%',
-          label: l('PARAGON LAB', 'PARAGON LABORATUVARI', 'LABORATORIO PARAGON', 'LABORATORIO PARAGON'),
+          label: l('PARAGON LAB', 'PARAGON LABORATUVARI', 'LABORATÓRIO PARAGON', 'LABORATORIO PARAGON'),
           ariaLabel: l('Open Paragon Lab', 'Paragon Laboratuvarını Aç', 'Abrir Laboratório Paragon', 'Abrir Laboratorio Paragon'),
           idPrefix: 'paragon-lab',
           cyanFrom: '#fde68a',
@@ -1081,12 +1081,12 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
           <div className="w-48 h-48 rounded-full border-4 border-cyan-400/50 tutorial-highlight" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-cyan-400 text-xs font-mono uppercase tracking-wider animate-pulse">
             {tutorialHighlight === 'core_right'
-              ? l('Right-click here!', 'Burada sag tikla!', 'Clique com o botão direito aqui!', 'Haz clic derecho aqui!')
+              ? l('Right-click here!', 'Burada sağ tıkla!', 'Clique com o botão direito aqui!', 'Haz clic derecho aquí!')
               : tutorialHighlight === 'camera_zoom'
-                ? l('Use mouse wheel to zoom', 'Fare tekerlegiyle yakinlastir', 'Use a roda do mouse para aproximar', 'Usa la rueda del raton para acercar')
+                ? l('Use mouse wheel to zoom', 'Fare tekerleğiyle yakınlaştır', 'Use a roda do mouse para aproximar', 'Usa la rueda del raton para acercar')
                 : tutorialHighlight === 'camera_pan'
-                  ? l('Hold middle mouse and drag', 'Orta tusa basili tutup surukle', 'Segure o botão do meio e arraste', 'Mantén pulsado el boton central y arrastra')
-                  : l('Click here!', 'Buraya tikla!', 'Clique aqui!', 'Haz clic aqui!')}
+                  ? l('Hold middle mouse and drag', 'Orta tuşa basılı tutup sürükle', 'Segure o botão do meio e arraste', 'Mantén pulsado el boton central y arrastra')
+                  : l('Click here!', 'Buraya tıkla!', 'Clique aqui!', 'Haz clic aquí!')}
           </div>
         </div>
       )}
@@ -1295,7 +1295,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
                 </div>
                 <div className="mt-2 text-[11px] font-mono text-violet-200/80">
                   {language === 'tr'
-                    ? `${timeWarpFeedback.clicks} tiklama ile depolandi`
+                    ? `${timeWarpFeedback.clicks} tıklama ile depolandı`
                     : language === 'es'
                       ? `Almacenado con ${timeWarpFeedback.clicks} clics`
                       : language === 'ru'
@@ -1487,8 +1487,8 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
             className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-purple-900/80 border border-purple-500/50 rounded-lg px-4 py-2 backdrop-blur-sm"
           >
             <p className="text-purple-300 text-sm text-center">
-              <span className="font-semibold">{l('Edit Mode:', 'Duzenleme Modu:', 'Modo de Edicao:', 'Modo de Edicion:')}</span>{' '}
-              {l('Drag miners directly on the floor tiles', 'Madencileri dogrudan zemin karelerine surukle', 'Arraste os mineradores diretamente para os pisos', 'Arrastra los mineros directamente sobre las baldosas del suelo')}
+              <span className="font-semibold">{l('Edit Mode:', 'Düzenleme Modu:', 'Modo de Edição:', 'Modo de Edición:')}</span>{' '}
+              {l('Drag miners directly on the floor tiles', 'Madencileri doğrudan zemin karelerine sürükle', 'Arraste os mineradores diretamente para os pisos', 'Arrastra los mineros directamente sobre las baldosas del suelo')}
             </p>
           </motion.div>
         )}
@@ -1496,7 +1496,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
       {DEBUG_PANEL_ENABLED && debugOpen && (
         <div className="fixed right-4 top-4 z-[9999] w-[340px] rounded-xl border border-purple-500/40 bg-black/70 p-3 text-sm text-white shadow-xl backdrop-blur">
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-purple-200">{l('Debug Panel', 'Hata Ayiklama Paneli', 'Painel de Debug', 'Panel de Debug')}</div>
+            <div className="font-semibold text-purple-200">{l('Debug Panel', 'Hata Ayıklama Paneli', 'Painel de Debug', 'Panel de Debug')}</div>
             <button
               onClick={() => setDebugOpen(false)}
               className="rounded-md px-2 py-1 text-xs text-purple-200 hover:bg-white/10"
@@ -1509,7 +1509,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
             <div><span className="text-white/60">{l('Total Data:', 'Toplam Veri:', 'Dados Totais:', 'Datos Totales:')}</span> {formatNumber(totalData)}</div>
             <div><span className="text-white/60">{nodesLabel}:</span> {formatNumber(totalCredits)}</div>
             <div><span className="text-white/60">DPS:</span> {formatNumber(dataPerSecond)}</div>
-            <div><span className="text-white/60">{l('Tutorial Highlight:', 'Egitim Vurgusu:', 'Destaque do Tutorial:', 'Resaltado del Tutorial:')}</span> {tutorialHighlight || '-'}</div>
+            <div><span className="text-white/60">{l('Tutorial Highlight:', 'Eğitim Vurgusu:', 'Destaque do Tutorial:', 'Resaltado del Tutorial:')}</span> {tutorialHighlight || '-'}</div>
           </div>
 
           <div className="mt-3 space-y-2">
@@ -1519,19 +1519,19 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
                 onClick={() => onSpawnDebugPickup?.('data')}
                 className="rounded-lg border border-cyan-400/40 bg-cyan-500/10 px-2 py-1 text-[11px] text-cyan-200 hover:bg-cyan-500/20"
               >
-                {l('DATA', 'VERI', 'DADOS', 'DATOS')}
+                {l('DATA', 'VERİ', 'DADOS', 'DATOS')}
               </button>
               <button
                 onClick={() => onSpawnDebugPickup?.('credits')}
                 className="rounded-lg border border-yellow-400/40 bg-yellow-500/10 px-2 py-1 text-[11px] text-yellow-200 hover:bg-yellow-500/20"
               >
-                {l('NODES', 'DUGUM', 'NOS', 'NODOS')}
+                {l('NODES', 'DİZİN', 'NODES', 'NODOS')}
               </button>
               <button
                 onClick={() => onSpawnDebugPickup?.('crit')}
                 className="rounded-lg border border-pink-400/40 bg-pink-500/10 px-2 py-1 text-[11px] text-pink-200 hover:bg-pink-500/20"
               >
-                {l('CRIT', 'KRIT', 'CRIT')}
+                {l('CRIT', 'KRİT', 'CRIT')}
               </button>
               <button
                 onClick={() => onSpawnDebugPickup?.('autoclick')}
@@ -1549,7 +1549,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
                 onClick={() => onSpawnAllDebugPickups?.()}
                 className="col-span-3 rounded-lg border border-indigo-400/40 bg-indigo-500/10 px-2 py-1 text-[11px] text-indigo-200 hover:bg-indigo-500/20"
               >
-                {l('ALL FLOATERS', 'TUM FLOATERLAR', 'TODOS OS ITENS', 'TODOS LOS FLOTANTES')}
+                {l('ALL FLOATERS', 'TÜM FLOATERLAR', 'TODOS OS ITENS', 'TODOS LOS FLOTANTES')}
               </button>
               <button
                 onClick={() => onForceDebugTimeWarp?.()}
@@ -1583,7 +1583,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
               onClick={() => onAddDebugPrestige?.(1000)}
               className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-200 hover:bg-amber-500/20"
             >
-              {l('+1K Prestige', '+1K Prestij', '+1K Prestigio', '+1K Prestigio')}
+              {l('+1K Prestige', '+1K Prestij', '+1K Prestígio', '+1K Prestigio')}
             </button>
             <button
               onClick={() => onAddDebugAscensionCount?.(1)}
@@ -1594,7 +1594,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
           </div>
 
           <div className="mt-2 text-[11px] text-white/50">
-            {l('Hotkey:', 'Kisayol:', 'Atalho:')} Ctrl+Shift+D
+            {l('Hotkey:', 'Kısayol:', 'Atalho:')} Ctrl+Shift+D
           </div>
         </div>
       )}

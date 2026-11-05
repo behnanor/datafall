@@ -47,15 +47,15 @@ const getFinalePhaseIndex = (health: number, max: number): number => {
 
 // Easier boss levels - more time, lower multipliers
 const BOSS_LEVELS = [
-  { name: { en: "Firewall v1.0", tr: "Guvenlik Duvari v1.0", "pt-BR": "Firewall v1.0", es: "Firewall v1.0", ru: "Файрвол v1.0", "zh-CN": "防火墙 v1.0" }, baseClicks: 15, bossMultiplier: 1.0, timeLimit: 20, color: "#3b82f6" },
-  { name: { en: "Firewall v2.0", tr: "Guvenlik Duvari v2.0", "pt-BR": "Firewall v2.0", es: "Firewall v2.0", ru: "Файрвол v2.0", "zh-CN": "防火墙 v2.0" }, baseClicks: 18, bossMultiplier: 1.0, timeLimit: 20, color: "#8b5cf6" },
-  { name: { en: "Firewall v3.0", tr: "Guvenlik Duvari v3.0", "pt-BR": "Firewall v3.0", es: "Firewall v3.0", ru: "Файрвол v3.0", "zh-CN": "防火墙 v3.0" }, baseClicks: 20, bossMultiplier: 1.0, timeLimit: 18, color: "#a855f7" },
-  { name: { en: "Quantum Barrier", tr: "Kuantum Bariyeri", "pt-BR": "Barreira Quantica", es: "Barrera Cuantica", ru: "Квантовый барьер", "zh-CN": "量子屏障" }, baseClicks: 22, bossMultiplier: 1.0, timeLimit: 18, color: "#d946ef" },
-  { name: { en: "Neural Firewall", tr: "Nor Guvenlik Duvari", "pt-BR": "Firewall Neural", es: "Firewall Neural", ru: "Нейро-файрвол", "zh-CN": "神经防火墙" }, baseClicks: 25, bossMultiplier: 1.0, timeLimit: 16, color: "#ec4899" },
-  { name: { en: "AI Guardian", tr: "YZ Muhafizi", "pt-BR": "Guardiao IA", es: "Guardian IA", ru: "Страж ИИ", "zh-CN": "AI 守卫者" }, baseClicks: 28, bossMultiplier: 1.0, timeLimit: 16, color: "#f43f5e" },
-  { name: { en: "Omega Protocol", tr: "Omega Protokolu", "pt-BR": "Protocolo Omega", es: "Protocolo Omega", ru: "Протокол Омега", "zh-CN": "欧米伽协议" }, baseClicks: 30, bossMultiplier: 1.0, timeLimit: 15, color: "#ef4444" },
-  { name: { en: "Core Sentinel", tr: "Cekirdek Nobetcisi", "pt-BR": "Sentinela do Nucleo", es: "Centinela del Nucleo", ru: "Страж ядра", "zh-CN": "核心哨兵" }, baseClicks: 32, bossMultiplier: 1.0, timeLimit: 15, color: "#dc2626" },
-  { name: { en: "System Overlord", tr: "Sistem Hukumdari", "pt-BR": "Soberano do Sistema", es: "Soberano del Sistema", ru: "Повелитель системы", "zh-CN": "系统霸主" }, baseClicks: 35, bossMultiplier: 1.0, timeLimit: 14, color: "#b91c1c" },
+  { name: { en: "Firewall v1.0", tr: "Güvenlik Duvarı v1.0", "pt-BR": "Firewall v1.0", es: "Firewall v1.0", ru: "Файрвол v1.0", "zh-CN": "防火墙 v1.0" }, baseClicks: 15, bossMultiplier: 1.0, timeLimit: 20, color: "#3b82f6" },
+  { name: { en: "Firewall v2.0", tr: "Güvenlik Duvarı v2.0", "pt-BR": "Firewall v2.0", es: "Firewall v2.0", ru: "Файрвол v2.0", "zh-CN": "防火墙 v2.0" }, baseClicks: 18, bossMultiplier: 1.0, timeLimit: 20, color: "#8b5cf6" },
+  { name: { en: "Firewall v3.0", tr: "Güvenlik Duvarı v3.0", "pt-BR": "Firewall v3.0", es: "Firewall v3.0", ru: "Файрвол v3.0", "zh-CN": "防火墙 v3.0" }, baseClicks: 20, bossMultiplier: 1.0, timeLimit: 18, color: "#a855f7" },
+  { name: { en: "Quantum Barrier", tr: "Kuantum Bariyeri", "pt-BR": "Barreira Quântica", es: "Barrera Cuántica", ru: "Квантовый барьер", "zh-CN": "量子屏障" }, baseClicks: 22, bossMultiplier: 1.0, timeLimit: 18, color: "#d946ef" },
+  { name: { en: "Neural Firewall", tr: "Nor Güvenlik Duvarı", "pt-BR": "Firewall Neural", es: "Firewall Neural", ru: "Нейро-файрвол", "zh-CN": "神经防火墙" }, baseClicks: 25, bossMultiplier: 1.0, timeLimit: 16, color: "#ec4899" },
+  { name: { en: "AI Guardian", tr: "YZ Muhafızı", "pt-BR": "Guardiao IA", es: "Guardian IA", ru: "Страж ИИ", "zh-CN": "AI 守卫者" }, baseClicks: 28, bossMultiplier: 1.0, timeLimit: 16, color: "#f43f5e" },
+  { name: { en: "Omega Protocol", tr: "Omega Protokolü", "pt-BR": "Protocolo Omega", es: "Protocolo Omega", ru: "Протокол Омега", "zh-CN": "欧米伽协议" }, baseClicks: 30, bossMultiplier: 1.0, timeLimit: 15, color: "#ef4444" },
+  { name: { en: "Core Sentinel", tr: "Çekirdek Nöbetçisi", "pt-BR": "Sentinela do Núcleo", es: "Centinela del Núcleo", ru: "Страж ядра", "zh-CN": "核心哨兵" }, baseClicks: 32, bossMultiplier: 1.0, timeLimit: 15, color: "#dc2626" },
+  { name: { en: "System Overlord", tr: "Sistem Hükümdarı", "pt-BR": "Soberano do Sistema", es: "Soberano del Sistema", ru: "Повелитель системы", "zh-CN": "系统霸主" }, baseClicks: 35, bossMultiplier: 1.0, timeLimit: 14, color: "#b91c1c" },
   { name: { en: "The Architect", tr: "Mimar", "pt-BR": "O Arquiteto", es: "El Arquitecto", ru: "Архитектор", "zh-CN": "造物主" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 14, color: "#991b1b" },
 ];
 // v1.04: from ascension 11 on, the boss rotates through six designs instead of "The Architect" every time
@@ -614,8 +614,8 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   {isFinale ? l('FINAL BREACH: break the Core', 'SON SIZMA: Çekirdeği kır', 'INVASÃO FINAL: quebre o Núcleo', 'BRECHA FINAL: rompe el Núcleo', 'ФИНАЛЬНЫЙ ВЗЛОМ: сломай Ядро') : kind === 'signal' ? pick6(language, ['The Core is calling. Silence its signal: the final Core loses 15% HP.', 'Çekirdek çağırıyor. Sinyalini sustur: son Çekirdek %15 can kaybeder.', 'O Núcleo está chamando. Cale o sinal: o Núcleo final perde 15% de vida.', 'El Núcleo llama. Silencia su señal: el Núcleo final pierde un 15% de vida.', 'Ядро зовёт. Заглуши сигнал: финальное Ядро теряет 15% HP.', '核心在呼唤。压制它的信号：最终核心生命 -15%。']) : kind === 'echo' ? pick6(language, [`Endless depth ${variant?.depth}: an echo of the Core. Win for x1.5 prestige.`, `Sonsuz derinlik ${variant?.depth}: Çekirdeğin yankısı. Kazanırsan x1.5 prestij.`, `Profundidade infinita ${variant?.depth}: um eco do Núcleo. Vença para x1,5 de prestígio.`, `Profundidad infinita ${variant?.depth}: un eco del Núcleo. Gana para x1,5 de prestigio.`, `Бесконечная глубина ${variant?.depth}: эхо Ядра. Победа даёт x1,5 престижа.`, `无尽深度 ${variant?.depth}：核心的回响。获胜可得 x1.5 声望。`]) : l(
                     `Ascension Level ${ascensionLevel + 1} Boss`,
                     `Yükseliş ${ascensionLevel + 1} Bossu`,
-                    `Chefe da Ascensao ${ascensionLevel + 1}`,
-                    `Jefe de Ascension ${ascensionLevel + 1}`,
+                    `Chefe da Ascensão ${ascensionLevel + 1}`,
+                    `Jefe de Ascensión ${ascensionLevel + 1}`,
                     `Босс возвышения ${ascensionLevel + 1}`,
                   )}
                 </p>
@@ -635,9 +635,9 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   <Zap className="w-4 h-4 inline mr-1" />
                   {l(
                     `Click anywhere to attack - hit the glowing weak spots for ${weakSpotMultiplier.toFixed(1)}x damage!`,
-                    `Saldirmak icin herhangi bir yere tikla - parlayan zayif noktalara vurarak ${weakSpotMultiplier.toFixed(1)}x hasar ver!`,
+                    `Saldırmak için herhangi bir yere tıkla - parlayan zayıf noktalara vurarak ${weakSpotMultiplier.toFixed(1)}x hasar ver!`,
                     `Clique em qualquer lugar para atacar. Acerte os pontos fracos brilhantes para causar ${weakSpotMultiplier.toFixed(1)}x de dano!`,
-                    `Haz clic en cualquier lugar para atacar. Golpea los puntos debiles brillantes para causar ${weakSpotMultiplier.toFixed(1)}x de dano!`,
+                    `Haz clic en cualquier lugar para atacar. Golpea los puntos debiles brillantes para causar ${weakSpotMultiplier.toFixed(1)}x de daño!`,
                     `Нажимайте где угодно для атаки — бейте по светящимся слабым точкам и наносите ${weakSpotMultiplier.toFixed(1)}x урона!`,
                   )}
                 </p>
@@ -645,8 +645,8 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   <Keyboard className="w-4 h-4 inline mr-1" />
                   {l(
                     `Breach Sequence (Optional): Press shown keys in order anytime for Overclock, +${TIME_BONUS_ON_BREACH}s battle time, and +${WEAK_SPOT_BONUS_ON_BREACH} weak spot spawns.`,
-                    `Ihlal Dizisi (Istege Bagli): Gosterilen tuslara istedigin zaman sirayla bas; Overclock, +${TIME_BONUS_ON_BREACH}sn savas suresi ve +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta kazan.`,
-                    `Sequencia de Invasao (Opcional): pressione as teclas exibidas na ordem, a qualquer momento, para ativar Overclock, ganhar +${TIME_BONUS_ON_BREACH}s de batalha e +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos.`,
+                    `İhlal Dizisi (İsteğe Bağlı): Gösterilen tuşlara istediğin zaman sırayla bas; Overclock, +${TIME_BONUS_ON_BREACH}sn savaş süresi ve +${WEAK_SPOT_BONUS_ON_BREACH} zayıf nokta kazan.`,
+                    `Sequência de Invasão (Opcional): pressione as teclas exibidas na ordem, a qualquer momento, para ativar Overclock, ganhar +${TIME_BONUS_ON_BREACH}s de batalha e +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos.`,
                     `Secuencia de Brecha (Opcional): pulsa las teclas mostradas en orden en cualquier momento para activar Overclock, ganar +${TIME_BONUS_ON_BREACH}s de combate y +${WEAK_SPOT_BONUS_ON_BREACH} apariciones de puntos debiles.`,
                     `Последовательность взлома (необязательно): нажимайте показанные клавиши по порядку в любой момент, чтобы активировать Оверклок, получить +${TIME_BONUS_ON_BREACH}с ко времени боя и +${WEAK_SPOT_BONUS_ON_BREACH} слабые точки.`,
                   )}
@@ -679,14 +679,14 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
                   <Trophy className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
-                  <p className="text-emerald-400 font-bold">{l('Victory', 'Zafer', 'Vitoria', 'Victoria', 'Победа')}</p>
-                  <p className="text-xs text-muted-foreground">+{prestigeGain} {l('Prestige', 'Prestij', 'Prestigio', 'Prestigio', 'Престиж')}</p>
-                  <p className="text-xs text-emerald-300">{l('Full Ascension', 'Tam Yükseliş', 'Ascensao Completa', 'Ascension Completa', 'Полное вознесение')}</p>
+                  <p className="text-emerald-400 font-bold">{l('Victory', 'Zafer', 'Vitória', 'Victoria', 'Победа')}</p>
+                  <p className="text-xs text-muted-foreground">+{prestigeGain} {l('Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж')}</p>
+                  <p className="text-xs text-emerald-300">{l('Full Ascension', 'Tam Yükseliş', 'Ascensão Completa', 'Ascensión Completa', 'Полное вознесение')}</p>
                 </div>
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
                   <Skull className="w-5 h-5 mx-auto mb-1 text-red-400" />
                   <p className="text-red-400 font-bold">{l('Defeat', 'Yenilgi', 'Derrota', 'Derrota', 'Поражение')}</p>
-                  <p className="text-xs text-muted-foreground">+{penaltyPrestige} {l('Prestige', 'Prestij', 'Prestigio', 'Prestigio', 'Престиж')} ({pick6(language, [`keep ${keptPercent}%`, `%${keptPercent} korunur`, `mantém ${keptPercent}%`, `conservas ${keptPercent}%`, `сохраняется ${keptPercent}%`, `保留 ${keptPercent}%`])})</p>
+                  <p className="text-xs text-muted-foreground">+{penaltyPrestige} {l('Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж')} ({pick6(language, [`keep ${keptPercent}%`, `%${keptPercent} korunur`, `mantém ${keptPercent}%`, `conservas ${keptPercent}%`, `сохраняется ${keptPercent}%`, `保留 ${keptPercent}%`])})</p>
                   <p className="text-xs text-red-300">{pick6(language, ['Ascension still counts, no loot box', 'Yükseliş yine sayılır, ganimet kutusu yok', 'A ascensão conta, sem caixa de recompensa', 'La ascensión cuenta, sin caja de botín', 'Вознесение засчитывается, без лутбокса', '飞升仍计入，无战利品箱'])}</p>
                   {!isFinale && retriesLeft > 0 && (
                     <p className="text-xs text-cyan-300">{pick6(language, [`${retriesLeft} free retry if you lose`, `Kaybedersen ${retriesLeft} ücretsiz tekrar`, `${retriesLeft} nova tentativa grátis se perder`, `${retriesLeft} reintento gratis si pierdes`, `${retriesLeft} бесплатная попытка при поражении`, `失败可免费重试 ${retriesLeft} 次`])}</p>
@@ -700,7 +700,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   onClick={onClose}
                   className="flex-1 border-muted-foreground/30"
                 >
-                  {l('Retreat', 'Geri Cekil', 'Recuar', 'Retirarse', 'Отступить')}
+                  {l('Retreat', 'Geri Çekil', 'Recuar', 'Retirarse', 'Отступить')}
                 </Button>
                 <Button
                   onClick={startBattle}
@@ -709,7 +709,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   data-testid="button-start-boss"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  {l('INITIATE HACK', 'SALDIRIYI BASLAT', 'INICIAR HACK', 'INICIAR HACK', 'НАЧАТЬ ВЗЛОМ')}
+                  {l('INITIATE HACK', 'SALDIRIYI BAŞLAT', 'INICIAR HACK', 'INICIAR HACK', 'НАЧАТЬ ВЗЛОМ')}
                 </Button>
               </div>
             </div>
@@ -864,7 +864,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                       >
                         <button
                           type="button"
-                          aria-label={l('Weak spot', 'Zayif nokta', 'Ponto fraco', 'Punto debil', 'Слабая точка')}
+                          aria-label={l('Weak spot', 'Zayıf nokta', 'Ponto fraco', 'Punto debil', 'Слабая точка')}
                           className="absolute rounded-full bg-transparent border-0 outline-none"
                           style={{
                             left: '50%',
@@ -941,7 +941,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                             `${weakSpotMultiplier.toFixed(1)}x DAMAGE!`,
                             `${weakSpotMultiplier.toFixed(1)}x HASAR!`,
                             `${weakSpotMultiplier.toFixed(1)}x DANO!`,
-                            `¡${weakSpotMultiplier.toFixed(1)}x DANO!`,
+                            `¡${weakSpotMultiplier.toFixed(1)}x DAÑO!`,
                             `${weakSpotMultiplier.toFixed(1)}x УРОН!`,
                           )}
                         </motion.span>
@@ -953,7 +953,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                           animate={{ y: -22, opacity: 0 }}
                           transition={{ duration: 0.45 }}
                         >
-                          {l('OVERCLOCK', 'ASIRI YUK', 'OVERCLOCK', 'OVERCLOCK', 'ОВЕРКЛОК')}
+                          {l('OVERCLOCK', 'AŞIRI YÜK', 'OVERCLOCK', 'OVERCLOCK', 'ОВЕРКЛОК')}
                         </motion.span>
                       )}
                     </motion.div>
@@ -963,10 +963,10 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 <div className="absolute top-3 left-3 w-64 rounded-lg border border-fuchsia-400/35 bg-slate-900/70 backdrop-blur-sm p-2 pointer-events-none">
                   <div className="flex items-center justify-between mb-1">
                     <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-fuchsia-300 font-semibold">
-                      <Keyboard className="w-3 h-3" /> {l('Breach Sequence', 'Ihlal Dizisi', 'Sequencia de Invasao', 'Secuencia de Brecha', 'Последовательность взлома')}
+                      <Keyboard className="w-3 h-3" /> {l('Breach Sequence', 'İhlal Dizisi', 'Sequência de Invasão', 'Secuencia de Brecha', 'Последовательность взлома')}
                     </span>
                     <span className="text-[10px] text-slate-300">
-                      {breachSequence ? l('optional', 'istege bagli', 'opcional', 'opcional', 'необязательно') : l('idle', 'bekliyor', 'ocioso', 'inactivo', 'ожидание')}
+                      {breachSequence ? l('optional', 'isteğe bağlı', 'opcional', 'opcional', 'необязательно') : l('idle', 'bekliyor', 'ocioso', 'inactivo', 'ожидание')}
                     </span>
                   </div>
 
@@ -995,7 +995,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                       <p className="text-[10px] text-cyan-300/85">
                         {l(
                           `No time limit. Reward: +${TIME_BONUS_ON_BREACH}s and +${WEAK_SPOT_BONUS_ON_BREACH} weak spots.`,
-                          `Sure siniri yok. Odul: +${TIME_BONUS_ON_BREACH}sn ve +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta.`,
+                          `Süre sınırı yok. Ödül: +${TIME_BONUS_ON_BREACH}sn ve +${WEAK_SPOT_BONUS_ON_BREACH} zayıf nokta.`,
                           `Sem limite de tempo. Recompensa: +${TIME_BONUS_ON_BREACH}s e +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos.`,
                           `Sin limite de tiempo. Recompensa: +${TIME_BONUS_ON_BREACH}s y +${WEAK_SPOT_BONUS_ON_BREACH} puntos debiles.`,
                           `Без лимита времени. Награда: +${TIME_BONUS_ON_BREACH}с и +${WEAK_SPOT_BONUS_ON_BREACH} слабых точки.`,
@@ -1006,7 +1006,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                     <p className="text-[11px] text-slate-400">
                       {l(
                         `Optional prompt appears periodically. Complete it for Overclock, +${TIME_BONUS_ON_BREACH}s, and +${WEAK_SPOT_BONUS_ON_BREACH} weak spots.`,
-                        `Istege bagli komut belli araliklarla gelir. Tamamlarsan Overclock, +${TIME_BONUS_ON_BREACH}sn ve +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta kazanirsin.`,
+                        `İsteğe bağlı komut belli aralıklarla gelir. Tamamlarsan Overclock, +${TIME_BONUS_ON_BREACH}sn ve +${WEAK_SPOT_BONUS_ON_BREACH} zayıf nokta kazanırsın.`,
                         `O comando opcional aparece periodicamente. Complete-o para ganhar Overclock, +${TIME_BONUS_ON_BREACH}s e +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos.`,
                         `La secuencia opcional aparece periodicamente. Completala para ganar Overclock, +${TIME_BONUS_ON_BREACH}s y +${WEAK_SPOT_BONUS_ON_BREACH} puntos debiles.`,
                         `Дополнительная последовательность появляется периодически. Завершите её, чтобы получить Overclock, +${TIME_BONUS_ON_BREACH}с и +${WEAK_SPOT_BONUS_ON_BREACH} слабых точки.`,
@@ -1030,12 +1030,12 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                       {breachFeedback === 'success'
                         ? l(
                           `SEQUENCE BREACHED! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} WEAK SPOTS`,
-                          `DIZI ASILDI! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}sn +${WEAK_SPOT_BONUS_ON_BREACH} ZAYIF NOKTA`,
-                          `SEQUENCIA CONCLUIDA! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} PONTOS FRACOS`,
+                          `DİZİ AŞILDI! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}sn +${WEAK_SPOT_BONUS_ON_BREACH} ZAYIF NOKTA`,
+                          `SEQUÊNCIA CONCLUIDA! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} PONTOS FRACOS`,
                           `SECUENCIA COMPLETADA! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} PUNTOS DEBILES`,
                           `ВЗЛОМ УСПЕШЕН! ОВЕРКЛОК x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}с +${WEAK_SPOT_BONUS_ON_BREACH} СЛАБЫЕ ТОЧКИ`,
                         )
-                        : l('SEQUENCE FAILED', 'DIZI BASARISIZ', 'SEQUENCIA FALHOU', 'SECUENCIA FALLIDA', 'ПОСЛЕДОВАТЕЛЬНОСТЬ ПРОВАЛЕНА')}
+                        : l('SEQUENCE FAILED', 'DİZİ BAŞARISIZ', 'SEQUÊNCIA FALHOU', 'SECUENCIA FALLIDA', 'ПОСЛЕДОВАТЕЛЬНОСТЬ ПРОВАЛЕНА')}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1049,8 +1049,8 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   >
                     {l(
                       `Click anywhere - Hit yellow targets for ${weakSpotMultiplier.toFixed(1)}x! | Optional breach (no timer): OVERCLOCK +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} weak spots`,
-                      `Herhangi bir yere tikla - sari hedeflerde ${weakSpotMultiplier.toFixed(1)}x! | Istege bagli ihlal (suresiz): OVERCLOCK +${TIME_BONUS_ON_BREACH}sn +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta`,
-                      `Clique em qualquer lugar. Acerte os alvos amarelos para ${weakSpotMultiplier.toFixed(1)}x! | Invasao opcional (sem timer): OVERCLOCK +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos`,
+                      `Herhangi bir yere tıkla - sarı hedeflerde ${weakSpotMultiplier.toFixed(1)}x! | İsteğe bağlı ihlal (süresiz): OVERCLOCK +${TIME_BONUS_ON_BREACH}sn +${WEAK_SPOT_BONUS_ON_BREACH} zayıf nokta`,
+                      `Clique em qualquer lugar. Acerte os alvos amarelos para ${weakSpotMultiplier.toFixed(1)}x! | Invasão opcional (sem timer): OVERCLOCK +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos`,
                       `Haz clic en cualquier lugar. Golpea los objetivos amarillos para ${weakSpotMultiplier.toFixed(1)}x! | Brecha opcional (sin temporizador): OVERCLOCK +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} puntos debiles`,
                       `Нажимайте где угодно. Попадайте по жёлтым целям для ${weakSpotMultiplier.toFixed(1)}x! | Доп. взлом (без таймера): ОВЕРКЛОК +${TIME_BONUS_ON_BREACH}с +${WEAK_SPOT_BONUS_ON_BREACH} слабые точки`,
                     )}
@@ -1071,11 +1071,11 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               </motion.div>
               
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-emerald-400">{l('FIREWALL BREACHED!', 'GUVENLIK ASILDI!', 'FIREWALL ROMPIDO!', '¡FIREWALL ROTO!', 'ФАЙРВОЛ ВЗЛОМАН!')}</h2>
+                <h2 className="text-3xl font-bold text-emerald-400">{l('FIREWALL BREACHED!', 'GÜVENLİK AŞILDI!', 'FIREWALL ROMPIDO!', '¡FIREWALL ROTO!', 'ФАЙРВОЛ ВЗЛОМАН!')}</h2>
                 <p className="text-muted-foreground">
                   {l(
                     `${currentBossName} defeated in ${clicks} clicks`,
-                    `${currentBossName}, ${clicks} tiklamada yenildi`,
+                    `${currentBossName}, ${clicks} tıklamada yenildi`,
                     `${currentBossName} foi derrotado em ${clicks} cliques`,
                     `${currentBossName} fue derrotado en ${clicks} clics`,
                     `${currentBossName} побежден за ${clicks} кликов`,
@@ -1089,13 +1089,13 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                <p className="text-sm text-muted-foreground mb-2">{l('Prestige Reward', 'Prestij Odulu', 'Recompensa de Prestigio', 'Recompensa de Prestigio', 'Награда престижа')}</p>
+                <p className="text-sm text-muted-foreground mb-2">{l('Prestige Reward', 'Prestij Ödülü', 'Recompensa de Prestígio', 'Recompensa de Prestigio', 'Награда престижа')}</p>
                 <p className="text-4xl font-bold text-emerald-400">+{prestigeGain}</p>
                 <p className="text-sm text-cyan-400 mt-2">
                   {l(
                     `Ascending to Level ${ascensionLevel + 2}!`,
-                    `${ascensionLevel + 2}. seviyeye yukseliyorsun!`,
-                    `Ascendendo para o Nivel ${ascensionLevel + 2}!`,
+                    `${ascensionLevel + 2}. seviyeye yükseliyorsun!`,
+                    `Ascendendo para o Nível ${ascensionLevel + 2}!`,
                     `Ascendiendo al Nivel ${ascensionLevel + 2}!`,
                     `Возвышение до уровня ${ascensionLevel + 2}!`,
                   )}
@@ -1108,7 +1108,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 data-testid="button-claim-victory"
               >
                 <Trophy className="w-5 h-5 mr-2" />
-                {l('CLAIM REWARDS & ASCEND', 'ODULLERI AL VE YUKSEL', 'RESGATAR RECOMPENSAS E ASCENDER', 'RECLAMAR RECOMPENSAS Y ASCENDER', 'ЗАБРАТЬ НАГРАДЫ И ВОЗНЕСТИСЬ')}
+                {l('CLAIM REWARDS & ASCEND', 'ÖDÜLLERİ AL VE YÜKSEL', 'RESGATAR RECOMPENSAS E ASCENDER', 'RECLAMAR RECOMPENSAS Y ASCENDER', 'ЗАБРАТЬ НАГРАДЫ И ВОЗНЕСТИСЬ')}
               </Button>
             </div>
           )}
@@ -1124,11 +1124,11 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               </motion.div>
               
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-red-400">{l('HACK FAILED!', 'SALDIRI BASARISIZ!', 'HACK FALHOU!', '¡HACK FALLÓ!', 'ВЗЛОМ ПРОВАЛЕН!')}</h2>
+                <h2 className="text-3xl font-bold text-red-400">{l('HACK FAILED!', 'SALDIRI BAŞARISIZ!', 'HACK FALHOU!', '¡HACK FALLÓ!', 'ВЗЛОМ ПРОВАЛЕН!')}</h2>
                 <p className="text-muted-foreground">
                   {l(
                     `${currentBossName} resisted your attack`,
-                    `${currentBossName} saldirina direndi`,
+                    `${currentBossName} saldırına direndi`,
                     `${currentBossName} resistiu ao seu ataque`,
                     `${currentBossName} resistio tu ataque`,
                     `${currentBossName} отразил вашу атаку`,
@@ -1211,7 +1211,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 data-testid="button-accept-defeat"
               >
                 <RotateCcw className="w-5 h-5 mr-2" />
-                 {l('ACCEPT & RESTART RUN', 'KABUL ET VE YENIDEN BASLA', 'ACEITAR E REINICIAR RUN', 'ACEPTAR Y REINICIAR PARTIDA', 'ПРИНЯТЬ И ПЕРЕЗАПУСТИТЬ ЗАБЕГ')}
+                 {l('ACCEPT & RESTART RUN', 'KABUL ET VE YENİDEN BAŞLA', 'ACEITAR E REINICIAR RUN', 'ACEPTAR Y REINICIAR PARTIDA', 'ПРИНЯТЬ И ПЕРЕЗАПУСТИТЬ ЗАБЕГ')}
               </Button>
             </div>
           )}

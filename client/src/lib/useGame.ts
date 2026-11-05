@@ -431,7 +431,7 @@ const INITIAL_STATE = {
     },
     {
       id: 'botnet_node',
-      name: 'Botnet Node',
+      name: 'Botnet Cluster',
       description: 'Infects vulnerable devices to mine Data en masse.',
       cost: { data: 2000 },
       baseCost: { data: 2000 },
@@ -5863,9 +5863,9 @@ useEffect(() => {
     });
 
     const summary = [
-      timeWarpDataBonus > 0 ? `+${formatNumber(timeWarpDataBonus)} ${l('DATA', 'VERI', 'DADOS')}` : null,
-      timeWarpCreditsBonus > 0 ? `+${formatNumber(timeWarpCreditsBonus)} ${l('NODES', 'DUGUM', 'NOS')}` : null,
-      timeWarpCryptoBonus > 0 ? `+${formatNumber(timeWarpCryptoBonus)} ${l('CRYPTO', 'KRIPTO', 'CRIPTO')}` : null,
+      timeWarpDataBonus > 0 ? `+${formatNumber(timeWarpDataBonus)} ${l('DATA', 'VERİ', 'DADOS')}` : null,
+      timeWarpCreditsBonus > 0 ? `+${formatNumber(timeWarpCreditsBonus)} ${l('NODES', 'DİZİN', 'NODES', 'NODOS', 'УЗЛЫ')}` : null,
+      timeWarpCryptoBonus > 0 ? `+${formatNumber(timeWarpCryptoBonus)} ${l('CRYPTO', 'KRİPTO', 'CRIPTO')}` : null,
     ]
       .filter(Boolean)
       .join(' | ');
@@ -5884,19 +5884,19 @@ useEffect(() => {
 
     if (bonusSeconds > 0) {
       setLastUpgradeInfo({
-        name: l('TIME WARP', 'ZAMAN YARIGI', 'DISTORCAO TEMPORAL'),
+        name: l('TIME WARP', 'ZAMAN YARIĞI', 'DISTORÇÃO TEMPORAL'),
         effect: l(
           `${summary || 'Burst complete'} (${(bonusSeconds / 60).toFixed(1)}m from ${activeState.clicks} clicks)`,
-          `${summary || 'Patlama tamamlandi'} (${activeState.clicks} tiklamadan ${(bonusSeconds / 60).toFixed(1)}d)`,
+          `${summary || 'Patlama tamamlandı'} (${activeState.clicks} tıklamadan ${(bonusSeconds / 60).toFixed(1)}d)`,
           `${summary || 'Explosao concluida'} (${(bonusSeconds / 60).toFixed(1)}m a partir de ${activeState.clicks} cliques)`,
         ),
       });
     } else {
       setLastUpgradeInfo({
-        name: l('TIME WARP', 'ZAMAN YARIGI', 'DISTORCAO TEMPORAL'),
+        name: l('TIME WARP', 'ZAMAN YARIĞI', 'DISTORÇÃO TEMPORAL'),
         effect: l(
           'Anomaly collapsed with no stored charge.',
-          'Anomali depolanan yuk olmadan coktu.',
+          'Anomali depolanan yük olmadan çöktü.',
           'A anomalia colapsou sem carga armazenada.',
         ),
       });
@@ -6251,7 +6251,7 @@ useEffect(() => {
         name: l('COMBO COMPLETE', 'KOMBO TAMAMLANDI', 'COMBO CONCLUIDO'),
         effect: l(
           `${floaterCount} pickups chained in ${(comboDurationMs / 1000).toFixed(1)}s.`,
-          `${(comboDurationMs / 1000).toFixed(1)}sn icinde ${floaterCount} floater zincirlendi.`,
+          `${(comboDurationMs / 1000).toFixed(1)}sn içinde ${floaterCount} floater zincirlendi.`,
           `${floaterCount} coletas encadeadas em ${(comboDurationMs / 1000).toFixed(1)}s.`,
         ),
       });
@@ -6278,10 +6278,10 @@ useEffect(() => {
     });
 
     setLastUpgradeInfo({
-      name: l('COMBO PAYOUT', 'KOMBO ODULU', 'PAGAMENTO DE COMBO'),
+      name: l('COMBO PAYOUT', 'KOMBO ÖDÜLÜ', 'PAGAMENTO DE COMBO'),
       effect: l(
         `+${formatNumber(comboReward)} DATA from ${formatNumber(totalDataCollectedDuringCombo)} x ${floaterCount} pickups.`,
-        `+${formatNumber(comboReward)} VERI (${formatNumber(totalDataCollectedDuringCombo)} x ${floaterCount} floater).`,
+        `+${formatNumber(comboReward)} VERİ (${formatNumber(totalDataCollectedDuringCombo)} x ${floaterCount} floater).`,
         `+${formatNumber(comboReward)} DADOS (${formatNumber(totalDataCollectedDuringCombo)} x ${floaterCount} coletas).`,
       ),
     });
@@ -7093,7 +7093,7 @@ useEffect(() => {
     );
     startTimeWarpMiniGame(bonusSeconds, { replaceActive: true });
     setLastUpgradeInfo({
-      name: l('TIME WARP (DEBUG)', 'ZAMAN YARIGI (DEBUG)', 'DISTORCAO TEMPORAL (DEBUG)'),
+      name: l('TIME WARP (DEBUG)', 'ZAMAN YARIĞI (DEBUG)', 'DISTORÇÃO TEMPORAL (DEBUG)'),
       effect: t('useGame.lastUpgrade.timeWarpDebug', { minutes: (bonusSeconds / 60).toFixed(1) }),
     });
     playSound('checkpoint');
@@ -7175,7 +7175,7 @@ useEffect(() => {
     timeWarpPityThresholdRef.current = rollTimeWarpPityThreshold();
     setUpgradePaceDelayMultiplier(1);
     setLastUpgradeInfo({
-      name: l('ASCENDED', 'YUKSELIS', 'ASCENSAO'),
+      name: l('ASCENDED', 'YÜKSELİŞ', 'ASCENSÃO'),
       effect: t('useGame.lastUpgrade.ascended', { gain: prestigeGain }),
     });
     
@@ -7283,17 +7283,17 @@ useEffect(() => {
     timeWarpPityThresholdRef.current = rollTimeWarpPityThreshold();
     setUpgradePaceDelayMultiplier(1);
     setLastUpgradeInfo({
-      name: l('BOSS DEFEATED!', 'BOSS ALT EDILDI!', 'CHEFE DERROTADO!'),
+      name: l('BOSS DEFEATED!', 'BOSS ALT EDİLDİ!', 'CHEFE DERROTADO!'),
       effect: selectedLoot
         ? l(
           `+${prestigeGain} prestige | Loot: ${localizedLootName ?? selectedLoot.name}`,
           `+${prestigeGain} prestij | Ganimet: ${localizedLootName ?? selectedLoot.name}`,
-          `+${prestigeGain} prestigio | Saque: ${localizedLootName ?? selectedLoot.name}`,
+          `+${prestigeGain} prestígio | Saque: ${localizedLootName ?? selectedLoot.name}`,
         )
         : l(
           `+${prestigeGain} prestige | Loot pool empty: +1K all`,
-          `+${prestigeGain} prestij | Ganimet havuzu bos: +1K hepsi`,
-          `+${prestigeGain} prestigio | Pool de saque vazio: +1K em tudo`,
+          `+${prestigeGain} prestij | Ganimet havuzu boş: +1K hepsi`,
+          `+${prestigeGain} prestígio | Pool de saque vazio: +1K em tudo`,
         ),
     });
     playSound('buy_fab');
@@ -7370,7 +7370,7 @@ useEffect(() => {
     timeWarpPityThresholdRef.current = rollTimeWarpPityThreshold();
     setUpgradePaceDelayMultiplier(1);
     setLastUpgradeInfo({
-      name: l('HACK FAILED', 'HACK BASARISIZ', 'HACK FALHOU'),
+      name: l('HACK FAILED', 'HACK BAŞARISIZ', 'HACK FALHOU'),
       effect: pick6(language, [
         `+${penaltyPrestige} prestige (kept ${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)}%, no loot box)`,
         `+${penaltyPrestige} prestij (%${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)} korundu, ganimet kutusu yok)`,
@@ -7478,10 +7478,10 @@ useEffect(() => {
         comboAutoclickSpawnLockedRef.current = true;
       }
       setLastUpgradeInfo({
-        name: l('AUTO-CLICK BOOST', 'OTO TIKLAMA TAKVIYESI', 'IMPULSO DE AUTO-CLIQUE'),
+        name: l('AUTO-CLICK BOOST', 'OTO TIKLAMA TAKVİYESİ', 'IMPULSO DE AUTO-CLIQUE'),
         effect: l(
           `+${(addedDurationMs / 1000).toFixed(2)}s (${autoClickPickupStackRef.current} stack)`,
-          `+${(addedDurationMs / 1000).toFixed(2)}sn (${autoClickPickupStackRef.current} yigin)`,
+          `+${(addedDurationMs / 1000).toFixed(2)}sn (${autoClickPickupStackRef.current} yığın)`,
           `+${(addedDurationMs / 1000).toFixed(2)}s (${autoClickPickupStackRef.current} acumulo)`,
         ),
       });
@@ -7489,10 +7489,10 @@ useEffect(() => {
     } else if (pickup.type === 'combo') {
       spawnComboChainPickups();
       setLastUpgradeInfo({
-        name: l('COMBO CHAIN', 'KOMBO ZINCIRI', 'CADEIA DE COMBO'),
+        name: l('COMBO CHAIN', 'KOMBO ZİNCİRİ', 'CADEIA DE COMBO'),
         effect: l(
           `${COMBO_CHAIN_MIN_SPAWNS}-${COMBO_CHAIN_MAX_SPAWNS} rapid pickups deployed`,
-          `${COMBO_CHAIN_MIN_SPAWNS}-${COMBO_CHAIN_MAX_SPAWNS} hizli odul birakildi`,
+          `${COMBO_CHAIN_MIN_SPAWNS}-${COMBO_CHAIN_MAX_SPAWNS} hızlı ödül bırakıldı`,
           `${COMBO_CHAIN_MIN_SPAWNS}-${COMBO_CHAIN_MAX_SPAWNS} coletas rapidas ativadas`,
         ),
       });
@@ -7530,11 +7530,11 @@ useEffect(() => {
       if (started) {
         timeWarpEligiblePickupStreakRef.current = 0;
         setLastUpgradeInfo({
-          name: l('TIME WARP SIGNAL', 'ZAMAN YARIGI SINYALI', 'SINAL DE TIME WARP'),
+          name: l('TIME WARP SIGNAL', 'ZAMAN YARIĞI SİNYALİ', 'SINAL DE TIME WARP'),
           effect: l(
             `Anomaly opened: click the blackhole for up to ${(activePickupBoosts.timeWarpSeconds / 60).toFixed(1)}m.`,
-            `Anomali acildi: karadelige tiklayarak ${(activePickupBoosts.timeWarpSeconds / 60).toFixed(1)}d topla.`,
-            `Anomalia aberta: clique no buraco negro por ate ${(activePickupBoosts.timeWarpSeconds / 60).toFixed(1)}m.`,
+            `Anomali açıldı: karadeliğe tıklayarak ${(activePickupBoosts.timeWarpSeconds / 60).toFixed(1)}d topla.`,
+            `Anomalia aberta: clique no buraco negro por até ${(activePickupBoosts.timeWarpSeconds / 60).toFixed(1)}m.`,
           ),
         });
         playSound('checkpoint');
@@ -7567,10 +7567,10 @@ useEffect(() => {
       comboCritSpawnLockedRef.current = true;
     }
     setLastUpgradeInfo({
-      name: l('CRIT BOOST', 'KRITIK TAKVIYE', 'IMPULSO CRITICO'),
+      name: l('CRIT BOOST', 'KRİTİK TAKVİYE', 'IMPULSO CRÍTICO'),
       effect: l(
         `+${(addedDurationMs / 1000).toFixed(2)}s (${critPickupStackRef.current} stack)`,
-        `+${(addedDurationMs / 1000).toFixed(2)}sn (${critPickupStackRef.current} yigin)`,
+        `+${(addedDurationMs / 1000).toFixed(2)}sn (${critPickupStackRef.current} yığın)`,
         `+${(addedDurationMs / 1000).toFixed(2)}s (${critPickupStackRef.current} acumulo)`,
       ),
     });
@@ -8074,7 +8074,7 @@ useEffect(() => {
     }));
 
     setLastUpgradeInfo({
-      name: l('PARAGON LAB', 'PARAGON LABORATUVARI', 'LABORATORIO PARAGON'),
+      name: l('PARAGON LAB', 'PARAGON LABORATUVARI', 'LABORATÓRIO PARAGON'),
       effect: `${upgrade.name} Lv.${currentLevel + 1}/${upgrade.maxLevel}`,
     });
     playSound('buy_black');

@@ -897,7 +897,7 @@ function CosmeticCard({
   const defaultLabel = l('Default', 'Varsayılan', 'Padrao', 'Por Defecto');
   const equippedLabel = l('Equipped', 'Takılı', 'Equipado', 'Equipado');
   const equipLabel = l('Equip', 'Tak', 'Equipar', 'Equipar');
-  const ascendLabel = l(`Ascend ${ascensionRequirement}x`, `Yükseliş ${ascensionRequirement}x`, `Ascensão ${ascensionRequirement}x`, `Ascension ${ascensionRequirement}x`);
+  const ascendLabel = l(`Ascend ${ascensionRequirement}x`, `Yükseliş ${ascensionRequirement}x`, `Ascensão ${ascensionRequirement}x`, `Ascensión ${ascensionRequirement}x`);
   
   const CurrencyDisplay = () => {
     if (currency === 'credits') return <span>â‚¡</span>;
@@ -1078,27 +1078,27 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
     { id: 'character' as const, label: language === 'zh-CN' ? '角色' : l('Character', 'Karakter', 'Personagem', 'Personaje'), icon: User },
     { id: 'rooms' as const, label: language === 'zh-CN' ? '房间' : l('Rooms', 'Odalar', 'Salas', 'Salas'), icon: Home },
     { id: 'pets' as const, label: language === 'zh-CN' ? '宠物' : l('Pets', 'Evciller', 'Pets', 'Mascotas'), icon: Cat },
-    { id: 'ascension' as const, label: language === 'zh-CN' ? '飞升' : l('Ascension', 'Yükseliş', 'Ascensão', 'Ascension'), icon: Star },
+    { id: 'ascension' as const, label: language === 'zh-CN' ? '飞升' : l('Ascension', 'Yükseliş', 'Ascensão', 'Ascensión'), icon: Star },
   ];
 
   const creditsLabel = l('Nodes', 'Dizin', 'Nodes', 'Nodos');
-  const ascensionLabel = l('Ascension', 'Yükseliş', 'Ascensão', 'Ascension');
+  const ascensionLabel = l('Ascension', 'Yükseliş', 'Ascensão', 'Ascensión');
   const lootBoxExclusiveLabel = l('(Loot Box Exclusive)', '(Kutuya Özel)', '(Exclusivo de Loot Box)', '(Exclusivo de Loot Box)');
-  const ascensionCurrencyLabel = l('(Ascension)', '(Yükseliş)', '(Ascensão)', '(Ascension)');
+  const ascensionCurrencyLabel = l('(Ascension)', '(Yükseliş)', '(Ascensão)', '(Ascensión)');
   const ascensionIntro = l(
     'Exclusive cosmetics purchasable with Ascension Points. These items are only available after ascending!',
     'Yükseliş Puanları ile alınabilen özel kozmetikler. Bu eşyalar sadece yükseldikten sonra açılır!',
     'Cosméticos exclusivos comprados com Pontos de Ascensão. Esses itens so ficam disponíveis depois de ascender!',
-    'Cosméticos exclusivos que se compran con Puntos de Ascension. Estos objetos solo estan disponibles despues de ascender.',
+    'Cosméticos exclusivos que se compran con Puntos de Ascensión. Estos objetos solo están disponibles después de ascender.',
   );
   const ascensionPetsSubtitle = l(
     'Unlocked by reaching ascension milestones. Can be equipped alongside a companion pet!',
     'Yükseliş kilometre taşlarına ulaşınca açılır. Bir yoldaş evcille birlikte kuşanılabilir!',
     'Desbloqueados ao atingir marcos de ascensão. Podem ser equipados junto com um pet companheiro!',
-    'Se desbloquean al alcanzar hitos de ascension. Pueden equiparse junto a una mascota companera.',
+    'Se desbloquean al alcanzar hitos de ascensión. Pueden equiparse junto a una mascota compañera.',
   );
   const openLootBoxesLabel = l('Open Loot Boxes', 'Kutuları Aç', 'Abrir Loot Boxes', 'Abrir Loot Boxes');
-  const unequipAscensionPetLabel = l('Unequip Ascension Pet', 'Yükseliş Evcilini Çıkar', 'Desequipar Pet de Ascensão', 'Desequipar Mascota de Ascension');
+  const unequipAscensionPetLabel = l('Unequip Ascension Pet', 'Yükseliş Evcilini Çıkar', 'Desequipar Pet de Ascensão', 'Desequipar Mascota de Ascensión');
   const characterSkinsLabel = l('Character Skins', 'Karakter Kaplamaları', 'Skins de Personagem', 'Skins de Personaje');
   const headStylesLabel = l('Head Styles', 'Baş Stilleri', 'Estilos de Cabeça', 'Estilos de Cabeza');
   const accessoriesLabel = l('Accessories', 'Aksesuarlar', 'Acessórios', 'Accesorios');
@@ -1109,20 +1109,20 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
     'These effects can only be claimed by opening Ascension Loot Boxes after boss fights.',
     'Bu efektler sadece boss savaşlarından sonra açılan Yükseliş Kutularından kazanılır.',
     'Esses efeitos só podem ser obtidos ao abrir Loot Boxes de Ascensão depois das lutas contra chefes.',
-    'Estos efectos solo pueden obtenerse al abrir Loot Boxes de Ascension despues de las peleas contra jefes.',
+    'Estos efectos solo pueden obtenerse al abrir Loot Boxes de Ascensión después de las peleas contra jefes.',
   );
   const lootBoxSkinsLabel = l('Loot Box Skins', 'Kutu Kaplamaları', 'Skins de Loot Box', 'Skins de Loot Box');
   const lootBoxSkinsSubtitle = l(
     'Box skins can only drop from Ascension Loot Boxes and cannot be purchased.',
     'Kutu kaplamaları sadece Yükseliş Kutularından düşer ve satın alınamaz.',
     'As skins de caixa só podem vir de Loot Boxes de Ascensão e não podem ser compradas.',
-    'Las skins de caja solo pueden salir de Loot Boxes de Ascension y no se pueden comprar.',
+    'Las skins de caja solo pueden salir de Loot Boxes de Ascensión y no se pueden comprar.',
   );
-  const ascensionSkinsLabel = l('Ascension Skins', 'Yükseliş Kaplamaları', 'Skins de Ascensão', 'Skins de Ascension');
-  const ascensionHeadStylesLabel = l('Ascension Head Styles', 'Yükseliş Baş Stilleri', 'Estilos de Cabeça de Ascensão', 'Estilos de Cabeza de Ascension');
-  const ascensionAccessoriesLabel = l('Ascension Accessories', 'Yükseliş Aksesuarları', 'Acessórios de Ascensão', 'Accesorios de Ascension');
-  const ascensionRoomThemesLabel = l('Ascension Room Themes', 'Yükseliş Oda Temaları', 'Temas de Sala de Ascensão', 'Temas de Sala de Ascension');
-  const ascensionPetsLabel = l('Ascension Pets', 'Yükseliş Evcilleri', 'Pets de Ascensão', 'Mascotas de Ascension');
+  const ascensionSkinsLabel = l('Ascension Skins', 'Yükseliş Kaplamaları', 'Skins de Ascensão', 'Skins de Ascensión');
+  const ascensionHeadStylesLabel = l('Ascension Head Styles', 'Yükseliş Baş Stilleri', 'Estilos de Cabeça de Ascensão', 'Estilos de Cabeza de Ascensión');
+  const ascensionAccessoriesLabel = l('Ascension Accessories', 'Yükseliş Aksesuarları', 'Acessórios de Ascensão', 'Accesorios de Ascensión');
+  const ascensionRoomThemesLabel = l('Ascension Room Themes', 'Yükseliş Oda Temaları', 'Temas de Sala de Ascensão', 'Temas de Sala de Ascensión');
+  const ascensionPetsLabel = l('Ascension Pets', 'Yükseliş Evcilleri', 'Pets de Ascensão', 'Mascotas de Ascensión');
   const milestoneUnlocksLabel = l('(Milestone Unlocks - Stackable)', '(Kilometre Taşı Kilitleri - Birikir)', '(Desbloqueios por Marco - Acumuláveis)', '(Desbloqueos por Hito - Acumulables)');
   const luckLabel = l('Loot Luck', 'Ganimet Şansı', 'Sorte de Saque', 'Suerte de Loot');
   const equippedLabel = l('Equipped', 'Takılı', 'Equipado', 'Equipado');
@@ -1650,7 +1650,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                         ) : (
                           <div className="flex items-center justify-center gap-1 text-xs text-slate-500">
                             <Lock className="w-3 h-3" />
-                            <span>{l(`Ascension ${requirement}x`, `Yükseliş ${requirement}x`, `Ascensão ${requirement}x`, `Ascension ${requirement}x`)}</span>
+                            <span>{l(`Ascension ${requirement}x`, `Yükseliş ${requirement}x`, `Ascensão ${requirement}x`, `Ascensión ${requirement}x`)}</span>
                           </div>
                         )}
                       </motion.div>

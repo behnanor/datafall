@@ -43,19 +43,19 @@ export function RoomOrganizer({ upgrades, roomLayout, onUpdatePosition, onRemove
   const l = (en: string, tr: string, pt: string, es?: string, ru?: string) => localizeInlineText(language, en, tr, pt, es, ru);
   const [draggedMachine, setDraggedMachine] = useState<string | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ x: number; y: number } | null>(null);
-  const titleLabel = l('Room Organizer', 'Oda Duzeni', 'Organizador de Sala', 'Organizador de Sala');
+  const titleLabel = l('Room Organizer', 'Oda Düzeni', 'Organizador de Sala', 'Organizador de Sala');
   const clearLabel = l('Clear', 'Temizle', 'Limpar', 'Limpiar');
   const instructionLabel = l(
     'Drag machines onto the grid to arrange your room',
-    'Odanin yerlesimini duzenlemek icin makineleri izgaraya surukle',
-    'Arraste as maquinas para a grade para organizar sua sala',
-    'Arrastra las maquinas a la cuadricula para organizar tu sala',
+    'Odanın yerleşimini düzenlemek için makineleri ızgaraya sürükle',
+    'Arraste as máquinas para a grade para organizar sua sala',
+    'Arrastra las máquinas a la cuadricula para organizar tu sala',
   );
-  const availableMachinesLabel = l('Available Machines', 'Mevcut Makineler', 'Maquinas Disponiveis', 'Maquinas Disponibles');
+  const availableMachinesLabel = l('Available Machines', 'Mevcut Makineler', 'Máquinas Disponíveis', 'Máquinas Disponibles');
   const ownedLabel = l('owned', 'sahip', 'possuidas', 'poseidas');
-  const placedLabel = l('Placed', 'Yerlesti', 'Posicionadas', 'Colocadas');
-  const emptyTitle = l('No machines to arrange yet', 'Henuz yerlestirilecek makine yok', 'Ainda não h? maquinas para organizar', 'Aun no hay maquinas para organizar');
-  const emptySubtitle = l('Buy production upgrades first', 'Once uretim yukseltmeleri satin al', 'Compre upgrades de produção primeiro', 'Compra primero mejoras de produccion');
+  const placedLabel = l('Placed', 'Yerleşti', 'Posicionadas', 'Colocadas');
+  const emptyTitle = l('No machines to arrange yet', 'Henüz yerleştirilecek makine yok', 'Ainda não h? máquinas para organizar', 'Aun no hay máquinas para organizar');
+  const emptySubtitle = l('Buy production upgrades first', 'Önce üretim yükseltmeleri satın al', 'Compre upgrades de produção primeiro', 'Compra primero mejoras de producción');
 
   const ownedUpgrades = upgrades.filter(u => u.count > 0 && u.effect.type === 'production');
 

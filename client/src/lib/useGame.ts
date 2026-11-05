@@ -4275,6 +4275,9 @@ type SaveSlot = 'primary' | 'test';
 const getActiveSaveSlot = (): SaveSlot => 'primary';
 const ACTIVE_SAVE_SLOT = getActiveSaveSlot();
 // The demo keeps its own namespace and save file (save.demo.v3.json, like the March demo) so it never touches a full save.
+// Resource tick. Each tick re-renders the game screen, so keep it low; production uses real elapsed time.
+const GAME_TICK_MS = 250;
+
 const FULL_SAVE_NAMESPACE = 'cyberpunk_clicker_save_v11';
 const DEMO_SAVE_NAMESPACE = 'cyberpunk_clicker_save_v13_demo'; // same as the March demo, so its saves continue
 const PRIMARY_SAVE_NAMESPACE = import.meta.env.VITE_DEMO_BUILD === 'true' ? DEMO_SAVE_NAMESPACE : FULL_SAVE_NAMESPACE;
@@ -6127,41 +6130,42 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
   }, [activeTimeWarpMiniGame, resolveTimeWarpMiniGame]);
 
   // Game Loop
+  // v1.04 CPU: production rates only change when upgrades/boosts change, so compute them once per change
+  // instead of on every tick. The loop runs at 4 Hz (was 10 Hz): every resources update re-renders the
+  // whole game screen, and production is time-based (delta), so the totals are identical.
+  const productionRates = useMemo(() => computeProductionRates({
+    upgrades,
+    cryptoChallengeMultiplier: challenges.active === 'half_crypto' ? 0.5 : 1,
+    prestigeUpgrades,
+    cosmeticBoosts: activeCosmeticBoosts,
+    paragonProductionMultiplier: activeParagonBonuses.productionMultiplier,
+    paragonCryptoMultiplier: activeParagonBonuses.cryptoMultiplier,
+    adjacencyProductionBoost: activeAdjacencyProductionBoost,
+    adjacencyCryptoBoost: activeAdjacencyCryptoBoost,
+  }), [upgrades, prestigeUpgrades, activeCosmeticBoosts, activeAdjacencyProductionBoost, activeAdjacencyCryptoBoost, activeParagonBonuses.productionMultiplier, activeParagonBonuses.cryptoMultiplier, challenges.active]);
+
   useEffect(() => {
+    const rates = productionRates;
     const interval = setInterval(() => {
       const now = Date.now();
       const delta = (now - lastTick.current) / 1000;
       lastTick.current = now;
 
-      let dataProducedThisTick = 0;
-      let creditsProducedThisTick = 0;
-      let cryptoProducedThisTick = 0;
+      const dataProducedThisTick = rates.data * delta;
+      const creditsProducedThisTick = rates.credits * delta;
+      const cryptoProducedThisTick = rates.crypto * delta;
 
+      // Immutable update: the old code mutated prev's nested objects, which breaks memo checks and
+      // double-counts production if React replays the updater.
       setResources(prev => {
         const next = { ...prev };
-        
         (Object.keys(next) as ResourceType[]).forEach(key => {
-            next[key].perSecond = 0;
-        });
-        
-        const rates = computeProductionRates({
-          upgrades,
-          cryptoChallengeMultiplier: challenges.active === 'half_crypto' ? 0.5 : 1,
-          prestigeUpgrades,
-          cosmeticBoosts: activeCosmeticBoosts,
-          paragonProductionMultiplier: activeParagonBonuses.productionMultiplier,
-          paragonCryptoMultiplier: activeParagonBonuses.cryptoMultiplier,
-          adjacencyProductionBoost: activeAdjacencyProductionBoost,
-          adjacencyCryptoBoost: activeAdjacencyCryptoBoost,
+          next[key] = { ...prev[key], perSecond: 0 };
         });
         (['data', 'credits', 'crypto'] as const).forEach(resource => {
-          const production = rates[resource] * delta;
-          next[resource].amount += production;
-          next[resource].perSecond += rates[resource];
+          next[resource].amount += rates[resource] * delta;
+          next[resource].perSecond = rates[resource];
         });
-        dataProducedThisTick += rates.data * delta;
-        creditsProducedThisTick += rates.credits * delta;
-        cryptoProducedThisTick += rates.crypto * delta;
 
         // 'interest' stays in the resource map only so older saves keep loading; it has no gameplay.
         next.interest.amount = 0;
@@ -6183,10 +6187,10 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
           totalCryptoMined: s.totalCryptoMined + cryptoProducedThisTick,
         }));
       }
-    }, 100); 
+    }, GAME_TICK_MS);
 
     return () => clearInterval(interval);
-  }, [upgrades, prestigeUpgrades, activeCosmeticBoosts, activeAdjacencyProductionBoost, activeAdjacencyCryptoBoost, activeParagonBonuses.productionMultiplier, activeParagonBonuses.cryptoMultiplier, challenges.active]);
+  }, [productionRates]);
 
   // Handle resource changes and play sounds for ascend availability
   const prevCanAscend = useRef(false);

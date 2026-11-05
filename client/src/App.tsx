@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/lib/i18n";
 import NotFound from "@/pages/not-found";
 import GamePage from "@/pages/Game";
+import { CrashScreen } from "@/components/game/CrashScreen";
 
 function Router() {
   return (
@@ -18,14 +19,16 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </I18nProvider>
-    </QueryClientProvider>
+    <CrashScreen>
+      <QueryClientProvider client={queryClient}>
+        <I18nProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </I18nProvider>
+      </QueryClientProvider>
+    </CrashScreen>
   );
 }
 

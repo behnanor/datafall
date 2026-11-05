@@ -80,3 +80,23 @@ export const isSpecialBoss = (currentAscensions: number): boolean => getBossVari
 /** With automation on, only every 5th ascension (and every special boss) is fought; the rest auto-win. */
 export const shouldSkipBossFight = (currentAscensions: number, automationOn: boolean): boolean =>
   automationOn && !isSpecialBoss(currentAscensions) && (currentAscensions + 1) % 5 !== 0;
+
+// v1.04 boss fairness.
+// Share of the run's prestige you keep when you lose a normal boss fight (was 25%).
+export const BOSS_DEFEAT_PRESTIGE_SHARE = 0.5;
+// One free retry per fight. The boss is seeded per ascension, so a retry is the same fight, not a reroll.
+export const BOSS_RETRIES_PER_FIGHT = 1;
+// Assist mode (normal bosses only): more time and less HP, for players who can't click fast.
+export const BOSS_ASSIST_TIME_MULTIPLIER = 1.5;
+export const BOSS_ASSIST_HP_MULTIPLIER = 0.75;
+const BOSS_ASSIST_STORAGE_KEY = "datafall-boss-assist";
+export const readBossAssist = (): boolean => { try { return localStorage.getItem(BOSS_ASSIST_STORAGE_KEY) === "1"; } catch { return false; } };
+export const writeBossAssist = (on: boolean) => { try { localStorage.setItem(BOSS_ASSIST_STORAGE_KEY, on ? "1" : "0"); } catch { /* ignore */ } };
+
+// Boss HP scales with click power, which used to cancel every permanent click upgrade.
+// Now a share of permanent click power (prestige "Eternal Strike" + Paragon click modules) turns into
+// extra boss damage: +20% damage per +100% permanent click power, capped at +50%.
+export const BOSS_POWER_SHARE = 0.2;
+export const BOSS_POWER_MAX_BONUS = 0.5;
+export const getBossPowerMultiplier = (permanentClickPercent: number): number =>
+  1 + Math.min(BOSS_POWER_MAX_BONUS, Math.max(0, permanentClickPercent) / 100 * BOSS_POWER_SHARE);

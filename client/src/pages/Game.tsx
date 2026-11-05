@@ -2,7 +2,7 @@ import React, { startTransition, useState, useEffect, useMemo, useCallback, Susp
 import { FinaleCredits } from '@/components/game/FinaleCredits';
 import { Celebration, type CelebrationKind } from '@/components/game/Celebration';
 import { shiftThemeColorsForEra } from '@/lib/colorEra';
-import { useGame, formatNumber, getPrestigeGainBreakdown, getEndlessDepth, getFinaleWeaken, IS_TEST_BUILD, type ResourceType, type LootBoxReward, type TutorialReward, type FloatingPickupItem, CHARACTER_SKINS, ROOM_THEMES, CHARACTER_ACCESSORIES, CHARACTER_HEAD_STYLES, CHARACTER_PETS, ASCENSION_PETS, ASCENSION_SKINS, ASCENSION_HEAD_STYLES, ASCENSION_ACCESSORIES, ASCENSION_ROOM_THEMES, CLICK_EFFECTS, LOOT_BOX_SKINS, MACHINE_BOX_SKINS, CRYPTO_RELIC_TREE, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_CAPES, BLACK_MARKET_WINGS, BLACK_MARKET_UPGRADES, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, PARAGON_UPGRADES } from '@/lib/useGame';
+import { useGame, formatNumber, getPrestigeGainBreakdown, getEndlessDepth, getFinaleWeaken, IS_TEST_BUILD, type ResourceType, type LootBoxReward, type TutorialReward, type FloatingPickupItem, CHARACTER_SKINS, ROOM_THEMES, CHARACTER_ACCESSORIES, CHARACTER_HEAD_STYLES, CHARACTER_PETS, ASCENSION_PETS, ASCENSION_SKINS, ASCENSION_HEAD_STYLES, ASCENSION_ACCESSORIES, ASCENSION_ROOM_THEMES, CLICK_EFFECTS, LOOT_BOX_SKINS, MACHINE_BOX_SKINS, CRYPTO_RELIC_TREE, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_CAPES, BLACK_MARKET_WINGS, BLACK_MARKET_UPGRADES, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, PARAGON_UPGRADES, computeParagonBonuses } from '@/lib/useGame';
 import { ABYSS_VARIANT_HUES } from '@/lib/endless';
 import { DemoEndScreen } from '@/components/game/DemoEndScreen';
 import { DemoPrompts } from '@/components/game/DemoPrompts';
@@ -394,6 +394,11 @@ export default function GamePage() {
   }, [playSound]);
 
   const currentBossVariant: BossVariant = useMemo(() => getBossVariant(stats.totalAscensions), [stats.totalAscensions]);
+  // v1.04: permanent click power (Eternal Strike + Paragon click modules), part of which becomes boss damage.
+  const permanentClickPercent = useMemo(() => {
+    const prestigeClick = prestigeUpgrades.reduce((sum, upgrade) => (upgrade.effect.type === 'click_boost' ? sum + upgrade.effect.value * upgrade.count * 100 : sum), 0);
+    return prestigeClick + computeParagonBonuses(cosmetics.paragonLevels).clickBoostPercent;
+  }, [prestigeUpgrades, cosmetics.paragonLevels]);
   const handleAscendVictory = (variant: BossVariant) => {
     const reward = ascendVictory(variant.kind === 'echo' ? ECHO_PRESTIGE_MULTIPLIER : 1);
     if (variant.kind === 'signal') {
@@ -2282,6 +2287,7 @@ export default function GamePage() {
             prestigeGain={getPrestigeGain()}
             ascensionLevel={stats.totalAscensions}
             dataPerClick={getDataPerClick()}
+            permanentClickPercent={permanentClickPercent}
             isMainScreen={true}
             playSound={playSound}
           />

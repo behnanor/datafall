@@ -1,4 +1,4 @@
-import { isSpecialBoss } from './bossVariants';
+import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { unlockSteamAchievement, saveToSteamCloud, loadFromSteamCloud, isSteamAvailable } from './steamIntegration';
@@ -3094,32 +3094,33 @@ export const PARAGON_UPGRADES: ParagonUpgrade[] = [
     maxLevel: 8,
     effect: { type: 'time_warp_cooldown_pct', value: 5 },
   },
-  // v1.03 Paragon II (ascension 25)
+  // v1.03 Paragon II (ascension 25). v1.04: same bonus per level as the Paragon I twin (it was less than half)
+  // and cheaper to start (450 instead of 600), so the later unlock is never a worse buy per prestige.
   {
     id: 'overclock_lattice',
     name: 'Overclock Lattice',
-    description: '+3% production per level. Paragon II.',
-    baseCost: 600,
+    description: '+7% production per level. Paragon II.',
+    baseCost: 450,
     costMultiplier: 1.5,
     maxLevel: 10,
     requiredAscensions: PARAGON_II_UNLOCK_ASCENSION,
-    effect: { type: 'production_boost_pct', value: 3 },
+    effect: { type: 'production_boost_pct', value: 7 },
   },
   {
     id: 'quantum_ledger',
     name: 'Quantum Ledger',
-    description: '+4% crypto production per level. Paragon II.',
-    baseCost: 600,
+    description: '+9% crypto production per level. Paragon II.',
+    baseCost: 450,
     costMultiplier: 1.5,
     maxLevel: 10,
     requiredAscensions: PARAGON_II_UNLOCK_ASCENSION,
-    effect: { type: 'crypto_boost_pct', value: 4 },
+    effect: { type: 'crypto_boost_pct', value: 9 },
   },
   {
     id: 'singularity_tap',
     name: 'Singularity Tap',
     description: '+8% data per click per level. Paragon II.',
-    baseCost: 600,
+    baseCost: 450,
     costMultiplier: 1.5,
     maxLevel: 10,
     requiredAscensions: PARAGON_II_UNLOCK_ASCENSION,
@@ -3128,12 +3129,12 @@ export const PARAGON_UPGRADES: ParagonUpgrade[] = [
   {
     id: 'critical_cascade',
     name: 'Critical Cascade',
-    description: '+1.5% crit chance per level. Paragon II.',
-    baseCost: 600,
+    description: '+3.5% crit chance per level. Paragon II.',
+    baseCost: 450,
     costMultiplier: 1.5,
     maxLevel: 10,
     requiredAscensions: PARAGON_II_UNLOCK_ASCENSION,
-    effect: { type: 'crit_chance_pct', value: 1.5 },
+    effect: { type: 'crit_chance_pct', value: 3.5 },
   },
 ];
 
@@ -7315,7 +7316,8 @@ useEffect(() => {
     
     let prestigeGain = getPrestigeGainBreakdown(cryptoAmount, stats.totalAscensions, prestigeUpgrades).total;
     
-    const penaltyPrestige = Math.floor(prestigeGain * 0.25);
+    // v1.04: keep half the prestige (was 25%, while the UI wrongly called it a "25% penalty").
+    const penaltyPrestige = Math.floor(prestigeGain * BOSS_DEFEAT_PRESTIGE_SHARE);
 
     let startingData = 0;
     prestigeUpgrades.forEach(p => {
@@ -7369,11 +7371,14 @@ useEffect(() => {
     setUpgradePaceDelayMultiplier(1);
     setLastUpgradeInfo({
       name: l('HACK FAILED', 'HACK BASARISIZ', 'HACK FALHOU'),
-      effect: l(
-        `+${penaltyPrestige} prestige (25% penalty)`,
-        `+${penaltyPrestige} prestij (%25 ceza)`,
-        `+${penaltyPrestige} prestigio (penalidade de 25%)`,
-      ),
+      effect: pick6(language, [
+        `+${penaltyPrestige} prestige (kept ${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)}%, no loot box)`,
+        `+${penaltyPrestige} prestij (%${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)} korundu, ganimet kutusu yok)`,
+        `+${penaltyPrestige} prestígio (${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)}% mantido, sem caixa de recompensa)`,
+        `+${penaltyPrestige} prestigio (${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)}% conservado, sin caja de botín)`,
+        `+${penaltyPrestige} престижа (сохранено ${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)}%, без лутбокса)`,
+        `+${penaltyPrestige} 声望（保留 ${Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100)}%，无战利品箱）`,
+      ]),
     });
     
     // Reset contracts on ascension - generate fresh contracts with full refreshes

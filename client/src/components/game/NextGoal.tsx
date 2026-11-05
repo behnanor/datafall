@@ -3,6 +3,7 @@ import { Target } from "lucide-react";
 import { formatNumber, getAscensionCost, AUTOMATION_UNLOCK_ASCENSION, CHALLENGE_UNLOCK_ASCENSION, FINALE_UNLOCK_ASCENSION, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, type Resource, type ResourceType, type Upgrade } from "@/lib/useGame";
 import type { Language } from "@/lib/i18n";
 import { getBossVariant, BOSS_MODIFIERS } from "@/lib/bossVariants";
+import { getResourceLabel } from "@/lib/gameText";
 
 // v1.03: always-visible "Next goal" card (next unlock / purchase milestone + ETA) for the first hours.
 type L6 = [en: string, tr: string, pt: string, es: string, ru: string, zh: string];
@@ -17,7 +18,7 @@ export const ASCENSION_MILESTONES: AscensionMilestone[] = [
   { at: AUTOMATION_UNLOCK_ASCENSION, label: ["Automation", "Otomasyon", "Automação", "Automatización", "Автоматизация", "自动化"] },
   { at: PARAGON_LAB_UNLOCK_ASCENSION, label: ["Paragon Lab", "Paragon Laboratuvarı", "Laboratório Paragon", "Laboratorio Paragon", "Лаборатория Paragon", "Paragon 实验室"] },
   { at: 25, label: ["Paragon II modules", "Paragon II modülleri", "Módulos Paragon II", "Módulos Paragon II", "Модули Paragon II", "Paragon II 模块"] },
-  { at: CHALLENGE_UNLOCK_ASCENSION, label: ["Challenges", "Görevler", "Desafios", "Desafíos", "Испытания", "挑战"] },
+  { at: CHALLENGE_UNLOCK_ASCENSION, label: ["Challenges", "Meydan Okumalar", "Desafios", "Desafíos", "Испытания", "挑战"] },
   { at: 40, label: ["Overclock upgrades", "Hız aşırtma yükseltmeleri", "Melhorias de Overclock", "Mejoras de Overclock", "Разгонные улучшения", "超频升级"] },
   { at: 45, label: ["Core Signal boss", "Çekirdek Sinyali bossu", "Chefe Sinal do Núcleo", "Jefe Señal del Núcleo", "Босс: Сигнал Ядра", "核心信号首领"] },
   { at: FINALE_UNLOCK_ASCENSION, label: ["Final Breach", "Son Saldırı", "Invasão Final", "Brecha Final", "Финальный взлом", "最终突破"] },
@@ -58,8 +59,8 @@ export const NextGoal = memo(function NextGoal({ language, resources, upgrades, 
     progress = Math.min(needData > 0 ? resources.data.amount / needData : 1, needCredits > 0 ? resources.credits.amount / needCredits : 1);
     eta = Math.max(etaFor(needData, resources.data.amount, rate(resources.data)), etaFor(needCredits, resources.credits.amount, rate(resources.credits)));
     const parts: string[] = [];
-    if (needData > 0) parts.push(`${formatNumber(Math.min(resources.data.amount, needData))}/${formatNumber(needData)} data`);
-    if (needCredits > 0) parts.push(`${formatNumber(Math.min(resources.credits.amount, needCredits))}/${formatNumber(needCredits)} nodes`);
+    if (needData > 0) parts.push(`${formatNumber(Math.min(resources.data.amount, needData))}/${formatNumber(needData)} ${getResourceLabel("data", language)}`);
+    if (needCredits > 0) parts.push(`${formatNumber(Math.min(resources.credits.amount, needCredits))}/${formatNumber(needCredits)} ${getResourceLabel("credits", language)}`);
     detail = parts.join(" · ");
     sellHint = resources.credits.amount < needCredits && rate(resources.credits) <= 0;
   };
@@ -75,7 +76,7 @@ export const NextGoal = memo(function NextGoal({ language, resources, upgrades, 
     title = pick(language, [`Ascension #${ascensionLevel + 1}`, `Yükseliş #${ascensionLevel + 1}`, `Ascensão #${ascensionLevel + 1}`, `Ascensión #${ascensionLevel + 1}`, `Вознесение #${ascensionLevel + 1}`, `第 ${ascensionLevel + 1} 次飞升`]);
     progress = need > 0 ? resources.crypto.amount / need : 1;
     eta = etaFor(need, resources.crypto.amount, rate(resources.crypto));
-    detail = `${formatNumber(Math.min(resources.crypto.amount, need))} / ${formatNumber(need)} crypto`;
+    detail = `${formatNumber(Math.min(resources.crypto.amount, need))} / ${formatNumber(need)} ${getResourceLabel("crypto", language)}`;
   }
 
   const bossVariant = getBossVariant(ascensionLevel);

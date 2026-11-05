@@ -128,10 +128,10 @@ const localizePathUiText = (language: Language, en: string, tr: string, ptBR: st
   localizeInlineText(language, en, tr, ptBR, es, ru);
 
 const toResourceLabel = (resource: string, language: Language): string => {
-  if (resource === "credits") return localizePathUiText(language, "nodes", "dizin", "nos", "nodos", "узлы");
+  if (resource === "credits") return localizePathUiText(language, "nodes", "dizin", "nodes", "nodos", "узлы");
   if (resource === "crypto") return localizePathUiText(language, "crypto", "kripto", "cripto", "cripto", "крипта");
   if (resource === "data") return localizePathUiText(language, "data", "veri", "dados", "datos", "данные");
-  if (resource === "prestige") return localizePathUiText(language, "crown", "tac", "coroa", "corona", "корона");
+  if (resource === "prestige") return localizePathUiText(language, "crown", "taç", "coroa", "corona", "корона");
   return resource;
 };
 
@@ -147,9 +147,9 @@ const getPathName = (pathKey: PathKey, language: Language): string => {
     return "Rota de Mineração";
   }
   if (language === "es") {
-    if (pathKey === "fabrication") return "Ruta de Produccion";
+    if (pathKey === "fabrication") return "Ruta de Producción";
     if (pathKey === "click_upgrades") return "Ruta de Clic";
-    return "Ruta de Mineria";
+    return "Ruta de Minería";
   }
   if (language === "ru") {
     if (pathKey === "fabrication") return "Линия производства";
@@ -167,14 +167,14 @@ const getPathName = (pathKey: PathKey, language: Language): string => {
 const getTierLabel = (pathKey: PathKey, tierLabel: string, language: Language): string => {
   if (language === "en") return tierLabel;
   if (language === "tr" && tierLabel.startsWith("Tier ")) return `Kademe ${tierLabel.replace("Tier ", "")}`;
-  if (language === "pt-BR" && tierLabel.startsWith("Tier ")) return `Nivel ${tierLabel.replace("Tier ", "")}`;
+  if (language === "pt-BR" && tierLabel.startsWith("Tier ")) return `Nível ${tierLabel.replace("Tier ", "")}`;
   if (language === "es" && tierLabel.startsWith("Tier ")) return `Nivel ${tierLabel.replace("Tier ", "")}`;
   if (language === "ru" && tierLabel.startsWith("Tier ")) return `Уровень ${tierLabel.replace("Tier ", "")}`;
   if (language === "zh-CN" && tierLabel.startsWith("Tier ")) return `阶段 ${tierLabel.replace("Tier ", "")}`;
   if (pathKey === "click_upgrades") {
     if (tierLabel === "Click Power") return localizePathUiText(language, tierLabel, "Tıklama Gücü", "Poder de Clique", "Poder de Clic", "Сила клика");
-    if (tierLabel === "Crit Damage") return localizePathUiText(language, tierLabel, "Kritik Hasar", "Dano Crítico", "Dano Crítico", "Критический урон");
-    if (tierLabel === "Crit Chance") return localizePathUiText(language, tierLabel, "Kritik Şans", "Chance Crítica", "Prob. Critica", "Шанс крита");
+    if (tierLabel === "Crit Damage") return localizePathUiText(language, tierLabel, "Kritik Hasar", "Dano Crítico", "Daño Crítico", "Критический урон");
+    if (tierLabel === "Crit Chance") return localizePathUiText(language, tierLabel, "Kritik Şans", "Chance Crítica", "Prob. Crítica", "Шанс крита");
   }
   return tierLabel;
 };
@@ -222,10 +222,10 @@ const getEffectLabel = (upgrade: Upgrade, language: Language): string => {
     if (language === "ru") return `+${formatNumber(upgrade.effect.value)} ${toResourceLabel(upgrade.effect.resource, language)}/ур`;
     return `+${formatNumber(upgrade.effect.value)} ${upgrade.effect.resource}/lvl`;
   }
-  if (upgrade.effect.type === "click") return localizePathUiText(language, `+${formatNumber(upgrade.effect.value)} click/lvl`, `+${formatNumber(upgrade.effect.value)} tik/sv`, `+${formatNumber(upgrade.effect.value)} clique/nvl`, undefined, `+${formatNumber(upgrade.effect.value)} клик/ур`);
-  if (upgrade.effect.type === "click_multiplier") return localizePathUiText(language, `+${(upgrade.effect.value * 100).toFixed(0)}% click mult/lvl`, `+${(upgrade.effect.value * 100).toFixed(0)}% tik carpani/sv`, `+${(upgrade.effect.value * 100).toFixed(0)}% mult. de clique/nvl`, undefined, `+${(upgrade.effect.value * 100).toFixed(0)}% множ. клика/ур`);
+  if (upgrade.effect.type === "click") return localizePathUiText(language, `+${formatNumber(upgrade.effect.value)} click/lvl`, `+${formatNumber(upgrade.effect.value)} tık/sv`, `+${formatNumber(upgrade.effect.value)} clique/nvl`, undefined, `+${formatNumber(upgrade.effect.value)} клик/ур`);
+  if (upgrade.effect.type === "click_multiplier") return localizePathUiText(language, `+${(upgrade.effect.value * 100).toFixed(0)}% click mult/lvl`, `+${(upgrade.effect.value * 100).toFixed(0)}% tık çarpanı/sv`, `+${(upgrade.effect.value * 100).toFixed(0)}% mult. de clique/nvl`, undefined, `+${(upgrade.effect.value * 100).toFixed(0)}% множ. клика/ур`);
   if (upgrade.effect.type === "crit_chance") return localizePathUiText(language, `+${(upgrade.effect.value * 100).toFixed(1)}% crit/lvl`, `+${(upgrade.effect.value * 100).toFixed(1)}% krit/sv`, `+${(upgrade.effect.value * 100).toFixed(1)}% crit/nvl`, undefined, `+${(upgrade.effect.value * 100).toFixed(1)}% крит/ур`);
-  if (upgrade.effect.type === "crit_multiplier") return localizePathUiText(language, `+${upgrade.effect.value}x crit dmg/lvl`, `+${upgrade.effect.value}x krit hasar/sv`, `+${upgrade.effect.value}x dano critico/nvl`, undefined, `+${upgrade.effect.value}x крит. урон/ур`);
+  if (upgrade.effect.type === "crit_multiplier") return localizePathUiText(language, `+${upgrade.effect.value}x crit dmg/lvl`, `+${upgrade.effect.value}x krit hasar/sv`, `+${upgrade.effect.value}x dano crítico/nvl`, undefined, `+${upgrade.effect.value}x крит. урон/ур`);
   if (upgrade.effect.type === "unlock") return localizePathUiText(language, "Path unlock", "Hat kilidi", "Desbloqueio de rota", undefined, "Открытие линии");
   return localizePathUiText(language, "Upgrade", "Yükseltme", "Melhoria", undefined, "Улучшение");
 };
@@ -300,8 +300,8 @@ function PathSection({
           <h3 className={`text-sm font-bold tracking-wide ${theme.accentText}`}>{getPathName(pathKey, language)}</h3>
         </div>
         <div className="text-right text-[10px] text-muted-foreground">
-          <p>{unlockedCount}/{nodes.length} {localizePathUiText(language, "unlocked", "acik", "desbloqueados")}</p>
-          <p>{affordableCount} {localizePathUiText(language, "affordable now", "su an alinabilir", "disponíveis agora")}</p>
+          <p>{unlockedCount}/{nodes.length} {localizePathUiText(language, "unlocked", "açık", "desbloqueados")}</p>
+          <p>{affordableCount} {localizePathUiText(language, "affordable now", "şu an alınabilir", "disponíveis agora")}</p>
         </div>
       </div>
 
@@ -314,13 +314,13 @@ function PathSection({
         />
       </div>
       <p className="mt-1 text-[10px] text-muted-foreground">
-        {progressPct}% {localizePathUiText(language, "path activation", "hat etkinligi", "ativacao da rota")}
+        {progressPct}% {localizePathUiText(language, "path activation", "hat etkinliği", "ativação da rota")}
       </p>
 
       <div className="mt-3 space-y-2">
         {filteredNodes.length === 0 && (
           <div className="rounded border border-muted/40 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
-            {localizePathUiText(language, "No nodes match current filter.", "Geçerli filtreyle eşleşen dizin yok.", "Nenhum node corresponde ao filtro atual.")}
+            {localizePathUiText(language, "No upgrades match the current filter.", "Bu filtreye uyan yükseltme yok.", "Nenhuma melhoria corresponde ao filtro atual.", "Ninguna mejora coincide con el filtro actual.", "Нет улучшений под текущий фильтр.")}
           </div>
         )}
 
@@ -354,7 +354,7 @@ function PathSection({
 
               <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
                 <div className="rounded border border-border/50 bg-background/40 px-2 py-1">
-                  <p className="uppercase tracking-wide text-muted-foreground">{localizePathUiText(language, "Level", "Seviye", "Nivel")}</p>
+                  <p className="uppercase tracking-wide text-muted-foreground">{localizePathUiText(language, "Level", "Seviye", "Nível")}</p>
                   <p className="font-mono text-cyan-200">{node.upgrade.count}</p>
                 </div>
                 <div className="rounded border border-border/50 bg-background/40 px-2 py-1">
@@ -385,7 +385,7 @@ function PathSection({
               )}
               {!node.isUnlocked && (
                 <p className="mt-2 text-[10px] text-slate-400">
-                  {localizePathUiText(language, "Unlock previous tier to activate this node.", "Bu dizini etkinleştirmek için önceki kademeyi aç.", "Desbloqueie o nível anterior para ativar este node.")}
+                  {localizePathUiText(language, "Unlock the previous tier to activate this upgrade.", "Bu yükseltmeyi etkinleştirmek için önceki kademeyi aç.", "Desbloqueie o nível anterior para ativar esta melhoria.", "Desbloquea el nivel anterior para activar esta mejora.", "Открой предыдущий уровень, чтобы активировать это улучшение.")}
                 </p>
               )}
             </div>
@@ -464,7 +464,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-purple-300 font-display tracking-wide">
             <GitBranch className="h-5 w-5" />
-            {localizePathUiText(language, "Machine Upgrade Paths", "Makine Yükseltme Hatları", "Rotas de Melhoria das Maquinas", "Rutas de Mejora de Maquinas")}
+            {localizePathUiText(language, "Machine Upgrade Paths", "Makine Yükseltme Hatları", "Rotas de Melhoria das Máquinas", "Rutas de Mejora de Máquinas")}
           </DialogTitle>
         </DialogHeader>
 
@@ -472,19 +472,19 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <div className="rounded border border-cyan-500/30 bg-cyan-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-cyan-300/80">{localizePathUiText(language, "Nodes", "Dizinler", "Nodes")}</p>
+                <p className="text-[10px] uppercase tracking-wide text-cyan-300/80">{localizePathUiText(language, "Upgrades", "Yükseltmeler", "Melhorias", "Mejoras", "Улучшения")}</p>
                 <p className="text-sm font-mono text-cyan-200">{allNodes.length}</p>
               </div>
               <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-emerald-300/80">{localizePathUiText(language, "Unlocked", "Acik", "Desbloqueados")}</p>
+                <p className="text-[10px] uppercase tracking-wide text-emerald-300/80">{localizePathUiText(language, "Unlocked", "Açık", "Desbloqueados")}</p>
                 <p className="text-sm font-mono text-emerald-200">{unlockedNodes.length}</p>
               </div>
               <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-amber-300/80">{localizePathUiText(language, "Affordable", "Alinabilir", "Acessiveis")}</p>
+                <p className="text-[10px] uppercase tracking-wide text-amber-300/80">{localizePathUiText(language, "Affordable", "Alınabilir", "Acessiveis")}</p>
                 <p className="text-sm font-mono text-amber-200">{affordableNowCount}</p>
               </div>
               <div className="rounded border border-fuchsia-500/30 bg-fuchsia-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-fuchsia-300/80">{localizePathUiText(language, "Total Levels", "Toplam Seviye", "Niveis Totais")}</p>
+                <p className="text-[10px] uppercase tracking-wide text-fuchsia-300/80">{localizePathUiText(language, "Total Levels", "Toplam Seviye", "Níveis Totais")}</p>
                 <p className="text-sm font-mono text-fuchsia-200">{formatNumber(purchasedLevelTotal)}</p>
               </div>
             </div>
@@ -497,7 +497,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
                   onClick={() => setSelectedPath("all")}
                   className={selectedPath === "all" ? "bg-purple-500/20 border-purple-400/60 text-purple-200" : ""}
                 >
-                  {localizePathUiText(language, "All Paths", "Tum Hatlar", "Todas as Rotas")}
+                  {localizePathUiText(language, "All Paths", "Tüm Hatlar", "Todas as Rotas")}
                 </Button>
                 {pathKeys.map((key) => (
                   <Button
@@ -518,7 +518,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
                   className={`ml-auto gap-1 ${showUnlockedOnly ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-200" : ""}`}
                 >
                   <Filter className="h-3.5 w-3.5" />
-                  {localizePathUiText(language, "Unlocked Only", "Sadece Aciklar", "Somente Desbloqueados")}
+                  {localizePathUiText(language, "Unlocked Only", "Sadece Açıklar", "Somente Desbloqueados")}
                 </Button>
               </div>
             </div>
@@ -526,7 +526,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
             <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3">
               <div className="mb-2 flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-300" />
-                <p className="text-sm font-semibold text-amber-200">{localizePathUiText(language, "Priority Queue", "Oncelik Sirasi", "Fila Prioritaria")}</p>
+                <p className="text-sm font-semibold text-amber-200">{localizePathUiText(language, "Priority Queue", "Öncelik Sırası", "Fila Prioritaria")}</p>
               </div>
               <div className="space-y-1.5">
                 {priorityNodes.length === 0 && (
@@ -541,7 +541,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
                         <p className="text-[10px] text-slate-400">{pathName} • {localizePathUiText(language, "Lvl", "Sv", "Nvl")} {node.upgrade.count}</p>
                       </div>
                       {node.isAffordable ? (
-                        <span className="text-[10px] text-emerald-300">{localizePathUiText(language, "Ready", "Hazir", "Pronto")}</span>
+                        <span className="text-[10px] text-emerald-300">{localizePathUiText(language, "Ready", "Hazır", "Pronto")}</span>
                       ) : node.missing ? (
                         <span className="text-[10px] text-amber-300">
                           {language === "tr"

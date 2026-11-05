@@ -312,13 +312,13 @@ export function CryptoRelicShopDialog({
       <DialogContent className="max-w-3xl bg-card/95 border-red-500/30 z-[52]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-red-300">
-            <Cpu className="w-5 h-5" /> {l('Crypto Relic Forge', 'Yadigar Dukkani', 'Loja de Reliquias', 'Tienda de Reliquias')}
+            <Cpu className="w-5 h-5" /> {l('Crypto Relic Forge', 'Yadigar Dükkânı', 'Loja de Relíquias', 'Tienda de Reliquias')}
           </DialogTitle>
         </DialogHeader>
         {!isCryptoRelicShopUnlocked ? (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-200">
             {language === 'tr'
-              ? <><span className="font-semibold">Yukselis {CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}</span> seviyesinde acilir.</>
+              ? <><span className="font-semibold">Yükseliş {CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}</span> seviyesinde açılır.</>
               : language === 'pt-BR'
                 ? <>Desbloqueia na <span className="font-semibold">Ascensao {CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}</span>.</>
                 : language === 'es'
@@ -327,17 +327,18 @@ export function CryptoRelicShopDialog({
                     ? <>Otkryvaetsya na <span className="font-semibold">Voznesenii {CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}</span>.</>
                     : <>Unlocks at <span className="font-semibold">Ascension {CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}</span>.</>}
             <div className="mt-1 text-xs text-red-200/80">
-              {l('Current progress', 'Ilerleme', 'Progresso atual', 'Progreso actual')}: {totalAscensions}/{CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}
+              {l('Current progress', 'İlerleme', 'Progresso atual', 'Progreso actual')}: {totalAscensions}/{CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}
             </div>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="rounded-md border border-red-500/25 bg-red-500/5 p-3 text-xs text-red-100/85">
               {l(
-                'Spend Crypto to unlock relic nodes in order, then keep upgrading them. Relic level scales linearly and each node can be upgraded up to your current Ascension level.',
-                'Relik dugumlerini sirasiyla acmak icin Kripto harca, sonra gelistirmeye devam et. Relik seviyesi dogrusal artar ve her dugum mevcut Yukselis seviyene kadar gelistirilebilir.',
-                'Gaste Cripto para desbloquear os nodos de reliquia em ordem e continue melhorando depois. O nivel da reliquia cresce de forma linear, e cada nodo pode ser evoluido ate o seu nivel atual de Ascensao.',
-                'Gasta Cripto para desbloquear los nodos de reliquia en orden y sigue mejorandolos. El nivel de reliquia escala de forma lineal y cada nodo puede mejorarse hasta tu nivel actual de Ascension.',
+                'Spend Crypto to unlock relics in order, then keep upgrading them. Relics are permanent bonuses: they work without equipping, and each one can be upgraded up to your current Ascension level.',
+                'Relikleri sırayla açmak için Kripto harca, sonra geliştirmeye devam et. Relikler kalıcı bonuslardır: takmana gerek yoktur ve her biri mevcut Yükseliş seviyene kadar geliştirilebilir.',
+                'Gaste Cripto para desbloquear as relíquias em ordem e continue melhorando-as. Relíquias são bônus permanentes: funcionam sem equipar, e cada uma pode evoluir até o seu nível atual de Ascensão.',
+                'Gasta Cripto para desbloquear las reliquias en orden y sigue mejorándolas. Las reliquias son bonificaciones permanentes: funcionan sin equiparlas y cada una puede mejorarse hasta tu nivel actual de Ascensión.',
+                'Трать крипту, чтобы открывать реликвии по порядку, и продолжай их улучшать. Реликвии дают постоянные бонусы: их не нужно экипировать, и каждую можно улучшать до твоего текущего уровня вознесения.',
               )}
             </div>
             <div className="grid grid-cols-1 gap-3">
@@ -368,38 +369,38 @@ export function CryptoRelicShopDialog({
                           <p className="text-sm font-bold text-red-100">{node.name}</p>
                           <p className="text-xs text-red-100/70">{node.description}</p>
                           <p className="mt-1 text-[11px] text-cyan-200/80">{getRelicSlotLabel(node.slot, language)}</p>
-                          <div className="mt-1 text-[11px] text-slate-300">{l('Level', 'Seviye', 'Nivel')} {level}/{ascensionCap}</div>
-                          <div className="mt-1 text-[11px] text-slate-300">{l('Per Level', 'Seviye Basina', 'Por Nivel')}: {perLevelLines.length ? perLevelLines.join(' | ') : l('No stat bonus', 'Istatistik bonusu yok', 'Sem bonus de atributo')}</div>
-                          <div className="mt-1 text-[11px] text-emerald-200/90">{l('Total', 'Toplam', 'Total')}: {totalLines.length ? totalLines.join(' | ') : l('No active bonus', 'Aktif bonus yok', 'Sem bonus ativo')}</div>
-                          {missingRequirements.length > 0 && <p className="mt-1 text-[11px] text-amber-300">{l('Locked by previous relic node.', 'Onceki relik dugumu tarafindan kilitli.', 'Bloqueado pelo nodo de reliquia anterior.', 'Bloqueado por el nodo de reliquia anterior.')}</p>}
+                          <div className="mt-1 text-[11px] text-slate-300">{l('Level', 'Seviye', 'Nível')} {level}/{ascensionCap}</div>
+                          <div className="mt-1 text-[11px] text-slate-300">{l('Per Level', 'Seviye Başına', 'Por Nível')}: {perLevelLines.length ? perLevelLines.join(' | ') : l('No stat bonus', 'İstatistik bonusu yok', 'Sem bônus de atributo')}</div>
+                          <div className="mt-1 text-[11px] text-emerald-200/90">{l('Total', 'Toplam', 'Total')}: {totalLines.length ? totalLines.join(' | ') : l('No active bonus', 'Aktif bonus yok', 'Sem bônus ativo')}</div>
+                          {missingRequirements.length > 0 && <p className="mt-1 text-[11px] text-amber-300">{l('Locked by the previous relic.', 'Önceki relik tarafından kilitli.', 'Bloqueado pela relíquia anterior.', 'Bloqueado por la reliquia anterior.', 'Заблокировано предыдущей реликвией.')}</p>}
                         </div>
                         <div className="space-y-2">
                           {unlocked ? (
                             <>
                               <div className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">Lv. {level} / {ascensionCap}</div>
                               {isCapped ? (
-                                <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-center text-xs text-amber-200">{l('Ascension Cap', 'Yukselis Siniri', 'Limite de Ascensao')}</div>
+                                <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-center text-xs text-amber-200">{l('Ascension Cap', 'Yükseliş Sınırı', 'Limite de Ascensão')}</div>
                               ) : (
                                 <Button onClick={() => buyCryptoRelic(node.id)} disabled={!canBuy} className="w-full h-8 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs">
-                                  {l(`Upgrade Lv.${level + 1}`, `Sv.${level + 1} Yukselt`, `Melhorar Nv.${level + 1}`, `Mejorar Nv.${level + 1}`)}
+                                  {l(`Upgrade Lv.${level + 1}`, `Sv.${level + 1} Yükselt`, `Melhorar Nv.${level + 1}`, `Mejorar Nv.${level + 1}`)}
                                 </Button>
                               )}
                               {!isCapped && <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-center text-[10px] text-red-200/90">{formatNumber(nextCost)} {getCurrencyLabel('crypto', language)}</div>}
                               {equipped ? (
-                                <div className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takili', 'Equipado', 'Equipado')}</div>
+                                <div className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takılı', 'Equipado', 'Equipado')}</div>
                               ) : (
-                                <Button onClick={() => equipCosmetic(node.slot, node.cosmeticId)} className="w-full h-8 bg-cyan-600 hover:bg-cyan-500 text-xs">{l('Equip Visual', 'Gorseli Tak', 'Equipar Visual', 'Equipar Visual')}</Button>
+                                <Button onClick={() => equipCosmetic(node.slot, node.cosmeticId)} className="w-full h-8 bg-cyan-600 hover:bg-cyan-500 text-xs">{l('Equip Visual', 'Görseli Tak', 'Equipar Visual', 'Equipar Visual')}</Button>
                               )}
                             </>
                           ) : (
                             <>
                               <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-center text-xs text-red-200">{formatNumber(nextCost)} {getCurrencyLabel('crypto', language)}</div>
-                              <Button onClick={() => buyCryptoRelic(node.id)} disabled={!canBuy} className="w-full h-8 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs">{l('Unlock Lv.1', 'Sv.1 Kilidini Ac', 'Desbloquear Nv.1', 'Desbloquear Nv.1')}</Button>
+                              <Button onClick={() => buyCryptoRelic(node.id)} disabled={!canBuy} className="w-full h-8 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs">{l('Unlock Lv.1', 'Sv.1 Kilidini Aç', 'Desbloquear Nv.1', 'Desbloquear Nv.1')}</Button>
                             </>
                           )}
                         </div>
                       </div>
-                      {unlocked && !isCapped && <div className="mt-2 rounded border border-cyan-500/25 bg-cyan-500/5 px-2 py-1 text-[10px] text-cyan-200/85">{l(`Next total at Lv.${level + 1}`, `Sv.${level + 1} sonraki toplam`, `Proximo total no Nv.${level + 1}`, `Siguiente total en Nv.${level + 1}`)}: {nextLevelLines.length ? nextLevelLines.join(' | ') : l('No stat change', 'Istatistik degisimi yok', 'Sem mudanca de atributo', 'Sin cambio de estadisticas')}</div>}
+                      {unlocked && !isCapped && <div className="mt-2 rounded border border-cyan-500/25 bg-cyan-500/5 px-2 py-1 text-[10px] text-cyan-200/85">{l(`Next total at Lv.${level + 1}`, `Sv.${level + 1} sonraki toplam`, `Próximo total no Nv.${level + 1}`, `Siguiente total en Nv.${level + 1}`)}: {nextLevelLines.length ? nextLevelLines.join(' | ') : l('No stat change', 'İstatistik değişimi yok', 'Sem mudanca de atributo', 'Sin cambio de estadísticas')}</div>}
                     </motion.div>
                   </div>
                 );
@@ -409,8 +410,8 @@ export function CryptoRelicShopDialog({
             <div className="pt-2">
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-cyan-300" />
-                <p className="text-sm font-semibold text-cyan-200">{l('Mine Skins', 'Maden Kaplamalari', 'Skins de Mineradora', 'Skins de Minero')}</p>
-                <span className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200/80">{l('Crypto Shop + Loot Box', 'Kripto Dukkani + Kutu', 'Loja Cripto + Loot Box', 'Tienda de Cripto + Loot Box')}</span>
+                <p className="text-sm font-semibold text-cyan-200">{l('Mine Skins', 'Maden Kaplamaları', 'Skins de Mineradora', 'Skins de Minero')}</p>
+                <span className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200/80">{l('Crypto Shop + Loot Box', 'Kripto Dükkânı + Kutu', 'Loja Cripto + Loot Box', 'Tienda de Cripto + Loot Box')}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {machineBoxSkinsForShop.map((skin) => {
@@ -435,12 +436,12 @@ export function CryptoRelicShopDialog({
                           <div className="mt-2">
                             {owned ? (
                               equipped ? (
-                                <div className="rounded border border-cyan-500/45 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takili', 'Equipado', 'Equipado')}</div>
+                                <div className="rounded border border-cyan-500/45 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takılı', 'Equipado', 'Equipado')}</div>
                               ) : (
                                 <Button onClick={() => equipCosmetic('machineboxskin', skin.id)} className="h-8 w-full bg-cyan-600 hover:bg-cyan-500 text-xs">{l('Equip', 'Tak', 'Equipar')}</Button>
                               )
                             ) : (
-                              <Button onClick={() => buyCosmetic('machineboxskin', skin.id)} disabled={!canBuy} className="h-8 w-full bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs">{l('Buy', 'Satin Al', 'Comprar')} {formatNumber(skin.price)} {getCurrencyLabel('crypto', language)}</Button>
+                              <Button onClick={() => buyCosmetic('machineboxskin', skin.id)} disabled={!canBuy} className="h-8 w-full bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs">{l('Buy', 'Satın Al', 'Comprar')} {formatNumber(skin.price)} {getCurrencyLabel('crypto', language)}</Button>
                             )}
                           </div>
                         </div>
@@ -519,9 +520,9 @@ export function BlackMarketDialog({
           <div className="rounded-lg border border-rose-500/35 bg-rose-500/10 p-4 text-sm text-rose-200">
             {l(
               `Unlocks at Ascension ${BLACK_MARKET_UNLOCK_ASCENSION}. Current progress: ${totalAscensions}/${BLACK_MARKET_UNLOCK_ASCENSION}`,
-              `Yukselis ${BLACK_MARKET_UNLOCK_ASCENSION} seviyesinde acilir. Ilerleme: ${totalAscensions}/${BLACK_MARKET_UNLOCK_ASCENSION}`,
-              `Desbloqueia na Ascensao ${BLACK_MARKET_UNLOCK_ASCENSION}. Progresso atual: ${totalAscensions}/${BLACK_MARKET_UNLOCK_ASCENSION}`,
-              `Se desbloquea en Ascension ${BLACK_MARKET_UNLOCK_ASCENSION}. Progreso actual: ${totalAscensions}/${BLACK_MARKET_UNLOCK_ASCENSION}`,
+              `Yükseliş ${BLACK_MARKET_UNLOCK_ASCENSION} seviyesinde açılır. İlerleme: ${totalAscensions}/${BLACK_MARKET_UNLOCK_ASCENSION}`,
+              `Desbloqueia na Ascensão ${BLACK_MARKET_UNLOCK_ASCENSION}. Progresso atual: ${totalAscensions}/${BLACK_MARKET_UNLOCK_ASCENSION}`,
+              `Se desbloquea en Ascensión ${BLACK_MARKET_UNLOCK_ASCENSION}. Progreso actual: ${totalAscensions}/${BLACK_MARKET_UNLOCK_ASCENSION}`,
             )}
           </div>
         ) : (
@@ -529,15 +530,15 @@ export function BlackMarketDialog({
             <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-100/90">
               {l(
                 'Exclusive modules: equip Capes and Wings from separate slots. One-time upgrades here permanently unlock advanced mechanics.',
-                'Ozel moduller: Pelerin ve Kanatlari ayri yuvalardan kusan. Buradaki tek seferlik yukseltmeler gelismis mekanikleri kalici olarak acar.',
-                'Modulos exclusivos: equipe Capas e Asas em slots separados. Os upgrades unicos daqui liberam mecanicas avancadas de forma permanente.',
-                'Modulos exclusivos: equipa Capas y Alas en ranuras separadas. Las mejoras unicas de aqui desbloquean mecanicas avanzadas de forma permanente.',
+                'Özel modüller: Pelerin ve Kanatları ayrı yuvalardan kuşan. Buradaki tek seferlik yükseltmeler gelişmiş mekanikleri kalıcı olarak açar.',
+                'Módulos exclusivos: equipe Capas e Asas em slots separados. Os upgrades únicos daqui liberam mecanicas avancadas de forma permanente.',
+                'Módulos exclusivos: equipa Capas y Alas en ranuras separadas. Las mejoras únicas de aquí desbloquean mecanicas avanzadas de forma permanente.',
               )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-cyan-200">{l('Capes Slot', 'Pelerin Yuvasi', 'Slot de Capas')}</p>
-                <span className="text-[11px] text-cyan-200/80">{l('Equipped', 'Takili', 'Equipado')}: {equippedCapeName}</span>
+                <p className="text-sm font-semibold text-cyan-200">{l('Capes Slot', 'Pelerin Yuvası', 'Slot de Capas')}</p>
+                <span className="text-[11px] text-cyan-200/80">{l('Equipped', 'Takılı', 'Equipado')}: {equippedCapeName}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {localizedBlackMarketCapes.map((cape) => {
@@ -560,10 +561,10 @@ export function BlackMarketDialog({
                           {boostLines.length > 0 && <p className="text-[10px] text-emerald-300/90">{boostLines.join(' | ')}</p>}
                           <div className="mt-2">
                             {owned ? (
-                              equipped ? <div className="rounded border border-cyan-500/45 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takili', 'Equipado')}</div> : <Button onClick={() => equipCosmetic('cape', cape.id)} className="h-8 w-full bg-cyan-600 hover:bg-cyan-500 text-xs">{l('Equip', 'Tak', 'Equipar')}</Button>
+                              equipped ? <div className="rounded border border-cyan-500/45 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takılı', 'Equipado')}</div> : <Button onClick={() => equipCosmetic('cape', cape.id)} className="h-8 w-full bg-cyan-600 hover:bg-cyan-500 text-xs">{l('Equip', 'Tak', 'Equipar')}</Button>
                             ) : (
                               <Button onClick={() => buyCosmetic('cape', cape.id)} disabled={!canAfford} className="h-8 w-full bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs">
-                                {l('Buy', 'Satin Al', 'Comprar')} {formatNumber(cape.price)}{cape.currency === 'ascension' ? <span className="inline-flex items-center ml-1 align-middle"><CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span> : ` ${getCurrencyLabel(cape.currency, language)}`}
+                                {l('Buy', 'Satın Al', 'Comprar')} {formatNumber(cape.price)}{cape.currency === 'ascension' ? <span className="inline-flex items-center ml-1 align-middle"><CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span> : ` ${getCurrencyLabel(cape.currency, language)}`}
                               </Button>
                             )}
                           </div>
@@ -576,8 +577,8 @@ export function BlackMarketDialog({
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-fuchsia-200">{l('Wings Slot', 'Kanat Yuvasi', 'Slot de Asas')}</p>
-                <span className="text-[11px] text-fuchsia-200/80">{l('Equipped', 'Takili', 'Equipado')}: {equippedWingName}</span>
+                <p className="text-sm font-semibold text-fuchsia-200">{l('Wings Slot', 'Kanat Yuvası', 'Slot de Asas')}</p>
+                <span className="text-[11px] text-fuchsia-200/80">{l('Equipped', 'Takılı', 'Equipado')}: {equippedWingName}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {localizedBlackMarketWings.map((wing) => {
@@ -600,10 +601,10 @@ export function BlackMarketDialog({
                           {boostLines.length > 0 && <p className="text-[10px] text-emerald-300/90">{boostLines.join(' | ')}</p>}
                           <div className="mt-2">
                             {owned ? (
-                              equipped ? <div className="rounded border border-fuchsia-500/45 bg-fuchsia-500/10 px-2 py-1 text-center text-xs text-fuchsia-200">{l('Equipped', 'Takili', 'Equipado')}</div> : <Button onClick={() => equipCosmetic('wing', wing.id)} className="h-8 w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-xs">{l('Equip', 'Tak', 'Equipar')}</Button>
+                              equipped ? <div className="rounded border border-fuchsia-500/45 bg-fuchsia-500/10 px-2 py-1 text-center text-xs text-fuchsia-200">{l('Equipped', 'Takılı', 'Equipado')}</div> : <Button onClick={() => equipCosmetic('wing', wing.id)} className="h-8 w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-xs">{l('Equip', 'Tak', 'Equipar')}</Button>
                             ) : (
                               <Button onClick={() => buyCosmetic('wing', wing.id)} disabled={!canAfford} className="h-8 w-full bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs">
-                                {l('Buy', 'Satin Al', 'Comprar')} {formatNumber(wing.price)}{wing.currency === 'ascension' ? <span className="inline-flex items-center ml-1 align-middle"><CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span> : ` ${getCurrencyLabel(wing.currency, language)}`}
+                                {l('Buy', 'Satın Al', 'Comprar')} {formatNumber(wing.price)}{wing.currency === 'ascension' ? <span className="inline-flex items-center ml-1 align-middle"><CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span> : ` ${getCurrencyLabel(wing.currency, language)}`}
                               </Button>
                             )}
                           </div>
@@ -615,7 +616,7 @@ export function BlackMarketDialog({
               </div>
             </div>
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-amber-200">{l('One-Time Black Market Upgrades', 'Tek Seferlik Karaborsa Pazar Yukseltmeleri', 'Upgrades Unicos do Mercado Negro', 'Mejoras Unicas del Mercado Negro')}</p>
+              <p className="text-sm font-semibold text-amber-200">{l('One-Time Black Market Upgrades', 'Tek Seferlik Karaborsa Pazar Yükseltmeleri', 'Upgrades Únicos do Mercado Negro', 'Mejoras Únicas del Mercado Negro')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {localizedBlackMarketUpgrades.map((upgrade) => {
                   const purchased = upgrade.id === 'click_overflow' ? cosmetics.blackMarketClickOverflowPurchased : cosmetics.blackMarketAdjacencyPurchased;
@@ -624,10 +625,10 @@ export function BlackMarketDialog({
                     <div key={upgrade.id} className={`rounded-lg border p-3 ${purchased ? 'border-emerald-500/45 bg-emerald-500/10' : 'border-amber-500/35 bg-amber-500/10'}`}>
                       <p className="text-sm font-semibold text-amber-100">{upgrade.name}</p>
                       <p className="mt-1 text-[11px] text-slate-300/85">{upgrade.description}</p>
-                      {upgrade.id === 'adjacency_matrix' && <div className="mt-1 space-y-1 text-[10px] text-cyan-200/85"><p>{l(`Miners detected: ${adjacencyFormationBonus.machineCount} | Adjacent pairs: ${adjacencyFormationBonus.adjacentPairs}`, `Tespit edilen madenci: ${adjacencyFormationBonus.machineCount} | Komsu ciftler: ${adjacencyFormationBonus.adjacentPairs}`, `Mineradoras detectadas: ${adjacencyFormationBonus.machineCount} | Pares adjacentes: ${adjacencyFormationBonus.adjacentPairs}`, `Mineros detectados: ${adjacencyFormationBonus.machineCount} | Pares adyacentes: ${adjacencyFormationBonus.adjacentPairs}`)}</p><p className="text-cyan-100/90">{l('Layout guide: Horizontal 3 miners = Click, Vertical 3 miners = Production, 2x2 block = Crypto.', 'Duzen rehberi: Yatay 3 madenci = Tiklama, Dikey 3 madenci = Uretim, 2x2 blok = Kripto.', 'Guia de layout: 3 mineradoras na horizontal = Clique, 3 na vertical = Producao, bloco 2x2 = Cripto.', 'Guia de distribucion: 3 mineros en horizontal = Clic, 3 en vertical = Produccion, bloque 2x2 = Cripto.')}</p><p>{l('Horizontal sets', 'Yatay setler', 'Conjuntos horizontais', 'Conjuntos horizontales')}: {adjacencyFormationBonus.clickChains} | {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.clickBoostPercent : adjacencyFormationBonus.potentialClickBoostPercent).toFixed(1)}% {l('click', 'tiklama', 'clique', 'clic')}</p><p>{l('Vertical sets', 'Dikey setler', 'Conjuntos verticais', 'Conjuntos verticales')}: {adjacencyFormationBonus.productionChains} | {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.productionBoostPercent : adjacencyFormationBonus.potentialProductionBoostPercent).toFixed(1)}% {l('production', 'Uretim', 'producao', 'produccion')}</p><p>2x2 {l('clusters', 'kume', 'grupos', 'bloques')}: {adjacencyFormationBonus.cryptoClusters} | {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.cryptoBoostPercent : adjacencyFormationBonus.potentialCryptoBoostPercent).toFixed(1)}% {l('crypto', 'kripto', 'cripto', 'cripto')}</p><p>{l('Luck bonus', 'Sans bonusu', 'Bonus de sorte', 'Bonus de suerte')}: {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.luckBoostPercent : adjacencyFormationBonus.potentialLuckBoostPercent).toFixed(1)}%</p></div>}
-                      {upgrade.id === 'click_overflow' && <p className="mt-1 text-[10px] text-cyan-200/85">{l('Current crit chance', 'Guncel kritik sansi', 'Chance critica atual', 'Prob. critica actual')}: {(getTotalCritChance() * 100).toFixed(1)}%</p>}
+                      {upgrade.id === 'adjacency_matrix' && <div className="mt-1 space-y-1 text-[10px] text-cyan-200/85"><p>{l(`Miners detected: ${adjacencyFormationBonus.machineCount} | Adjacent pairs: ${adjacencyFormationBonus.adjacentPairs}`, `Tespit edilen madenci: ${adjacencyFormationBonus.machineCount} | Komşu çiftler: ${adjacencyFormationBonus.adjacentPairs}`, `Mineradoras detectadas: ${adjacencyFormationBonus.machineCount} | Pares adjacentes: ${adjacencyFormationBonus.adjacentPairs}`, `Mineros detectados: ${adjacencyFormationBonus.machineCount} | Pares adyacentes: ${adjacencyFormationBonus.adjacentPairs}`)}</p><p className="text-cyan-100/90">{l('Layout guide: Horizontal 3 miners = Click, Vertical 3 miners = Production, 2x2 block = Crypto.', 'Düzen rehberi: Yatay 3 madenci = Tıklama, Dikey 3 madenci = Üretim, 2x2 blok = Kripto.', 'Guia de layout: 3 mineradoras na horizontal = Clique, 3 na vertical = Produção, bloco 2x2 = Cripto.', 'Guía de distribución: 3 mineros en horizontal = Clic, 3 en vertical = Producción, bloque 2x2 = Cripto.')}</p><p>{l('Horizontal sets', 'Yatay setler', 'Conjuntos horizontais', 'Conjuntos horizontales')}: {adjacencyFormationBonus.clickChains} | {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.clickBoostPercent : adjacencyFormationBonus.potentialClickBoostPercent).toFixed(1)}% {l('click', 'tıklama', 'clique', 'clic')}</p><p>{l('Vertical sets', 'Dikey setler', 'Conjuntos verticais', 'Conjuntos verticales')}: {adjacencyFormationBonus.productionChains} | {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.productionBoostPercent : adjacencyFormationBonus.potentialProductionBoostPercent).toFixed(1)}% {l('production', 'Üretim', 'produção', 'producción')}</p><p>2x2 {l('clusters', 'küme', 'grupos', 'bloques')}: {adjacencyFormationBonus.cryptoClusters} | {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.cryptoBoostPercent : adjacencyFormationBonus.potentialCryptoBoostPercent).toFixed(1)}% {l('crypto', 'kripto', 'cripto', 'cripto')}</p><p>{l('Luck bonus', 'Şans bonusu', 'Bônus de sorte', 'Bonus de suerte')}: {adjacencyFormationBonus.active ? '+' : l('Potential +', 'Potansiyel +', 'Potencial +', 'Potencial +')}{(adjacencyFormationBonus.active ? adjacencyFormationBonus.luckBoostPercent : adjacencyFormationBonus.potentialLuckBoostPercent).toFixed(1)}%</p></div>}
+                      {upgrade.id === 'click_overflow' && <p className="mt-1 text-[10px] text-cyan-200/85">{l('Current crit chance', 'Güncel kritik şansı', 'Chance crítica atual', 'Prob. crítica actual')}: {(getTotalCritChance() * 100).toFixed(1)}%</p>}
                       <div className="mt-2">
-                        {purchased ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Purchased', 'Alindi', 'Comprado')}</div> : <Button onClick={() => buyBlackMarketUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Buy', 'Satin Al', 'Comprar')} {formatNumber(upgrade.cost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
+                        {purchased ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Purchased', 'Alındı', 'Comprado')}</div> : <Button onClick={() => buyBlackMarketUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Buy', 'Satın Al', 'Comprar')} {formatNumber(upgrade.cost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
                       </div>
                     </div>
                   );
@@ -689,16 +690,16 @@ export function ParagonLabDialog({
       <DialogContent className="max-w-4xl h-[82vh] bg-card/95 border-amber-500/35 z-[54]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-amber-300">
-            <Crown className="w-5 h-5" /> {l('Paragon Lab', 'Paragon Laboratuvari', 'Laboratorio Paragon', 'Laboratorio Paragon')}
+            <Crown className="w-5 h-5" /> {l('Paragon Lab', 'Paragon Laboratuvarı', 'Laboratório Paragon', 'Laboratorio Paragon')}
           </DialogTitle>
         </DialogHeader>
         {!isParagonLabUnlocked ? (
           <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-4 text-sm text-amber-200">
             {l(
               `Unlocks at Ascension ${PARAGON_LAB_UNLOCK_ASCENSION}. Current progress: ${totalAscensions}/${PARAGON_LAB_UNLOCK_ASCENSION}`,
-              `Yukselis ${PARAGON_LAB_UNLOCK_ASCENSION} seviyesinde acilir. Ilerleme: ${totalAscensions}/${PARAGON_LAB_UNLOCK_ASCENSION}`,
-              `Desbloqueia na Ascensao ${PARAGON_LAB_UNLOCK_ASCENSION}. Progresso atual: ${totalAscensions}/${PARAGON_LAB_UNLOCK_ASCENSION}`,
-              `Se desbloquea en Ascension ${PARAGON_LAB_UNLOCK_ASCENSION}. Progreso actual: ${totalAscensions}/${PARAGON_LAB_UNLOCK_ASCENSION}`,
+              `Yükseliş ${PARAGON_LAB_UNLOCK_ASCENSION} seviyesinde açılır. İlerleme: ${totalAscensions}/${PARAGON_LAB_UNLOCK_ASCENSION}`,
+              `Desbloqueia na Ascensão ${PARAGON_LAB_UNLOCK_ASCENSION}. Progresso atual: ${totalAscensions}/${PARAGON_LAB_UNLOCK_ASCENSION}`,
+              `Se desbloquea en Ascensión ${PARAGON_LAB_UNLOCK_ASCENSION}. Progreso actual: ${totalAscensions}/${PARAGON_LAB_UNLOCK_ASCENSION}`,
             )}
           </div>
         ) : (
@@ -706,25 +707,25 @@ export function ParagonLabDialog({
             <div className="rounded-xl border border-amber-500/35 bg-gradient-to-r from-amber-500/10 via-fuchsia-500/5 to-cyan-500/10 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.2em] text-amber-200/85">{l('Endgame Control Layer', 'Son Oyun Kontrol Katmani', 'Camada de Controle Endgame', 'Capa de Control Endgame')}</p>
-                  <p className="text-sm text-slate-200/90 mt-1">{l('Permanent upgrades and elite gear for post-50 ascension progression.', '50. yukselis sonrasi ilerleme icin kalici yukseltmeler ve elit ekipmanlar.', 'Upgrades permanentes e equipamentos de elite para a progressao apos a 50a ascensao.', 'Mejoras permanentes y equipo de elite para la progresion despues de la ascension 50.')}</p>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-amber-200/85">{l('Endgame Control Layer', 'Son Oyun Kontrol Katmanı', 'Camada de Controle Endgame', 'Capa de Control Endgame')}</p>
+                  <p className="text-sm text-slate-200/90 mt-1">{l('Permanent upgrades and elite gear for post-50 ascension progression.', '50. yükseliş sonrası ilerleme için kalıcı yükseltmeler ve elit ekipmanlar.', 'Upgrades permanentes e equipamentos de elite para a progressão após a 50a ascensão.', 'Mejoras permanentes y equipo de elite para la progresión después de la ascensión 50.')}</p>
                 </div>
                 <div className="rounded-lg border border-amber-400/45 bg-amber-500/10 px-3 py-2 text-right">
-                  <p className="text-[10px] uppercase tracking-wider text-amber-200/80">{l('Available Crowns', 'Mevcut Talar', 'Coroas Disponiveis')}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-amber-200/80">{l('Available Crowns', 'Mevcut Talar', 'Coroas Disponíveis')}</p>
                   <p className="text-lg font-semibold text-amber-100 flex items-center justify-end gap-1">{formatNumber(prestigeAmount)}<CurrencyIcon kind="ascension" className="w-4 h-4 text-amber-300" /></p>
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2">
-                <div className="rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-cyan-200/80">{l('Modules', 'Moduller', 'Modulos')}</p><p className="text-sm font-semibold text-cyan-100">{localizedParagonUpgrades.length}</p></div>
-                <div className="rounded-md border border-fuchsia-500/35 bg-fuchsia-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-fuchsia-200/80">{l('Total Levels', 'Toplam Seviye', 'Niveis Totais')}</p><p className="text-sm font-semibold text-fuchsia-100">{totalParagonLevels}/{totalParagonLevelCap}</p></div>
-                <div className="rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-emerald-200/80">{l('Completion', 'Tamamlama', 'Conclusao')}</p><p className="text-sm font-semibold text-emerald-100">{paragonCompletionPercent.toFixed(1)}%</p></div>
-                <div className="rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-amber-200/80">{l('Next Upgrade', 'Siradaki Yukseltme', 'Proximo Upgrade')}</p><p className="text-sm font-semibold text-amber-100">{nextParagonUpgradeCost === null ? l('All Maxed', 'Hepsi Maksimum', 'Tudo no Maximo') : `${formatNumber(nextParagonUpgradeCost)} ${getCurrencyLabel('ascension', language)}`}</p></div>
+                <div className="rounded-md border border-cyan-500/35 bg-cyan-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-cyan-200/80">{l('Modules', 'Modüller', 'Módulos')}</p><p className="text-sm font-semibold text-cyan-100">{localizedParagonUpgrades.length}</p></div>
+                <div className="rounded-md border border-fuchsia-500/35 bg-fuchsia-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-fuchsia-200/80">{l('Total Levels', 'Toplam Seviye', 'Níveis Totais')}</p><p className="text-sm font-semibold text-fuchsia-100">{totalParagonLevels}/{totalParagonLevelCap}</p></div>
+                <div className="rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-emerald-200/80">{l('Completion', 'Tamamlama', 'Conclusão')}</p><p className="text-sm font-semibold text-emerald-100">{paragonCompletionPercent.toFixed(1)}%</p></div>
+                <div className="rounded-md border border-amber-500/35 bg-amber-500/10 px-2 py-2"><p className="text-[10px] uppercase tracking-wider text-amber-200/80">{l('Next Upgrade', 'Sıradaki Yükseltme', 'Próximo Upgrade')}</p><p className="text-sm font-semibold text-amber-100">{nextParagonUpgradeCost === null ? l('All Maxed', 'Hepsi Maksimum', 'Tudo no Máximo') : `${formatNumber(nextParagonUpgradeCost)} ${getCurrencyLabel('ascension', language)}`}</p></div>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-amber-100">{l('Paragon Core Upgrades', 'Paragon Cekirdek Yukseltmeleri', 'Upgrades Centrais de Paragon', 'Mejoras Centrales de Paragon')}</p>
-                <span className="text-[11px] text-amber-200/80">{l(`${localizedParagonUpgrades.length} permanent systems`, `${localizedParagonUpgrades.length} kalici sistem`, `${localizedParagonUpgrades.length} sistemas permanentes`, `${localizedParagonUpgrades.length} sistemas permanentes`)}</span>
+                <p className="text-sm font-semibold text-amber-100">{l('Paragon Core Upgrades', 'Paragon Çekirdek Yükseltmeleri', 'Upgrades Centrais de Paragon', 'Mejoras Centrales de Paragon')}</p>
+                <span className="text-[11px] text-amber-200/80">{l(`${localizedParagonUpgrades.length} permanent systems`, `${localizedParagonUpgrades.length} kalıcı sistem`, `${localizedParagonUpgrades.length} sistemas permanentes`, `${localizedParagonUpgrades.length} sistemas permanentes`)}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {localizedParagonUpgrades.map((upgrade) => {
@@ -744,10 +745,10 @@ export function ParagonLabDialog({
                         <span className="rounded border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 whitespace-nowrap">+{upgrade.effect.value}%/{l('lv', 'sv', 'nv')}</span>
                       </div>
                       <p className="mt-2 text-[10px] text-cyan-200/90">{effectLabel}: +{Number.isInteger(totalBonus) ? totalBonus : totalBonus.toFixed(1)}%</p>
-                      <p className="mt-1 text-[10px] text-slate-300/80">{l('Level', 'Seviye', 'Nivel')} {level}/{upgrade.maxLevel}</p>
+                      <p className="mt-1 text-[10px] text-slate-300/80">{l('Level', 'Seviye', 'Nível')} {level}/{upgrade.maxLevel}</p>
                       <div className="mt-2 h-1.5 w-full rounded-full bg-muted/20 overflow-hidden"><div className="h-full bg-amber-500" style={{ width: `${(level / upgrade.maxLevel) * 100}%` }} /></div>
                       <div className="mt-3">
-                        {isLocked ? <div className="rounded border border-slate-600/50 bg-slate-800/60 px-2 py-1 text-center text-xs text-slate-300">{l(`Paragon II: unlocks at ascension ${lockedAt}`, `Paragon II: yükseliş ${lockedAt} ile açılır`, `Paragon II: desbloqueia na ascensão ${lockedAt}`, `Paragon II: se desbloquea en la ascensión ${lockedAt}`)}</div> : isMaxed ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Maxed', 'Maksimum', 'Maximo')}</div> : <Button onClick={() => buyParagonUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Upgrade', 'Yukselt', 'Melhorar')} {formatNumber(currentCost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
+                        {isLocked ? <div className="rounded border border-slate-600/50 bg-slate-800/60 px-2 py-1 text-center text-xs text-slate-300">{l(`Paragon II: unlocks at ascension ${lockedAt}`, `Paragon II: yükseliş ${lockedAt} ile açılır`, `Paragon II: desbloqueia na ascensão ${lockedAt}`, `Paragon II: se desbloquea en la ascensión ${lockedAt}`)}</div> : isMaxed ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Maxed', 'Maksimum', 'Máximo')}</div> : <Button onClick={() => buyParagonUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Upgrade', 'Yükselt', 'Melhorar')} {formatNumber(currentCost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
                       </div>
                     </div>
                   );
@@ -756,8 +757,8 @@ export function ParagonLabDialog({
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-cyan-100">{l('Paragon Elite Gear', 'Paragon Elit Ekipmani', 'Equipamento de Elite Paragon', 'Equipo de Elite Paragon')}</p>
-                <span className="text-[11px] text-cyan-200/80">{l('50th ascension exclusive loadout', '50. yukselise ozel yukleme', 'Loadout exclusivo da 50a ascensao', 'Loadout exclusivo de la ascension 50')}</span>
+                <p className="text-sm font-semibold text-cyan-100">{l('Paragon Elite Gear', 'Paragon Elit Ekipmanı', 'Equipamento de Elite Paragon', 'Equipo de Elite Paragon')}</p>
+                <span className="text-[11px] text-cyan-200/80">{l('50th ascension exclusive loadout', '50. yükselişe özel yükleme', 'Loadout exclusivo da 50a ascensão', 'Loadout exclusivo de la ascensión 50')}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {paragonEliteOffers.map((offer) => {
@@ -766,12 +767,12 @@ export function ParagonLabDialog({
                   const canAfford = prestigeAmount >= offer.price;
                   const boostLines = getLootBoostLines(offer.boost, language);
                   const slotHint = offer.slot === 'skin'
-                    ? l('Body skin: updates core palette and idle glow', 'Govde kaplamasi: cekirdek paleti ve bosta parlamayi gunceller', 'Skin corporal: atualiza a paleta do nucleo e o brilho em repouso', 'Skin de cuerpo: actualiza la paleta del nucleo y el brillo en reposo')
+                    ? l('Body skin: updates core palette and idle glow', 'Gövde kaplaması: çekirdek paleti ve boşta parlamayı günceller', 'Skin corporal: atualiza a paleta do núcleo e o brilho em repouso', 'Skin de cuerpo: actualiza la paleta del núcleo y el brillo en reposo')
                     : offer.slot === 'headstyle'
-                      ? l('Headstyle: replaces head model silhouette', 'Bas stili: kafa modelinin siluetini degistirir', 'Estilo de cabeca: muda a silhueta do modelo da cabeca', 'Estilo de cabeza: cambia la silueta del modelo de la cabeza')
+                      ? l('Headstyle: replaces head model silhouette', 'Baş stili: kafa modelinin siluetini değiştirir', 'Estilo de cabeça: muda a silhueta do modelo da cabeça', 'Estilo de cabeza: cambia la silueta del modelo de la cabeza')
                       : offer.slot === 'accessory'
-                        ? l('Accessory: overlays a wearable module on head slot', 'Aksesuar: bas yuvasina giyilebilir bir modul ekler', 'Acessorio: adiciona um modulo vestivel ao slot da cabeca', 'Accesorio: superpone un modulo vestible en la ranura de la cabeza')
-                        : l('Theme: updates room background and ambience', 'Tema: oda arka plani ve ambiyansi gunceller', 'Tema: atualiza o fundo e a ambiencia da sala', 'Tema: actualiza el fondo y el ambiente de la sala');
+                        ? l('Accessory: overlays a wearable module on head slot', 'Aksesuar: baş yuvasına giyilebilir bir modül ekler', 'Acessório: adiciona um módulo vestível ao slot da cabeça', 'Accesorio: superpone un módulo vestible en la ranura de la cabeza')
+                        : l('Theme: updates room background and ambience', 'Tema: oda arka planı ve ambiyansı günceller', 'Tema: atualiza o fundo e a ambiencia da sala', 'Tema: actualiza el fondo y el ambiente de la sala');
 
                   return (
                     <div key={offer.id} className={`rounded-lg border p-3 ${equipped ? 'border-cyan-400/60 bg-cyan-500/10' : owned ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-slate-600/40 bg-slate-900/55'}`}>
@@ -780,13 +781,13 @@ export function ParagonLabDialog({
                         <div>
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-sm font-semibold text-cyan-100">{offer.name}</p>
-                            <span className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${lootRarityClass[offer.rarity as keyof typeof lootRarityClass]}`}>{language === 'tr' ? offer.slot === 'skin' ? 'govde' : offer.slot === 'headstyle' ? 'bas' : offer.slot === 'accessory' ? 'aksesuar' : 'tema' : language === 'pt-BR' ? offer.slot === 'skin' ? 'corpo' : offer.slot === 'headstyle' ? 'cabeca' : offer.slot === 'accessory' ? 'acessorio' : 'tema' : language === 'es' ? offer.slot === 'skin' ? 'cuerpo' : offer.slot === 'headstyle' ? 'cabeza' : offer.slot === 'accessory' ? 'accesorio' : 'tema' : offer.slot}</span>
+                            <span className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${lootRarityClass[offer.rarity as keyof typeof lootRarityClass]}`}>{language === 'tr' ? offer.slot === 'skin' ? 'gövde' : offer.slot === 'headstyle' ? 'bas' : offer.slot === 'accessory' ? 'aksesuar' : 'tema' : language === 'pt-BR' ? offer.slot === 'skin' ? 'corpo' : offer.slot === 'headstyle' ? 'cabeca' : offer.slot === 'accessory' ? 'acessorio' : 'tema' : language === 'es' ? offer.slot === 'skin' ? 'cuerpo' : offer.slot === 'headstyle' ? 'cabeza' : offer.slot === 'accessory' ? 'accesorio' : 'tema' : offer.slot}</span>
                           </div>
                           <p className="mt-1 text-[10px] text-amber-200/80">{slotHint}</p>
                           <p className="mt-1 text-[11px] text-slate-300/85">{offer.description}</p>
                           {boostLines.length > 0 && <p className="mt-1 text-[10px] text-emerald-300/90">{boostLines.join(' | ')}</p>}
                           <div className="mt-2">
-                            {owned ? (equipped ? <div className="rounded border border-cyan-500/45 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takili', 'Equipado')}</div> : <Button onClick={() => equipCosmetic(offer.slot, offer.id)} className="h-8 w-full bg-cyan-600 hover:bg-cyan-500 text-xs">{l('Equip', 'Tak', 'Equipar')}</Button>) : <Button onClick={() => buyCosmetic(offer.slot, offer.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Buy', 'Satin Al', 'Comprar')} {formatNumber(offer.price)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
+                            {owned ? (equipped ? <div className="rounded border border-cyan-500/45 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">{l('Equipped', 'Takılı', 'Equipado')}</div> : <Button onClick={() => equipCosmetic(offer.slot, offer.id)} className="h-8 w-full bg-cyan-600 hover:bg-cyan-500 text-xs">{l('Equip', 'Tak', 'Equipar')}</Button>) : <Button onClick={() => buyCosmetic(offer.slot, offer.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Buy', 'Satın Al', 'Comprar')} {formatNumber(offer.price)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
                           </div>
                         </div>
                       </div>

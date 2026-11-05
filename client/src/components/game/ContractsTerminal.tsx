@@ -64,7 +64,7 @@ export const ContractsTerminal = React.memo(function ContractsTerminal({ contrac
     const refreshIntervalMs = 4 * 60 * 60 * 1000;
     const nextRefresh = contracts.lastRefreshTime + refreshIntervalMs;
     const remaining = nextRefresh - Date.now();
-    if (remaining <= 0) return l('Ready', 'Hazir', 'Pronto', 'Listo');
+    if (remaining <= 0) return l('Ready', 'Hazır', 'Pronto', 'Listo');
     const hours = Math.floor(remaining / (60 * 60 * 1000));
     const mins = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
     return language === 'tr'
@@ -79,7 +79,7 @@ export const ContractsTerminal = React.memo(function ContractsTerminal({ contrac
   };
 
   const titleLabel = l('Contracts', 'Görevler', 'Contratos', 'Contratos');
-  const readyLabel = l('ready', 'hazir', 'pronto', 'listo');
+  const readyLabel = l('ready', 'hazır', 'pronto', 'listo');
   const completedSummary = l(
     `Completed: ${contracts.totalContractsCompleted} total`,
     `Tamamlanan: ${contracts.totalContractsCompleted} toplam`,
@@ -87,18 +87,18 @@ export const ContractsTerminal = React.memo(function ContractsTerminal({ contrac
     `Completados: ${contracts.totalContractsCompleted} en total`,
   );
   const activeLabel = l('Active', 'Aktif', 'Ativos', 'Activos');
-  const claimableLabel = l('Claimable', 'Alinabilir', 'Resgatavel', 'Reclamable');
-  const refreshLabel = l('Refresh', 'Yenileme', 'Atualizacao', 'Actualizar');
-  const rewardsLabel = l('Rewards:', 'Oduller:', 'Recompensas:', 'Recompensas:');
+  const claimableLabel = l('Claimable', 'Alınabilir', 'Resgatavel', 'Reclamable');
+  const refreshLabel = l('Refresh', 'Yenileme', 'Atualização', 'Actualizar');
+  const rewardsLabel = l('Rewards:', 'Ödüller:', 'Recompensas:', 'Recompensas:');
   const claimLabel = l('Claim', 'Al', 'Resgatar', 'Reclamar');
   const fromLabel = l('From', 'Kimden', 'De', 'De');
-  const emptyTitle = l('All contracts completed!', 'Tum gorevler tamamlandi!', 'Todos os contratos foram concluidos!', 'Todos los contratos completados!');
-  const emptySubtitle = l('New contracts refresh every 4 hours', 'Yeni gorevler her 4 saatte bir yenilenir', 'Novos contratos sao atualizados a cada 4 horas', 'Los nuevos contratos se actualizan cada 4 horas');
+  const emptyTitle = l('All contracts completed!', 'Tüm görevler tamamlandı!', 'Todos os contratos foram concluidos!', 'Todos los contratos completados!');
+  const emptySubtitle = l('New contracts refresh every 4 hours', 'Yeni görevler her 4 saatte bir yenilenir', 'Novos contratos são atualizados a cada 4 horas', 'Los nuevos contratos se actualizan cada 4 horas');
   const footerText = l(
     'Contracts refresh automatically every 4 hours',
     'Görevler her 4 saatte bir otomatik yenilenir',
-    'Os contratos sao atualizados automaticamente a cada 4 horas',
-    'Los contratos se actualizan automaticamente cada 4 horas',
+    'Os contratos são atualizados automaticamente a cada 4 horas',
+    'Los contratos se actualizan automáticamente cada 4 horas',
   );
 
   return (

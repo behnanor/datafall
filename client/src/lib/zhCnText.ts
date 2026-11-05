@@ -1,3 +1,5 @@
+import { V104_ZH_CN } from "./v104Text";
+
 const CORE_ZH_CN_TEXTS: Record<string, string> = {
   "Close": "关闭",
   "Cancel": "取消",
@@ -26,7 +28,7 @@ const CORE_ZH_CN_TEXTS: Record<string, string> = {
   "Tutorial": "教程",
   "Language": "语言",
   "English": "英语",
-  "Turkce": "土耳其语",
+  "Türkçe": "土耳其语",
   "Spanish": "西班牙语",
   "Russian": "俄语",
   "Portugues (Brasil)": "葡萄牙语（巴西）",
@@ -113,7 +115,7 @@ const GAME_TEXT_ZH_CN_TEXTS: Record<string, string> = {
   "Simple script to mine Data automatically.": "用于自动采集数据的简单脚本。",
   "Advanced Data Miner": "高级数据采集器",
   "Optimized algorithms for faster Data mining.": "使用优化算法以更快采集数据。",
-  "Botnet Node": "僵尸网络节点",
+  "Botnet Cluster": "僵尸网络集群",
   "Infects vulnerable devices to mine Data en masse.": "感染脆弱设备以大规模采集数据。",
   "Quantum Server": "量子服务器",
   "Leverages quantum superposition for massive Data yields.": "利用量子叠加获得海量数据产出。",
@@ -394,10 +396,10 @@ const EXTRA_ZH_CN_TEXTS: Record<string, string> = {
   "unlocked": "已解锁",
   "affordable now": "当前可购买",
   "path activation": "路线激活",
-  "No nodes match current filter.": "没有节点符合当前筛选条件。",
+  "No upgrades match the current filter.": "没有升级符合当前筛选条件。",
   "Can Upgrade": "可升级",
   "Missing Resources": "资源不足",
-  "Unlock previous tier to activate this node.": "解锁前一层以激活此节点。",
+  "Unlock the previous tier to activate this upgrade.": "解锁前一层以激活此升级。",
   "Upgrade Paths": "升级路线",
   "All Paths": "全部路线",
   "Unlocked Only": "仅显示已解锁",
@@ -560,13 +562,13 @@ const EXTRA_ZH_CN_TEXTS: Record<string, string> = {
   "Void Diadem": "虚空冠饰",
   "Apex Core": "巅峰核心",
   "Singularity Vault": "奇点金库",
-  "Spend Crypto to unlock relic nodes in order, then keep upgrading them. Relic level scales linearly and each node can be upgraded up to your current Ascension level.": "消耗加密币按顺序解锁遗物节点，然后继续升级它们。遗物等级为线性成长，每个节点最高可升到当前飞升等级。",
+  "Spend Crypto to unlock relics in order, then keep upgrading them. Relics are permanent bonuses: they work without equipping, and each one can be upgraded up to your current Ascension level.": "消耗加密币按顺序解锁遗物，然后继续升级它们。遗物是永久加成：无需装备即可生效，每个遗物最多可升级到你当前的飞升等级。",
   "Luminous Core": "辉光核心",
   "Permanent bonus to production, clicks, crit and crypto. Grows every level, no need to equip.": "永久提升生产、点击、暴击和加密币。每级提升，无需装备。",
   "No active bonus": "当前无加成",
   "Celestial Crown": "天穹王冠",
   "Bigger permanent bonus to production, clicks, crit and crypto. Requires Luminous Core.": "更高的永久生产、点击、暴击和加密币加成。需要先拥有发光核心。",
-  "Locked by previous relic node.": "被前置遗物节点锁定。",
+  "Locked by the previous relic.": "被前一个遗物锁定。",
   "Quantum Wings": "量子之翼",
   "Largest permanent bonus to production, clicks, crit and crypto. Requires Celestial Crown.": "最高的永久生产、点击、暴击和加密币加成。需要先拥有天穹之冠。",
   "Mine Skins": "矿机皮肤",
@@ -943,6 +945,7 @@ const getV103Text = (text: string): string | undefined => {
 };
 
 export const getSimplifiedChineseTextFallback = (text: string): string | undefined => {
+  if (V104_ZH_CN[text]) return V104_ZH_CN[text];
   const v103 = getV103Text(text);
   if (v103) return v103;
   if (text === "Rewards:") return "奖励：";

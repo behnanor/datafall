@@ -201,7 +201,7 @@ export default function GamePage() {
   };
 
   const tutorialRewardTypeLabel = useCallback((reward: TutorialReward | null): string => {
-    if (!reward) return l('Cosmetic', 'Kozmetik', 'Cosmetico');
+    if (!reward) return l('Cosmetic', 'Kozmetik', 'Cosmético');
     return getTutorialRewardTypeLabel(reward.cosmeticType, language);
   }, [l, language]);
 
@@ -251,14 +251,14 @@ export default function GamePage() {
       title: l(
         'Mining unlock inside',
         'Madencilik kilidi burada',
-        'Desbloqueio de mineracao aqui',
-        'Desbloqueo de mineria aqui'
+        'Desbloqueio de mineração aqui',
+        'Desbloqueo de minería aquí'
       ),
       description: l(
         'This Click segment contains an upgrade that unlocks the Mining segment. Watch for the mining unlock card here.',
-        'Bu Tiklama segmentinde Madencilik segmentini acan bir yukseltme var. Burada madencilik kilidi kartina dikkat et.',
-        'Este segmento de Clique contem uma melhoria que desbloqueia o segmento de Mineracao. Fique de olho na carta de desbloqueio de mineracao aqui.',
-        'Este segmento de Clic contiene una mejora que desbloquea el segmento de Mineria. Busca aqui la carta que desbloquea mineria.'
+        'Bu Tıklama segmentinde Madencilik segmentini açan bir yükseltme var. Burada madencilik kilidi kartına dikkat et.',
+        'Este segmento de Clique contem uma melhoria que desbloqueia o segmento de Mineração. Fique de olho na carta de desbloqueio de mineração aqui.',
+        'Este segmento de Clic contiene una mejora que desbloquea el segmento de Minería. Busca aquí la carta que desbloquea minería.'
       ),
     });
   }, [activeUpgradeTab, l, rightPanelOpen]);
@@ -279,25 +279,25 @@ export default function GamePage() {
       duration: 10000,
       title: l(
         'Spend your Prestige Points',
-        'Prestij Puanlarini harca',
-        'Gaste seus Pontos de Prestigio',
+        'Prestij Puanlarını harca',
+        'Gaste seus Pontos de Prestígio',
         'Gasta tus Puntos de Prestigio'
       ),
       description: l(
         'Your first ascension granted Prestige Points. Open the Prestige shop and spend them for permanent power.',
-        'Ilk yukselisin Prestij Puani verdi. Kalici guc icin Prestij dukkanini acip harca.',
-        'Sua primeira ascensao concedeu Pontos de Prestigio. Abra a loja de Prestigio e gaste-os para ganhar poder permanente.',
-        'Tu primera ascension te dio Puntos de Prestigio. Abre la tienda de Prestigio y gastalos para obtener poder permanente.'
+        'İlk yükselişin Prestij Puanı verdi. Kalıcı güç için Prestij dükkânını açıp harca.',
+        'Sua primeira ascensão concedeu Pontos de Prestígio. Abra a loja de Prestígio e gaste-os para ganhar poder permanente.',
+        'Tu primera ascensión te dio Puntos de Prestigio. Abre la tienda de Prestigio y gastalos para obtener poder permanente.'
       ),
       action: (
         <ToastAction
-          altText={l('Open Prestige', 'Prestiji Ac', 'Abrir Prestigio', 'Abrir Prestigio')}
+          altText={l('Open Prestige', 'Prestiji Aç', 'Abrir Prestígio', 'Abrir Prestigio')}
           onClick={() => {
             setIsPrestigeOpen(true);
             playSound('prestige_realm');
           }}
         >
-          {l('Open', 'Ac', 'Abrir', 'Abrir')}
+          {l('Open', 'Aç', 'Abrir', 'Abrir')}
         </ToastAction>
       ),
     });
@@ -490,7 +490,7 @@ export default function GamePage() {
 
     if (!isSteamAvailable()) {
       setEntries([]);
-      setError(l('Steam not connected', 'Steam bagli degil', 'Steam não conectado', 'Steam no conectado'));
+      setError(l('Steam not connected', 'Steam bağlı değil', 'Steam não conectado', 'Steam no conectado'));
       return;
     }
 
@@ -504,7 +504,7 @@ export default function GamePage() {
           result.reason
             || l(
               `Failed to load ${mode} ${period} leaderboard`,
-              `${mode === 'friends' ? 'Arkadas' : 'Genel'} ${period === 'today' ? 'gunluk' : 'tum zamanlar'} liderlik tablosu yuklenemedi`,
+              `${mode === 'friends' ? 'Arkadaş' : 'Genel'} ${period === 'today' ? 'günlük' : 'tüm zamanlar'} liderlik tablosu yüklenemedi`,
               `Falha ao carregar o placar ${mode} ${period}`,
             )
         );
@@ -2136,7 +2136,7 @@ export default function GamePage() {
             open={isCosmeticsOpen}
             onOpenChange={setIsCosmeticsOpen}
             l={l}
-            loadingLabel={l('Loading...', 'Yukleniyor...', 'Carregando...', 'Cargando...')}
+            loadingLabel={l('Loading...', 'Yükleniyor...', 'Carregando...', 'Cargando...')}
             panelProps={cosmeticsPanelProps}
             equippedTheme={equippedTheme}
             equippedSkin={equippedSkin}

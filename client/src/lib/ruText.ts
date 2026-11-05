@@ -1,3 +1,5 @@
+import { V104_RU } from "./v104Text";
+
 const CORE_RU_TEXTS: Record<string, string> = {
   "Close": "Закрыть",
   "Cancel": "Отмена",
@@ -192,7 +194,7 @@ const GAME_TEXT_RU_TEXTS: Record<string, string> = {
   "Simple script to mine Data automatically.": "Простой скрипт для автоматической добычи данных.",
   "Advanced Data Miner": "Продвинутый майнер данных",
   "Optimized algorithms for faster Data mining.": "Оптимизированные алгоритмы для более быстрой добычи данных.",
-  "Botnet Node": "Узел ботнета",
+  "Botnet Cluster": "Кластер ботнета",
   "Infects vulnerable devices to mine Data en masse.": "Заражает уязвимые устройства для массовой добычи данных.",
   "Quantum Server": "Квантовый сервер",
   "Leverages quantum superposition for massive Data yields.": "Использует квантовую суперпозицию для огромной отдачи данных.",
@@ -632,7 +634,7 @@ const UI_RU_TEXTS: Record<string, string> = {
   "Per Level": "За уровень",
   "No stat bonus": "Без бонуса к характеристикам",
   "No active bonus": "Нет активного бонуса",
-  "Locked by previous relic node.": "Заблокировано предыдущим реликтовым узлом.",
+  "Locked by the previous relic.": "Заблокировано предыдущей реликвией.",
   "Ascension Cap": "Лимит вознесения",
   "Equip Visual": "Экипировать визуал",
   "Unlock Lv.1": "Открыть ур.1",
@@ -1026,6 +1028,7 @@ const getV103Text = (text: string): string | undefined => {
 };
 
 export const getRussianTextFallback = (text: string): string | undefined => {
+  if (V104_RU[text]) return V104_RU[text];
   const v103 = getV103Text(text);
   if (v103) return v103;
   const exact = RU_TEXT_FALLBACKS[text];

@@ -1,6 +1,7 @@
 import { localizeText, type Language, type LocalizedText } from "./i18n";
 import { getRussianTextFallback } from "./ruText";
 import { getSimplifiedChineseTextFallback } from "./zhCnText";
+import { V104_ES, V104_PT_BR } from "./v104Text";
 
 type EntityText = {
   name?: LocalizedText;
@@ -23,8 +24,8 @@ const RARITY_LABELS: Record<string, LocalizedText> = {
   common: { en: "common", tr: "sıradan", "pt-BR": "comum", es: "comun", "zh-CN": "普通" },
   uncommon: { en: "uncommon", tr: "az bulunan", "pt-BR": "incomum", es: "inusual", "zh-CN": "非凡" },
   rare: { en: "rare", tr: "nadir", "pt-BR": "raro", es: "raro", "zh-CN": "稀有" },
-  epic: { en: "epic", tr: "epik", "pt-BR": "epico", es: "epico", "zh-CN": "史诗" },
-  legendary: { en: "legendary", tr: "efsanevi", "pt-BR": "lendario", es: "legendario", "zh-CN": "传奇" },
+  epic: { en: "epic", tr: "epik", "pt-BR": "épico", es: "epico", "zh-CN": "史诗" },
+  legendary: { en: "legendary", tr: "efsanevi", "pt-BR": "lendário", es: "legendario", "zh-CN": "传奇" },
 };
 
 const LOOT_TYPE_LABELS: Record<string, LocalizedText> = {
@@ -47,10 +48,10 @@ const TUTORIAL_REWARD_TYPE_LABELS: Record<string, LocalizedText> = {
 };
 
 const RELIC_SLOT_LABELS: Record<string, LocalizedText> = {
-  skin: { en: "Body Relic", tr: "Gövde Yadigârı", "pt-BR": "Reliquia de Corpo", es: "Reliquia de Cuerpo", "zh-CN": "躯体遗物" },
-  headstyle: { en: "Head Relic", tr: "Baş Yadigârı", "pt-BR": "Reliquia de Cabeça", es: "Reliquia de Cabeza", "zh-CN": "头部遗物" },
-  accessory: { en: "Accessory Relic", tr: "Aksesuar Yadigârı", "pt-BR": "Reliquia de Acessório", es: "Reliquia de Accesorio", "zh-CN": "配件遗物" },
-  wing: { en: "Wing Relic", tr: "Kanat Yadigârı", "pt-BR": "Reliquia de Asa", es: "Reliquia de Alas", "zh-CN": "翼部遗物" },
+  skin: { en: "Body Relic", tr: "Gövde Yadigârı", "pt-BR": "Relíquia de Corpo", es: "Reliquia de Cuerpo", "zh-CN": "躯体遗物" },
+  headstyle: { en: "Head Relic", tr: "Baş Yadigârı", "pt-BR": "Relíquia de Cabeça", es: "Reliquia de Cabeza", "zh-CN": "头部遗物" },
+  accessory: { en: "Accessory Relic", tr: "Aksesuar Yadigârı", "pt-BR": "Relíquia de Acessório", es: "Reliquia de Accesorio", "zh-CN": "配件遗物" },
+  wing: { en: "Wing Relic", tr: "Kanat Yadigârı", "pt-BR": "Relíquia de Asa", es: "Reliquia de Alas", "zh-CN": "翼部遗物" },
 };
 
 // Plain-language labels: production/click/crypto multiply your output, while crit
@@ -81,24 +82,24 @@ const CURRENCY_LABELS: Record<string, LocalizedText> = {
 };
 
 const PARAGON_EFFECT_LABELS: Record<string, LocalizedText> = {
-  node_conversion_pct: { en: "Node conversion efficiency", tr: "Dizin dönüşüm verimi", "pt-BR": "Eficiência de conversão em Nodes", es: "Eficiencia de conversion a Nodos", "zh-CN": "节点转换效率" },
-  pickup_spawn_pct: { en: "Floater spawn acceleration", tr: "Floater çıkış hızı", "pt-BR": "Aceleracao de spawn dos floaters", es: "Aceleracion de aparicion de floaters", "zh-CN": "浮动奖励生成加速" },
+  node_conversion_pct: { en: "Node conversion efficiency", tr: "Dizin dönüşüm verimi", "pt-BR": "Eficiência de conversão em Nodes", es: "Eficiencia de conversión a Nodos", "zh-CN": "节点转换效率" },
+  pickup_spawn_pct: { en: "Floater spawn acceleration", tr: "Floater çıkış hızı", "pt-BR": "Aceleração de spawn dos floaters", es: "Aceleración de aparición de floaters", "zh-CN": "浮动奖励生成加速" },
   time_warp_power_pct: { en: "Time Warp payout", tr: "Time Warp ödülu", "pt-BR": "Recompensa de Time Warp", es: "Recompensa de Time Warp", "zh-CN": "时间扭曲收益" },
-  time_warp_cooldown_pct: { en: "Time Warp cooldown reduction", tr: "Time Warp bekleme azalması", "pt-BR": "Reducao de recarga do Time Warp", es: "Reduccion de recarga de Time Warp", "zh-CN": "时间扭曲冷却缩减" },
-  crit_chance_pct: { en: "Critical chance", tr: "Kritik Şansı", "pt-BR": "Chance critica", es: "Prob. critica", "zh-CN": "暴击率" },
-  production_boost_pct: { en: "Production multiplier", tr: "Üretim çarpanı", "pt-BR": "Multiplicador de produção", es: "Multiplicador de produccion", "zh-CN": "生产倍率" },
+  time_warp_cooldown_pct: { en: "Time Warp cooldown reduction", tr: "Time Warp bekleme azalması", "pt-BR": "Redução de recarga do Time Warp", es: "Reducción de recarga de Time Warp", "zh-CN": "时间扭曲冷却缩减" },
+  crit_chance_pct: { en: "Critical chance", tr: "Kritik Şansı", "pt-BR": "Chance crítica", es: "Prob. crítica", "zh-CN": "暴击率" },
+  production_boost_pct: { en: "Production multiplier", tr: "Üretim çarpanı", "pt-BR": "Multiplicador de produção", es: "Multiplicador de producción", "zh-CN": "生产倍率" },
   crypto_boost_pct: { en: "Crypto multiplier", tr: "Kripto çarpanı", "pt-BR": "Multiplicador de cripto", es: "Multiplicador de cripto", "zh-CN": "加密币倍率" },
   click_boost_pct: { en: "Click multiplier", tr: "Tıklama çarpanı", "pt-BR": "Multiplicador de clique", es: "Multiplicador de clic", "zh-CN": "点击倍率" },
 };
 
 const CONTRACT_TITLE_TEXTS: Record<string, LocalizedText> = {
-  sell_data: { en: "Data Liquidation", tr: "Veri Tasfiyesi", es: "Liquidacion de Datos", "zh-CN": "数据变现" },
+  sell_data: { en: "Data Liquidation", tr: "Veri Tasfiyesi", es: "Liquidación de Datos", "zh-CN": "数据变现" },
   collect_pickups: { en: "Pickup Collector", tr: "Ödül Toplayıcı", es: "Recolector de Pickups", "zh-CN": "奖励收集者" },
-  spend_credits: { en: "Investment Run", tr: "Yatırım Koşusu", es: "Carrera de Inversion", "zh-CN": "投资冲刺" },
-  reach_production: { en: "Production Milestone", tr: "Üretim Eşiği", es: "Hito de Produccion", "zh-CN": "生产里程碑" },
+  spend_credits: { en: "Investment Run", tr: "Yatırım Koşusu", es: "Carrera de Inversión", "zh-CN": "投资冲刺" },
+  reach_production: { en: "Production Milestone", tr: "Üretim Eşiği", es: "Hito de Producción", "zh-CN": "生产里程碑" },
   rapid_clicks: { en: "Speed Challenge", tr: "Hız Meydanı", es: "Desafio de Velocidad", "zh-CN": "速度挑战" },
-  crit_streak: { en: "Critical Focus", tr: "Kritik Odak", es: "Enfoque Critico", "zh-CN": "暴击专注" },
-  upgrade_single: { en: "Specialization", tr: "Uzmanlaşma", es: "Especializacion", "zh-CN": "专精路线" },
+  crit_streak: { en: "Critical Focus", tr: "Kritik Odak", es: "Enfoque Crítico", "zh-CN": "暴击专注" },
+  upgrade_single: { en: "Specialization", tr: "Uzmanlaşma", es: "Especialización", "zh-CN": "专精路线" },
   maintain_resources: { en: "Resource Reserve", tr: "Kaynak Rezervi", es: "Reserva de Recursos", "zh-CN": "资源储备" },
 };
 
@@ -350,23 +351,23 @@ const SPEED_ACHIEVEMENT_NAMES_PT = ["Corredor Veloz", "Ascensão Rápida", "Rast
 const PLAYTIME_ACHIEVEMENT_NAMES_PT = ["Passada Rápida", "Já Está Curtindo", "Dedicado", "Comprometido", "Viciado", "Sem Vida", "Corredor de Maratona"];
 const COSMETIC_ACHIEVEMENT_NAMES_PT = ["Colecionador", "Início Fashion", "Fã de Estilo", "Mestre dos Cosméticos", "Ícone da Moda"];
 const PLAYTIME_DESCRIPTION_LABELS_PT = ["5 Minutos", "30 Minutos", "1 Hora", "2 Horas", "5 Horas", "10 Horas", "1 Dia"];
-const CLICK_ACHIEVEMENT_NAMES_ES = ["Primeros Pasos", "En Calor", "Empezando", "Aprendiz del Clic", "Adepto del Clic", "Maquina de Clics", "Maestro del Clic", "Experto del Clic", "Tunel Carpiano", "Veterano del Clic", "Leyenda del Clic", "Campeon del Clic", "Conquistador del Clic", "Emperador del Clic", "Dios del Clic"];
-const CRIT_ACHIEVEMENT_NAMES_ES = ["Golpe de Suerte", "Inicio Critico", "Curioso del Critico", "Masa Critica", "Adepto del Critico", "Maestro del Critico", "Experto del Critico", "Leyenda del Critico", "Campeon del Critico", "Senor del Critico", "Emperador del Critico", "Dios del Critico"];
-const DATA_ACHIEVEMENT_NAMES_ES = ["Principiante de Datos", "Coleccionista de Datos", "Acaparador de Datos", "Acumulador de Datos", "Apilador de Datos", "Magnate de Datos", "Baron de Datos", "Tifon de Datos", "Emperador de Datos", "Rey de Datos", "Leyenda de Datos", "Campeon de Datos", "Senor de Datos", "Maestro de Datos", "Dios de Datos", "Titan de Datos", "Inmortal de Datos", "Eterno de Datos", "Trascendente de Datos", "Infinito de Datos"];
-const CREDIT_ACHIEVEMENT_NAMES_ES = ["Calderilla", "Algunos Ahorros", "Emprendedor", "Dueno del Negocio", "Acomodado", "Rico", "Magnate", "Millonario", "Multimillonario", "Billonario", "Baron de Nodos", "Rey de Nodos", "Emperador de Nodos", "Leyenda de Nodos", "Dios de Nodos"];
-const CRYPTO_ACHIEVEMENT_NAMES_ES = ["Curioso del Cripto", "Inicio Cripto", "Coleccionista de Cripto", "Inversor Cripto", "Trader Cripto", "Experto en Cripto", "Maestro del Cripto", "Ballena Cripto", "Magnate Cripto", "Baron Cripto", "Rey del Cripto", "Emperador del Cripto", "Leyenda del Cripto", "Dios del Cripto"];
-const UPGRADE_ACHIEVEMENT_NAMES_ES = ["Primera Inversion", "Empezando", "Negocio en Crecimiento", "Expansion", "Industrial", "Imperio en Crecimiento", "Gran Jugador", "Lider del Sector", "Gigante Corporativo", "Mega Corporacion", "Poder Global", "Dominador del Mundo", "Rey Continental", "Gobernante Planetario", "Emperador Solar", "Senor Galactico", "Maestro Universal"];
-const CHECKPOINT_ACHIEVEMENT_NAMES_ES = ["Checkpoint Alcanzado", "Cazador de Checkpoints", "Maestro del Checkpoint", "Experto del Checkpoint", "Leyenda del Checkpoint", "Campeon del Checkpoint", "Senor del Checkpoint", "Dios del Checkpoint", "Titan del Checkpoint"];
-const ASCEND_ACHIEVEMENT_NAMES_ES = ["Trascendencia", "Renacido", "Comenzo el Ciclo", "Ciclo Eterno", "Funciona Solo", "Adepto de la Ascension", "Maestro de la Ascension"];
-const PRESTIGE_SPENT_ACHIEVEMENT_NAMES_ES = ["Gastador de Prestigio", "Inversor de Prestigio", "Coleccionista de Prestigio", "Acaparador de Prestigio", "Maestro del Prestigio", "Experto del Prestigio", "Leyenda del Prestigio", "Campeon del Prestigio", "Senor del Prestigio"];
-const PRESTIGE_UPGRADE_ACHIEVEMENT_NAMES_ES = ["Poder Eterno", "Legado en Crecimiento", "Progreso Permanente", "Inversor Eterno", "Maestro del Legado", "Experto Eterno", "Leyenda del Legado", "Campeon Eterno"];
+const CLICK_ACHIEVEMENT_NAMES_ES = ["Primeros Pasos", "En Calor", "Empezando", "Aprendiz del Clic", "Adepto del Clic", "Máquina de Clics", "Maestro del Clic", "Experto del Clic", "Túnel Carpiano", "Veterano del Clic", "Leyenda del Clic", "Campeón del Clic", "Conquistador del Clic", "Emperador del Clic", "Dios del Clic"];
+const CRIT_ACHIEVEMENT_NAMES_ES = ["Golpe de Suerte", "Inicio Crítico", "Curioso del Crítico", "Masa Crítica", "Adepto del Crítico", "Maestro del Crítico", "Experto del Crítico", "Leyenda del Crítico", "Campeón del Crítico", "Señor del Crítico", "Emperador del Crítico", "Dios del Crítico"];
+const DATA_ACHIEVEMENT_NAMES_ES = ["Principiante de Datos", "Coleccionista de Datos", "Acaparador de Datos", "Acumulador de Datos", "Apilador de Datos", "Magnate de Datos", "Barón de Datos", "Tifón de Datos", "Emperador de Datos", "Rey de Datos", "Leyenda de Datos", "Campeón de Datos", "Señor de Datos", "Maestro de Datos", "Dios de Datos", "Titán de Datos", "Inmortal de Datos", "Eterno de Datos", "Trascendente de Datos", "Infinito de Datos"];
+const CREDIT_ACHIEVEMENT_NAMES_ES = ["Calderilla", "Algunos Ahorros", "Emprendedor", "Dueño del Negocio", "Acomodado", "Rico", "Magnate", "Millonario", "Multimillonario", "Billonario", "Barón de Nodos", "Rey de Nodos", "Emperador de Nodos", "Leyenda de Nodos", "Dios de Nodos"];
+const CRYPTO_ACHIEVEMENT_NAMES_ES = ["Curioso del Cripto", "Inicio Cripto", "Coleccionista de Cripto", "Inversor Cripto", "Trader Cripto", "Experto en Cripto", "Maestro del Cripto", "Ballena Cripto", "Magnate Cripto", "Barón Cripto", "Rey del Cripto", "Emperador del Cripto", "Leyenda del Cripto", "Dios del Cripto"];
+const UPGRADE_ACHIEVEMENT_NAMES_ES = ["Primera Inversión", "Empezando", "Negocio en Crecimiento", "Expansión", "Industrial", "Imperio en Crecimiento", "Gran Jugador", "Líder del Sector", "Gigante Corporativo", "Mega Corporación", "Poder Global", "Dominador del Mundo", "Rey Continental", "Gobernante Planetario", "Emperador Solar", "Señor Galáctico", "Maestro Universal"];
+const CHECKPOINT_ACHIEVEMENT_NAMES_ES = ["Checkpoint Alcanzado", "Cazador de Checkpoints", "Maestro del Checkpoint", "Experto del Checkpoint", "Leyenda del Checkpoint", "Campeón del Checkpoint", "Señor del Checkpoint", "Dios del Checkpoint", "Titán del Checkpoint"];
+const ASCEND_ACHIEVEMENT_NAMES_ES = ["Trascendencia", "Renacido", "Comenzo el Ciclo", "Ciclo Eterno", "Funciona Solo", "Adepto de la Ascensión", "Maestro de la Ascensión"];
+const PRESTIGE_SPENT_ACHIEVEMENT_NAMES_ES = ["Gastador de Prestigio", "Inversor de Prestigio", "Coleccionista de Prestigio", "Acaparador de Prestigio", "Maestro del Prestigio", "Experto del Prestigio", "Leyenda del Prestigio", "Campeón del Prestigio", "Señor del Prestigio"];
+const PRESTIGE_UPGRADE_ACHIEVEMENT_NAMES_ES = ["Poder Eterno", "Legado en Crecimiento", "Progreso Permanente", "Inversor Eterno", "Maestro del Legado", "Experto Eterno", "Leyenda del Legado", "Campeón Eterno"];
 const PICKUP_ACHIEVEMENT_NAMES_ES = ["Recolector", "Coleccionista", "Pro del Pickup", "Experto del Pickup", "Maestro del Pickup"];
 const CRIT_PICKUP_ACHIEVEMENT_NAMES_ES = ["Jackpot!", "Cazador de Jackpot", "Maestro del Jackpot"];
-const DPS_ACHIEVEMENT_NAMES_ES = ["Flujo de Datos", "Corriente de Datos", "Rio de Datos", "Rapidos de Datos", "Cascada de Datos", "Tsunami de Datos", "Sistemas Optimizados", "Alto Rendimiento", "Rendimiento Maximo", "Ancho de Banda Ilimitado", "Autopista de Datos", "Dimension de Datos", "Universo de Datos", "Multiverso de Datos", "Omniverso de Datos"];
-const SPEED_ACHIEVEMENT_NAMES_ES = ["Corredor Veloz", "Ascensor Rapido", "Rastreador Veloz", "Ascenso Relampago"];
-const PLAYTIME_ACHIEVEMENT_NAMES_ES = ["Vista Rapida", "Enganchandose", "Dedicado", "Comprometido", "Adicto", "Sin Vida", "Corredor de Maraton"];
+const DPS_ACHIEVEMENT_NAMES_ES = ["Flujo de Datos", "Corriente de Datos", "Río de Datos", "Rápidos de Datos", "Cascada de Datos", "Tsunami de Datos", "Sistemas Optimizados", "Alto Rendimiento", "Rendimiento Máximo", "Ancho de Banda Ilimitado", "Autopista de Datos", "Dimensión de Datos", "Universo de Datos", "Multiverso de Datos", "Omniverso de Datos"];
+const SPEED_ACHIEVEMENT_NAMES_ES = ["Corredor Veloz", "Ascensor Rápido", "Rastreador Veloz", "Ascenso Relampago"];
+const PLAYTIME_ACHIEVEMENT_NAMES_ES = ["Vista Rápida", "Enganchandose", "Dedicado", "Comprometido", "Adicto", "Sin Vida", "Corredor de Maraton"];
 const COSMETIC_ACHIEVEMENT_NAMES_ES = ["Coleccionista", "Inicio Fashion", "Fan del Estilo", "Maestro de Cosméticos", "Icono de Moda"];
-const PLAYTIME_DESCRIPTION_LABELS_ES = ["5 Minutos", "30 Minutos", "1 Hora", "2 Horas", "5 Horas", "10 Horas", "1 Dia"];
+const PLAYTIME_DESCRIPTION_LABELS_ES = ["5 Minutos", "30 Minutos", "1 Hora", "2 Horas", "5 Horas", "10 Horas", "1 Día"];
 const CLICK_ACHIEVEMENT_NAMES_RU = ["Первые шаги", "Разогрев", "Начало положено", "Ученик клика", "Адепт клика", "Машина клика", "Мастер клика", "Эксперт клика", "Карпальный туннель", "Ветеран клика", "Легенда клика", "Чемпион клика", "Покоритель клика", "Император клика", "Бог клика"];
 const CRIT_ACHIEVEMENT_NAMES_RU = ["Удачный удар", "Критический старт", "Любитель крита", "Критическая масса", "Адепт крита", "Мастер крита", "Эксперт крита", "Легенда крита", "Чемпион крита", "Повелитель крита", "Император крита", "Бог крита"];
 const DATA_ACHIEVEMENT_NAMES_RU = ["Новичок данных", "Сборщик данных", "Накопитель данных", "Аккумулятор данных", "Укладчик данных", "Магнат данных", "Барон данных", "Тайкун данных", "Император данных", "Король данных", "Легенда данных", "Чемпион данных", "Владыка данных", "Мастер данных", "Бог данных", "Титан данных", "Бессмертие данных", "Вечность данных", "Трансцендентность данных", "Бесконечность данных"];
@@ -393,23 +394,23 @@ const SECRET_ACHIEVEMENT_TEXTS: Record<string, EntityText> = {
   },
   challenge_no_clicks: {
     name: { en: "Hands Off", tr: "Eller Uzakta", "pt-BR": "Mãos Livres", es: "Manos Fuera", ru: "Руки прочь", "zh-CN": "放手" },
-    description: { en: "Complete the Hands Off challenge", tr: "Eller Uzakta görevini tamamla", "pt-BR": "Conclua o desafio Mãos Livres", es: "Completa el desafío Manos Fuera", ru: "Пройди испытание «Руки прочь»", "zh-CN": "完成“放手”挑战" },
+    description: { en: "Complete the Hands Off challenge", tr: "Eller Uzakta meydan okumasını tamamla", "pt-BR": "Conclua o desafio Mãos Livres", es: "Completa el desafío Manos Fuera", ru: "Пройди испытание «Руки прочь»", "zh-CN": "完成“放手”挑战" },
   },
   challenge_half_crypto: {
     name: { en: "Drought Survivor", tr: "Kuraklıktan Sağ Çıkan", "pt-BR": "Sobrevivente da Seca", es: "Superviviente de la Sequía", ru: "Переживший засуху", "zh-CN": "旱季幸存者" },
-    description: { en: "Complete the Crypto Drought challenge", tr: "Kripto Kuraklığı görevini tamamla", "pt-BR": "Conclua o desafio Seca de Cripto", es: "Completa el desafío Sequía de Cripto", ru: "Пройди испытание «Криптозасуха»", "zh-CN": "完成“加密干旱”挑战" },
+    description: { en: "Complete the Crypto Drought challenge", tr: "Kripto Kuraklığı meydan okumasını tamamla", "pt-BR": "Conclua o desafio Seca de Cripto", es: "Completa el desafío Sequía de Cripto", ru: "Пройди испытание «Криптозасуха»", "zh-CN": "完成“加密干旱”挑战" },
   },
   challenge_sprint: {
     name: { en: "Overclock Sprinter", tr: "Hız Koşucusu", "pt-BR": "Velocista Overclock", es: "Velocista Overclock", ru: "Разгонный спринтер", "zh-CN": "超频冲刺者" },
-    description: { en: "Complete the Overclock Sprint challenge", tr: "Hız Koşusu görevini tamamla", "pt-BR": "Conclua o desafio Sprint Overclock", es: "Completa el desafío Sprint Overclock", ru: "Пройди испытание «Разгонный спринт»", "zh-CN": "完成“超频冲刺”挑战" },
+    description: { en: "Complete the Overclock Sprint challenge", tr: "Hız Koşusu meydan okumasını tamamla", "pt-BR": "Conclua o desafio Sprint Overclock", es: "Completa el desafío Sprint Overclock", ru: "Пройди испытание «Разгонный спринт»", "zh-CN": "完成“超频冲刺”挑战" },
   },
   challenge_bare_metal: {
     name: { en: "Bare Metal", tr: "Çıplak Metal", "pt-BR": "Metal Puro", es: "Metal Desnudo", ru: "Голое железо", "zh-CN": "裸机" },
-    description: { en: "Complete the Bare Metal challenge", tr: "Çıplak Metal görevini tamamla", "pt-BR": "Conclua o desafio Metal Puro", es: "Completa el desafío Metal Desnudo", ru: "Пройди испытание «Голое железо»", "zh-CN": "完成“裸机”挑战" },
+    description: { en: "Complete the Bare Metal challenge", tr: "Çıplak Metal meydan okumasını tamamla", "pt-BR": "Conclua o desafio Metal Puro", es: "Completa el desafío Metal Desnudo", ru: "Пройди испытание «Голое железо»", "zh-CN": "完成“裸机”挑战" },
   },
   challenge_all: {
     name: { en: "Challenger", tr: "Meydan Okuyan", "pt-BR": "Desafiante", es: "Retador", ru: "Претендент", "zh-CN": "挑战者" },
-    description: { en: "Complete every challenge", tr: "Tüm görevleri tamamla", "pt-BR": "Conclua todos os desafios", es: "Completa todos los desafíos", ru: "Пройди все испытания", "zh-CN": "完成所有挑战" },
+    description: { en: "Complete every challenge", tr: "Tüm meydan okumaları tamamla", "pt-BR": "Conclua todos os desafios", es: "Completa todos los desafíos", ru: "Пройди все испытания", "zh-CN": "完成所有挑战" },
   },
   finale_breach: {
     name: { en: "Core Breached", tr: "Çekirdek Delindi", "pt-BR": "Núcleo Violado", es: "Núcleo Vulnerado", ru: "Ядро взломано", "zh-CN": "核心已突破" },
@@ -432,12 +433,12 @@ const SECRET_ACHIEVEMENT_TEXTS: Record<string, EntityText> = {
     description: { en: "Click 1000 times without buying upgrades", tr: "Yükseltme satın almadan 1000 kez tıkla", es: "Haz 1000 clics sin comprar mejoras" },
   },
   secret_max_crit: {
-    name: { en: "Critical Overload", tr: "Kritik Aşırı Yük", es: "Sobrecarga Critica" },
-    description: { en: "Reach 50% crit chance", tr: "%50 kritik şansına ulaş", es: "Alcanza un 50% de prob. critica" },
+    name: { en: "Critical Overload", tr: "Kritik Aşırı Yük", es: "Sobrecarga Crítica" },
+    description: { en: "Reach 50% crit chance", tr: "%50 kritik şansına ulaş", es: "Alcanza un 50% de prob. crítica" },
   },
   secret_millionaire: {
     name: { en: "Crypto Millionaire", tr: "Kripto Milyoneri", es: "Millonario Cripto" },
-    description: { en: "Hold 1M+ nodes and 1000+ crypto at once", tr: "Aynı anda 1M+ dizin ve 1000+ kripto tut", es: "Manten a la vez 1M+ nodos y 1000+ cripto" },
+    description: { en: "Hold 1M+ nodes and 1000+ crypto at once", tr: "Aynı anda 1M+ dizin ve 1000+ kripto tut", es: "Mantén a la vez 1M+ nodos y 1000+ cripto" },
   },
   secret_all_upgrades: {
     name: { en: "Complete Collection", tr: "Tam Koleksiyon" },
@@ -492,15 +493,15 @@ Object.assign(GAME_ENTITY_TEXTS, {
   },
   "none::No Cape": {
     name: { en: "No Cape", tr: "Pelerin Yok", "pt-BR": "Sem Capa", es: "Sin Capa" },
-    description: { en: "Keep your profile clean and minimal.", tr: "Profilini sade ve temiz tut.", "pt-BR": "Mantenha seu perfil limpo e minimalista.", es: "Manten tu perfil limpio y minimalista." },
+    description: { en: "Keep your profile clean and minimal.", tr: "Profilini sade ve temiz tut.", "pt-BR": "Mantenha seu perfil limpo e minimalista.", es: "Mantén tu perfil limpio y minimalista." },
   },
   "none::No Wings": {
     name: { en: "No Wings", tr: "Kanat Yok", "pt-BR": "Sem Asas", es: "Sin Alas" },
-    description: { en: "No wing module equipped.", tr: "Kanat mödülu takili degil.", "pt-BR": "Nenhum módulo de asas equipado.", es: "No hay módulo de alas equipado." },
+    description: { en: "No wing module equipped.", tr: "Kanat mödülu takılı değil.", "pt-BR": "Nenhum módulo de asas equipado.", es: "No hay módulo de alas equipado." },
   },
   "none::No ascension pet equipped": {
     name: { en: "None", tr: "Yok", "pt-BR": "Nenhum", es: "Ninguno" },
-    description: { en: "No ascension pet equipped", tr: "Yükseliş evcili takılı değil", "pt-BR": "Nenhum pet de ascensao equipado", es: "No hay mascota de ascension equipada" },
+    description: { en: "No ascension pet equipped", tr: "Yükseliş evcili takılı değil", "pt-BR": "Nenhum pet de ascensão equipado", es: "No hay mascota de ascensión equipada" },
   },
   ghost: {
     name: { en: "Ghost", tr: "Ghost" },
@@ -591,7 +592,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
     description: { en: "The darkness between stars", tr: "Yıldızların arasındaki karanlık" },
   },
   quantum_realm: {
-    name: { en: "Quantum Realm", tr: "Kuantum Alemi" },
+    name: { en: "Quantum Realm", tr: "Kuantum Âlemi" },
     description: { en: "Reality bends to your will", tr: "Gerçeklik iradene göre bükülür" },
   },
   none: {
@@ -623,7 +624,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
     description: { en: "Distinguished cyber aristocrat", tr: "Seçkin siber aristokrat" },
   },
   vr_visor: {
-    name: { en: "VR Visor", tr: "VR Vizoru" },
+    name: { en: "VR Visor", tr: "VR Vizörü" },
     description: { en: "See the code", tr: "Kodu olduğu gibi gör" },
   },
   headphones: {
@@ -722,7 +723,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
     description: { en: "Military-grade tactical headgear", tr: "Askeri seviye taktik başlık" },
   },
   alien: {
-    name: { en: "Xenomorph", tr: "Xenomorf" },
+    name: { en: "Xenomorph", tr: "Ksenomorf" },
     description: { en: "Elongated alien cranium", tr: "Uzatılmış uzaylı kafatası" },
   },
   cube: {
@@ -858,7 +859,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
     description: { en: "+8% Crypto, +4% Crit", tr: "+8% Kripto, +4% Kritik" },
   },
   asc_cosmic_visor: {
-    name: { en: "Cosmic Visor", tr: "Kozmik Vizor" },
+    name: { en: "Cosmic Visor", tr: "Kozmik Vizör" },
     description: { en: "+8% Crit, +6% Click", tr: "+8% Kritik, +6% Tıklama" },
   },
   asc_divine_aura: {
@@ -871,7 +872,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
   },
   no_cape: {
     name: { en: "No Cape", tr: "Pelerin Yok", "pt-BR": "Sem Capa", es: "Sin Capa" },
-    description: { en: "Keep your profile clean and minimal.", tr: "Profilini sade ve temiz tut.", "pt-BR": "Mantenha seu perfil limpo e minimalista.", es: "Manten tu perfil limpio y minimalista." },
+    description: { en: "Keep your profile clean and minimal.", tr: "Profilini sade ve temiz tut.", "pt-BR": "Mantenha seu perfil limpo e minimalista.", es: "Mantén tu perfil limpio y minimalista." },
   },
   bm_void_cape: {
     name: { en: "Void Veil Cape", tr: "Boşluk Tülü Pelerin", "pt-BR": "Capa Veu do Vazio", es: "Capa Velo del Vacio" },
@@ -891,14 +892,14 @@ Object.assign(GAME_ENTITY_TEXTS, {
   },
   bm_ion_wings: {
     name: { en: "Ion Wings", tr: "İyon Kanatları", "pt-BR": "Asas de Ion", es: "Alas de Iones" },
-    description: { en: "Dual ion vanes tuned for sustained fabrication output.", tr: "Sürekli Üretim için ayarlanmış Çift iyon kanatçıklar.", "pt-BR": "Aletas duplas de íon ajustadas para produção sustentada.", es: "Aletas dobles de iones ajustadas para produccion sostenida." },
+    description: { en: "Dual ion vanes tuned for sustained fabrication output.", tr: "Sürekli Üretim için ayarlanmış Çift iyon kanatçıklar.", "pt-BR": "Aletas duplas de íon ajustadas para produção sustentada.", es: "Aletas dobles de iones ajustadas para producción sostenida." },
   },
   bm_prism_wings: {
     name: { en: "Prism Wings", tr: "Prizma Kanatları", "pt-BR": "Asas de Prisma", es: "Alas Prisma" },
-    description: { en: "Split-spectrum emitters that sharpen critical hits.", tr: "Kritik vuruşları keskinleştiren çok renkli yayıcılar.", "pt-BR": "Emissores de espectro dividido que refinam acertos críticos.", es: "Emisores de espectro dividido que afilan los golpes criticos." },
+    description: { en: "Split-spectrum emitters that sharpen critical hits.", tr: "Kritik vuruşları keskinleştiren çok renkli yayıcılar.", "pt-BR": "Emissores de espectro dividido que refinam acertos críticos.", es: "Emisores de espectro dividido que afilan los golpes críticos." },
   },
   bm_quantum_wings_mk2: {
-    name: { en: "Quantum Wings Mk-II", tr: "Kuantum Kanatları Mk-II", "pt-BR": "Asas Quanticas Mk-II", es: "Alas Cuanticas Mk-II" },
+    name: { en: "Quantum Wings Mk-II", tr: "Kuantum Kanatları Mk-II", "pt-BR": "Asas Quanticas Mk-II", es: "Alas Cuánticas Mk-II" },
     description: { en: "Black market wing frame with recursive phase blades.", tr: "Tekrarlayan faz bıçaklı karaborsa kanat iskeleti.", "pt-BR": "Estrutura de asas do mercado negro com lâminas de fase recursivas.", es: "Estructura de alas del mercado negro con hojas de fase recursivas." },
   },
 });
@@ -906,11 +907,11 @@ Object.assign(GAME_ENTITY_TEXTS, {
 Object.assign(GAME_ENTITY_TEXTS, {
   click_overflow: {
     name: { en: "Click Overflow", tr: "Tıklama Taşması", "pt-BR": "Overflow de Clique", es: "Overflow de Clic" },
-    description: { en: "Allows crit chance over 100%. Overflow converts into extra crit multiplier.", tr: "Kritik Şansı %100'ü aşabilir. Taşma ek kritik çarpana dönüşür.", "pt-BR": "Permite chance crítica acima de 100%. O excedente vira multiplicador crítico extra.", es: "Permite prob. critica por encima del 100%. El excedente se convierte en multiplicador critico extra." },
+    description: { en: "Allows crit chance over 100%. Overflow converts into extra crit multiplier.", tr: "Kritik Şansı %100'ü aşabilir. Taşma ek kritik çarpana dönüşür.", "pt-BR": "Permite chance crítica acima de 100%. O excedente vira multiplicador crítico extra.", es: "Permite prob. crítica por encima del 100%. El excedente se convierte en multiplicador crítico extra." },
   },
   adjacency_matrix: {
     name: { en: "Adjacency Matrix", tr: "Komşuluk Matrisi", "pt-BR": "Matriz de Adjacência", es: "Matriz de Adyacencia" },
-    description: { en: "One-time passive. Arrange miners: horizontal 3s boost click, vertical 3s boost production, 2x2 squares boost crypto. All patterns add luck.", tr: "Tek seferlik pasif. Yatay 3'lüler tıklama, dikey 3'lüler üretim, 2x2 kareler kriptoyu güçlendirir. Tüm dizilimler şans ekler.", "pt-BR": "Passivo ?nico. Organize mineradores: trios horizontais melhoram clique, trios verticais melhoram produção, quadrados 2x2 melhoram cripto. Todos os padrões adicionam sorte.", es: "Pasivo unico. Organiza mineros: filas horizontales de 3 mejoran el clic, verticales de 3 mejoran la produccion y cuadrados 2x2 mejoran el cripto. Todos los patrones anaden suerte." },
+    description: { en: "One-time passive. Arrange miners: horizontal 3s boost click, vertical 3s boost production, 2x2 squares boost crypto. All patterns add luck.", tr: "Tek seferlik pasif. Yatay 3'lüler tıklama, dikey 3'lüler üretim, 2x2 kareler kriptoyu güçlendirir. Tüm dizilimler şans ekler.", "pt-BR": "Passivo ?nico. Organize mineradores: trios horizontais melhoram clique, trios verticais melhoram produção, quadrados 2x2 melhoram cripto. Todos os padrões adicionam sorte.", es: "Pasivo único. Organiza mineros: filas horizontales de 3 mejoran el clic, verticales de 3 mejoran la producción y cuadrados 2x2 mejoran el cripto. Todos los patrones anaden suerte." },
   },
   overclock_lattice: {
     name: { en: "Overclock Lattice", tr: "Hız Aşırtma Kafesi", "pt-BR": "Treliça de Overclock", es: "Retícula de Overclock", ru: "Разгонная решётка", "zh-CN": "超频晶格" },
@@ -933,12 +934,12 @@ Object.assign(GAME_ENTITY_TEXTS, {
     description: { en: "+7% production per level. Stacks with all other bonuses.", tr: "Seviye başına +7% üretim. Diğer tüm bonuslarla birlikte çalışır.", "pt-BR": "+7% de produção por nível. Acumula com todos os outros bônus.", es: "+7% de producción por nivel. Se suma a todas las demás bonificaciones." },
   },
   node_compression: {
-    name: { en: "Node Compression", tr: "Dizin Sıkıştırması", "pt-BR": "Compressão de Nodes", es: "Compresion de Nodos" },
+    name: { en: "Node Compression", tr: "Dizin Sıkıştırması", "pt-BR": "Compressão de Nodes", es: "Compresión de Nodos" },
     description: { en: "Selling is cheaper: 6% less data per Node per level (minimum 40 data).", tr: "Satış ucuzlar: seviye başına Dizin başına %6 daha az veri (en az 40 veri).", "pt-BR": "Vender fica mais barato: 6% menos dados por Node por nível (mínimo 40 dados).", es: "Vender sale más barato: 6% menos datos por Nodo por nivel (mínimo 40 datos)." },
   },
   crypto_echo: {
     name: { en: "Crypto Echo", tr: "Kripto Yankısı", "pt-BR": "Eco de Cripto", es: "Eco de Cripto" },
-    description: { en: "Boosts crypto production from all mining sources.", tr: "Tüm madencilik kaynaklarından gelen kriptoyu artırır.", "pt-BR": "Aumenta a produção de cripto de todas as fontes de mineração.", es: "Aumenta la produccion de cripto de todas las fuentes de mineria." },
+    description: { en: "Boosts crypto production from all mining sources.", tr: "Tüm madencilik kaynaklarından gelen kriptoyu artırır.", "pt-BR": "Aumenta a produção de cripto de todas as fontes de mineração.", es: "Aumenta la producción de cripto de todas las fuentes de minería." },
   },
   persistent_momentum: {
     name: { en: "Persistent Momentum", tr: "Kalıcı Momentum", "pt-BR": "Momentum Persistente", es: "Impulso Persistente" },
@@ -953,7 +954,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
     description: { en: "Raises Time Warp payout from mini-game clicks.", tr: "Mini oyun tıklamalarından gelen Time Warp ödülünü artırır.", "pt-BR": "Aumenta a recompensa de Time Warp obtida nos cliques do minijogo.", es: "Aumenta la recompensa de Time Warp obtenida en los clics del minijuego." },
   },
   critical_singularity: {
-    name: { en: "Critical Singularity", tr: "Kritik Tekillik", "pt-BR": "Singularidade Critica", es: "Singularidad Critica" },
+    name: { en: "Critical Singularity", tr: "Kritik Tekillik", "pt-BR": "Singularidade Crítica", es: "Singularidad Crítica" },
     description: { en: "+3.5% crit chance per level.", tr: "Seviye başına +3,5% kritik şansı.", "pt-BR": "+3,5% de chance de crítico por nível.", es: "+3,5% de prob. de crítico por nivel." },
   },
   chrono_stabilizer: {
@@ -990,7 +991,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
   },
   paragon_singularity_vault: {
     name: { en: "Singularity Vault", tr: "Tekillik Kasası", "pt-BR": "Cofre da Singularidade", es: "Boveda de la Singularidad" },
-    description: { en: "+16% Production, +14% Crypto, +10% Click - End-game command deck", tr: "+16% Üretim, +14% Kripto, +10% Tıklama - Son oyun komuta güvertesi", "pt-BR": "+16% Produção, +14% Cripto, +10% Clique - Centro de comando do fim de jogo", es: "+16% Produccion, +14% Cripto, +10% Clic - Centro de mando del final de juego" },
+    description: { en: "+16% Production, +14% Crypto, +10% Click - End-game command deck", tr: "+16% Üretim, +14% Kripto, +10% Tıklama - Son oyun komuta güvertesi", "pt-BR": "+16% Produção, +14% Cripto, +10% Clique - Centro de comando do fim de jogo", es: "+16% Producción, +14% Cripto, +10% Clic - Centro de mando del final de juego" },
   },
   ember_surge: {
     name: { en: "Ember Surge", tr: "Kor Dalgası", "pt-BR": "Surto de Brasas", es: "Oleada de Brasas" },
@@ -1006,7 +1007,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
   },
   plasma_wave: {
     name: { en: "Plasma Wave", tr: "Plazma Dalgası", "pt-BR": "Onda de Plasma", es: "Onda de Plasma" },
-    description: { en: "Dense plasma bloom leaves a neon afterglow.", tr: "Yoğun plazma patlaması neon bir ardıl ışık bırakır.", "pt-BR": "Uma explosão densa de plasma deixa um brilho neon residual.", es: "Una densa explosion de plasma deja un resplandor neon residual." },
+    description: { en: "Dense plasma bloom leaves a neon afterglow.", tr: "Yoğun plazma patlaması neon bir ardıl ışık bırakır.", "pt-BR": "Uma explosão densa de plasma deixa um brilho neon residual.", es: "Una densa explosión de plasma deja un resplandor neón residual." },
   },
   solar_flare: {
     name: { en: "Solar Flare", tr: "Güneş Patlaması" },
@@ -1070,8 +1071,8 @@ const localizeEntityFields = <T extends { id: string }>(item: T, language: Langu
 const getLanguageTextFallback = (text: string, language: Language): string | undefined => {
   if (language === "ru") return getRussianTextFallback(text);
   if (language === "zh-CN") return getSimplifiedChineseTextFallback(text);
-  if (language === "pt-BR") return PT_BR_TEXT_FALLBACKS[text];
-  if (language === "es") return ES_TEXT_FALLBACKS[text];
+  if (language === "pt-BR") return PT_BR_TEXT_FALLBACKS[text] ?? V104_PT_BR[text];
+  if (language === "es") return ES_TEXT_FALLBACKS[text] ?? V104_ES[text];
   return undefined;
 };
 
@@ -1305,7 +1306,7 @@ const getAchievementTranslation = (id: string, language: Language): { name: stri
         return makeResult(
           CRIT_PICKUP_ACHIEVEMENT_NAMES_ES,
           index,
-          amount === 1 ? "Recoge tu primer pickup critico" : `Recoge ${amount} pickups criticos`,
+          amount === 1 ? "Recoge tu primer pickup crítico" : `Recoge ${amount} pickups críticos`,
         );
       }
     }
@@ -1323,7 +1324,7 @@ const getAchievementTranslation = (id: string, language: Language): { name: stri
         return makeResult(
           CRIT_ACHIEVEMENT_NAMES_ES,
           index,
-          amount === 1 ? "Da tu primer golpe critico" : `Da ${formatCompactValue(amount)} golpes criticos`,
+          amount === 1 ? "Da tu primer golpe crítico" : `Da ${formatCompactValue(amount)} golpes críticos`,
         );
       }
     }
@@ -1564,7 +1565,7 @@ const getAchievementTranslation = (id: string, language: Language): { name: stri
   if (id.startsWith("prestige_spent_")) {
     const amount = Number(id.replace("prestige_spent_", ""));
     const index = getTierIndex(PRESTIGE_SPENT_ACHIEVEMENT_TIERS, amount);
-    if (index >= 0) return makeResult(PRESTIGE_SPENT_ACHIEVEMENT_NAMES_TR, index, `${formatCompactValue(amount)} prestij puani harca`);
+    if (index >= 0) return makeResult(PRESTIGE_SPENT_ACHIEVEMENT_NAMES_TR, index, `${formatCompactValue(amount)} prestij puanı harca`);
   }
 
   if (id.startsWith("prestige_upgrades_")) {

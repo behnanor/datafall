@@ -341,10 +341,9 @@ export default function GamePage() {
   }, [playSound]);
 
   const handleOpenPrestige = useCallback(() => {
-    completeTutorialObjective?.('view_prestige');
     playSound('prestige_realm');
     startTransition(() => setIsPrestigeOpen(true));
-  }, [completeTutorialObjective, playSound]);
+  }, [playSound]);
 
   const handleOpenCryptoRelicShop = useCallback(() => {
     playSound('buy_black');
@@ -1649,15 +1648,13 @@ export default function GamePage() {
     // Map objectives to UI element hints
     const highlightMap: Record<string, string> = {
       'click_core': 'core',
-      'right_click_core': 'core_right',
-      'camera_zoom': 'camera_zoom',
-      'camera_pan': 'camera_pan',
       'buy_first_upgrade': 'upgrades',
       'convert_data': 'sell_button',
-      'view_prestige': 'prestige_button',
-      'open_cosmetics': 'cosmetics_button',
+      'unlock_click_tab': 'upgrades',
+      'buy_click_upgrade': 'upgrades',
+      'unlock_mining': 'upgrades',
       'open_mining_tab': 'crypto_tab',
-      'earn_crypto': 'crypto_display',
+      'earn_crypto': 'crypto_tab',
       'open_ascend': 'ascend_button',
     };
     
@@ -1768,24 +1765,6 @@ export default function GamePage() {
     return clickResourceBurst(resource, count, meta);
   }, [clickResourceBurst]);
 
-  const handleCoreRightClick = useCallback(() => {
-    if (!tutorial.skipped && !isTutorialComplete) {
-      completeTutorialObjective('right_click_core');
-    }
-  }, [tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
-
-  const handleTutorialCameraZoom = useCallback(() => {
-    if (!tutorial.skipped && !isTutorialComplete) {
-      completeTutorialObjective('camera_zoom');
-    }
-  }, [tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
-
-  const handleTutorialCameraPan = useCallback(() => {
-    if (!tutorial.skipped && !isTutorialComplete) {
-      completeTutorialObjective('camera_pan');
-    }
-  }, [tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
-
   // Wrapped sellResource to track tutorial
   const handleSellResource = useCallback((from: ResourceType, amount: number) => {
     sellResource(from, amount);
@@ -1823,26 +1802,16 @@ export default function GamePage() {
   useEffect(() => {
     if (tutorial.skipped || isTutorialComplete) return;
 
-    // Phase 1: buy_first_upgrade
+    // Core-loop purchases (v1.04 tutorial order): miner -> Click tab -> click upgrade -> Mining.
+    const owned = (id: string) => (upgrades.find(u => u.id === id)?.count ?? 0) > 0;
     const totalUpgrades = upgrades.reduce((sum, u) => sum + u.count, 0);
-    if (totalUpgrades > 0) {
-      completeTutorialObjective('buy_first_upgrade');
+    if (totalUpgrades > 0) completeTutorialObjective('buy_first_upgrade');
+    if (owned('unlock_click_upgrades')) completeTutorialObjective('unlock_click_tab');
+    if (upgrades.some(u => u.category === 'click_upgrades' && !u.unlockedCategory && u.count > 0)) {
+      completeTutorialObjective('buy_click_upgrade');
     }
+    if (owned('unlock_crypto_mining')) completeTutorialObjective('unlock_mining');
   }, [upgrades, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
-
-  // Track prestige menu open for tutorial
-  useEffect(() => {
-    if (isPrestigeOpen && !tutorial.skipped && !isTutorialComplete) {
-      completeTutorialObjective('view_prestige');
-    }
-  }, [isPrestigeOpen, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
-
-  // Track cosmetics market open for tutorial
-  useEffect(() => {
-    if (isCosmeticsOpen && !tutorial.skipped && !isTutorialComplete) {
-      completeTutorialObjective('open_cosmetics');
-    }
-  }, [isCosmeticsOpen, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
 
   // Track mining segment and crypto gain for tutorial
   useEffect(() => {
@@ -2297,9 +2266,6 @@ export default function GamePage() {
         <MainView
           onClick={handleCoreClick}
           onAutoClickBurst={handleCoreAutoClickBurst}
-          onRightClick={handleCoreRightClick}
-          onTutorialCameraZoom={handleTutorialCameraZoom}
-          onTutorialCameraPan={handleTutorialCameraPan}
           onAddDebugData={addDebugData}
           onAddDebugCredits={addDebugCredits}
           onAddDebugCrypto={addDebugCrypto}

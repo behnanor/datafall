@@ -165,48 +165,157 @@ const PRESTIGE_UPGRADE_TEXTS: Record<string, TextEntry> = {
 
 const TUTORIAL_PHASE_TEXTS: Array<{ title: LocalizedText; description: LocalizedText }> = [
   {
-    title: { en: "Boot Sequence", tr: "Başlangıç Dizisi", "pt-BR": "Sequência de Inicialização", es: "Secuencia de Arranque" },
-    description: { en: "Learn click controls, camera zoom, and camera pan.", tr: "Tıklama kontrollerini, kamera yakınlaştırmayı ve kaydırmayı öğren.", "pt-BR": "Aprenda os controles de clique, zoom e movimento da câmera.", es: "Aprende los controles de clic, zoom y movimiento de camara." },
-  },
-  {
-    title: { en: "Expansion", tr: "Genişleme", "pt-BR": "Expansão", es: "Expansión" },
-    description: { en: "Buy your first upgrade and convert data into nodes.", tr: "İlk yükseltmeni al ve veriyi dizine dönüştür.", "pt-BR": "Compre sua primeira melhoria e converta dados em Nodes.", es: "Compra tu primera mejora y convierte datos en nodos." },
-  },
-  {
-    title: { en: "Prestige", tr: "Prestij", "pt-BR": "Prestígio", es: "Prestígio" },
-    description: { en: "Open the Prestige Shop to review long-run progression.", tr: "Uzun vadeli ilerlemeyi incelemek için Prestij Dükkânı'nı aç.", "pt-BR": "Abra a Loja de Prestígio para revisar o progresso de longo prazo.", es: "Abre la Tienda de Prestígio para revisar la progresión a largo plazo." },
-  },
-  {
-    title: { en: "Cosmetics", tr: "Kozmetikler", "pt-BR": "Cosméticos", es: "Cosméticos" },
-    description: { en: "Open the Cosmetics Market to explore customization.", tr: "Özelleştirmeleri görmek için Kozmetik Pazarı'nı aç.", "pt-BR": "Abra o Mercado Cosmético para explorar personalizações.", es: "Abre el Mercado Cosmético para explorar personalizaciones." },
-  },
-  {
-    title: { en: "Mining", tr: "Madencilik", "pt-BR": "Mineração", es: "Minería" },
-    description: { en: "Unlock the Mining segment and start earning crypto.", tr: "Madencilik bölümünün kilidini aç ve kripto kazanmaya başla.", "pt-BR": "Desbloqueie a aba de Mineração e comece a ganhar cripto.", es: "Desbloquea la sección de Minería y empieza a ganar cripto." },
-  },
-  {
-    title: { en: "Ascension", tr: "Yükseliş", "pt-BR": "Ascensão", es: "Ascensión" },
+    title: { en: "Boot Sequence", tr: "Başlangıç Dizisi", "pt-BR": "Sequência de Inicialização", es: "Secuencia de Arranque", ru: "Загрузка системы", "zh-CN": "启动序列" },
     description: {
-      en: "Open the Ascend window and review what will reset.\nTip: You can collapse or expand this panel with the arrow button.",
-      tr: "Yükseliş penceresini aç ve nelerin sıfırlanacağını incele.\nİpucu: Bu paneli ok tuşuyla daraltıp genişletebilirsin.",
-      "pt-BR": "Abra a janela de Ascensão e revise o que será resetado.\nDica: Você pode recolher ou expandir este painel pelo botão de seta.",
-      es: "Abre la ventana de Ascensión y revisa que se reiniciara.\nConsejo: puedes contraer o expandir este panel con el boton de flecha.",
+      en: "Click the core to pull data, then let a miner do it for you.",
+      tr: "Veri çekmek için çekirdeğe tıkla, sonra bu işi bir madenciye bırak.",
+      "pt-BR": "Clique no núcleo para extrair dados e depois deixe um minerador fazer isso por você.",
+      es: "Haz clic en el núcleo para extraer datos y luego deja que un minero lo haga por ti.",
+      ru: "Кликайте по ядру, чтобы добывать данные, а потом поручите это майнеру.",
+      "zh-CN": "点击核心获取数据，然后让矿机替你自动采集。",
+    },
+  },
+  {
+    title: { en: "Data Market", tr: "Veri Pazarı", "pt-BR": "Mercado de Dados", es: "Mercado de Datos", ru: "Рынок данных", "zh-CN": "数据市场" },
+    description: {
+      en: "Sell data for Nodes and use them to unlock the Click tab.",
+      tr: "Veriyi dizine çevir ve Tıklama sekmesinin kilidini açmak için kullan.",
+      "pt-BR": "Venda dados por Nodes e use-os para desbloquear a aba de Clique.",
+      es: "Vende datos por nodos y úsalos para desbloquear la pestaña de Clic.",
+      ru: "Продавайте данные за узлы и откройте ими вкладку клика.",
+      "zh-CN": "把数据换成节点，用它们解锁点击分支。",
+    },
+  },
+  {
+    title: { en: "Click Power", tr: "Tıklama Gücü", "pt-BR": "Poder de Clique", es: "Poder de Clic", ru: "Сила клика", "zh-CN": "点击强化" },
+    description: {
+      en: "Make every click stronger, then open the Mining protocol.",
+      tr: "Her tıklamanı güçlendir, sonra Madencilik protokolünü aç.",
+      "pt-BR": "Deixe cada clique mais forte e depois abra o protocolo de Mineração.",
+      es: "Haz cada clic más fuerte y luego abre el protocolo de Minería.",
+      ru: "Усильте каждый клик, затем откройте протокол майнинга.",
+      "zh-CN": "强化每一次点击，然后开启挖矿协议。",
+    },
+  },
+  {
+    title: { en: "Mining", tr: "Madencilik", "pt-BR": "Mineração", es: "Minería", ru: "Майнинг", "zh-CN": "挖矿" },
+    description: {
+      en: "Mining rigs turn Nodes into crypto. Crypto is what you need to Ascend.",
+      tr: "Madencilik donanımları dizini kriptoya çevirir. Yükselmek için kripto gerekir.",
+      "pt-BR": "Equipamentos de mineração transformam Nodes em cripto. Você precisa de cripto para Ascender.",
+      es: "Los equipos de minería convierten nodos en cripto. Necesitas cripto para Ascender.",
+      ru: "Майнинг-фермы превращают узлы в крипту. Крипта нужна для вознесения.",
+      "zh-CN": "矿机把节点变成加密币。飞升需要加密币。",
+    },
+  },
+  {
+    title: { en: "Ascension", tr: "Yükseliş", "pt-BR": "Ascensão", es: "Ascensión", ru: "Вознесение", "zh-CN": "飞升" },
+    description: {
+      en: "Collect enough crypto, then Ascend for Prestige. After your first ascension, spend Prestige in the Prestige Shop and check the Cosmetics Market.",
+      tr: "Yeterli kripto topla, sonra Prestij için Yüksel. İlk yükselişten sonra Prestiji Prestij Dükkânı'nda harca ve Kozmetik Pazarı'na göz at.",
+      "pt-BR": "Junte cripto suficiente e Ascenda para ganhar Prestígio. Depois da primeira ascensão, gaste Prestígio na Loja de Prestígio e confira o Mercado Cosmético.",
+      es: "Reúne suficiente cripto y Asciende para ganar Prestigio. Tras tu primera ascensión, gasta Prestigio en la Tienda de Prestigio y mira el Mercado Cosmético.",
+      ru: "Накопите достаточно крипты и вознеситесь ради престижа. После первого вознесения тратьте престиж в магазине престижа и загляните на рынок косметики.",
+      "zh-CN": "攒够加密币后飞升以获得威望。首次飞升后，在威望商店花费威望，并看看外观市场。",
     },
   },
 ];
 
 const TUTORIAL_OBJECTIVE_TEXTS: Record<string, LocalizedText> = {
-  click_core: { en: "Click to generate your first resources.", tr: "İlk kaynaklarını üretmek için tıkla.", "pt-BR": "Clique para gerar seus primeiros recursos.", es: "Haz clic para generar tus primeros recursos." },
-  right_click_core: { en: "Right-click also works. Try a right-click on the core.", tr: "Sağ tık da çalışır. Çekirdeğin üstünde bir kez sağ tık dene.", "pt-BR": "Clique com o botão direito também funciona. Teste no núcleo.", es: "El clic derecho también funciona. Pruebalo sobre el núcleo." },
-  camera_zoom: { en: "Use the mouse wheel (middle scroll) to zoom the camera.", tr: "Kamerayı yakınlaştırmak için fare tekerini kullan.", "pt-BR": "Use a roda do mouse para dar zoom na câmera.", es: "Usa la rueda del raton para acercar la camara." },
-  camera_pan: { en: "Hold middle mouse button and drag to move the camera.", tr: "Kamerayı hareket ettirmek için orta tuşa basılı tutup sürükle.", "pt-BR": "Segure o botão do meio e arraste para mover a câmera.", es: "Mantén pulsado el boton central y arrastra para mover la camara." },
-  buy_first_upgrade: { en: "Buy your first upgrade.", tr: "İlk yükseltmeni satın al.", "pt-BR": "Compre sua primeira melhoria.", es: "Compra tu primera mejora." },
+  click_core: {
+    en: "Click the core to generate your first data.",
+    tr: "İlk verini üretmek için çekirdeğe tıkla.",
+    "pt-BR": "Clique no núcleo para gerar seus primeiros dados.",
+    es: "Haz clic en el núcleo para generar tus primeros datos.",
+    ru: "Кликните по ядру, чтобы получить первые данные.",
+    "zh-CN": "点击核心，生成你的第一批数据。",
+  },
+  buy_first_upgrade: {
+    en: "Buy a Basic Data Miner in the Factory tab (10 data).",
+    tr: "Üretim sekmesinden bir Temel Veri Madencisi al (10 veri).",
+    "pt-BR": "Compre um Minerador Básico de Dados na aba Produção (10 dados).",
+    es: "Compra un Minero Básico de Datos en la pestaña Producción (10 datos).",
+    ru: "Купите базовый майнер данных во вкладке «Производство» (10 данных).",
+    "zh-CN": "在生产分支购买一台基础数据采集器（10 数据）。",
+  },
   convert_data: { en: "Convert data into nodes using the Convert controls. (100 Data = 1 Node)", tr: "Dönüştür kontrollerini kullanarak veriyi dizine çevir. (100 Veri = 1 Dizin)", "pt-BR": "Converta dados em Nodes usando os controles de Conversão. (100 Dados = 1 Node)", es: "Convierte datos en nodos usando los controles de Conversión. (100 Datos = 1 Nodo)" },
-  view_prestige: { en: "Open the Prestige Shop.", tr: "Prestij Dükkânı'nı aç.", "pt-BR": "Abra a Loja de Prestígio.", es: "Abre la Tienda de Prestígio." },
-  open_cosmetics: { en: "Open the Cosmetics Market.", tr: "Kozmetik Pazarı'nı aç.", "pt-BR": "Abra o Mercado Cosmético.", es: "Abre el Mercado Cosmético." },
-  open_mining_tab: { en: "Open the Mining segment in Upgrades (unlock it via Mining Protocol Access in Click segment).", tr: "Yükseltmeler içinde Madencilik bölümünü aç (Tıklama bölümündeki Madencilik Protokolü Erişimi ile kilidi aç).", "pt-BR": "Abra a aba de Mineração em Melhorias (desbloqueie por Acesso ao Protocolo de Mineração na aba de Clique).", es: "Abre la pestana de Minería en Mejoras (desbloqueala mediante Acceso al Protocolo de Minería en la pestana de Clic)." },
-  earn_crypto: { en: "Start earning crypto from Mining upgrades.", tr: "Madencilik yükseltmelerinden kripto kazanmaya başla.", "pt-BR": "Comece a ganhar cripto com as melhorias de Mineração.", es: "Empieza a ganar cripto con las mejoras de Minería." },
+  unlock_click_tab: {
+    en: "Buy Manual Intrusion Protocol (5 Nodes) to unlock the Click tab.",
+    tr: "Tıklama sekmesini açmak için Manuel Sızma Protokolü'nü al (5 Dizin).",
+    "pt-BR": "Compre o Protocolo de Intrusão Manual (5 Nodes) para desbloquear a aba de Clique.",
+    es: "Compra el Protocolo de Intrusión Manual (5 nodos) para desbloquear la pestaña de Clic.",
+    ru: "Купите «Протокол ручного вторжения» (5 узлов), чтобы открыть вкладку клика.",
+    "zh-CN": "购买“手动入侵协议”（5 节点）以解锁点击分支。",
+  },
+  buy_click_upgrade: {
+    en: "Buy Manual Override in the Click tab.",
+    tr: "Tıklama sekmesinden Manuel Geçersiz Kılma'yı al.",
+    "pt-BR": "Compre Sobrescrita Manual na aba de Clique.",
+    es: "Compra Anulación Manual en la pestaña de Clic.",
+    ru: "Купите «Ручное управление» во вкладке клика.",
+    "zh-CN": "在点击分支购买“手动接管”。",
+  },
+  unlock_mining: {
+    en: "Buy Mining Protocol Access in the Click tab to unlock Mining.",
+    tr: "Madenciliği açmak için Tıklama sekmesinden Madencilik Protokolü Erişimi'ni al.",
+    "pt-BR": "Compre Acesso ao Protocolo de Mineração na aba de Clique para desbloquear a Mineração.",
+    es: "Compra Acceso al Protocolo de Minería en la pestaña de Clic para desbloquear la Minería.",
+    ru: "Купите «Доступ к протоколу майнинга» во вкладке клика, чтобы открыть майнинг.",
+    "zh-CN": "在点击分支购买“挖矿协议访问”以解锁挖矿。",
+  },
+  open_mining_tab: {
+    en: "Open the Mining tab.",
+    tr: "Madencilik sekmesini aç.",
+    "pt-BR": "Abra a aba de Mineração.",
+    es: "Abre la pestaña de Minería.",
+    ru: "Откройте вкладку майнинга.",
+    "zh-CN": "打开挖矿分支。",
+  },
+  earn_crypto: {
+    en: "Buy a Basic Mining Rig and start earning crypto.",
+    tr: "Bir Temel Madencilik Düzeni al ve kripto kazanmaya başla.",
+    "pt-BR": "Compre uma Rig Básica de Mineração e comece a ganhar cripto.",
+    es: "Compra un Rig Básico de Minería y empieza a ganar cripto.",
+    ru: "Купите базовую майнинг-установку и начните получать крипту.",
+    "zh-CN": "购买一台基础挖矿设备，开始赚取加密币。",
+  },
   open_ascend: { en: "Open the Ascend window.", tr: "Yükseliş penceresini aç.", "pt-BR": "Abra a janela de Ascensão.", es: "Abre la ventana de Ascensión." },
+};
+
+const TUTORIAL_UI_TEXTS = {
+  cameraTip: {
+    en: "Tip: mouse wheel zooms, hold the middle button and drag to move the camera.",
+    tr: "İpucu: fare tekeri yakınlaştırır, orta tuşa basılı tutup sürükleyerek kamerayı kaydırırsın.",
+    "pt-BR": "Dica: a roda do mouse dá zoom; segure o botão do meio e arraste para mover a câmera.",
+    es: "Consejo: la rueda del ratón hace zoom; mantén el botón central y arrastra para mover la cámara.",
+    ru: "Подсказка: колесо мыши приближает, зажмите среднюю кнопку и тяните, чтобы двигать камеру.",
+    "zh-CN": "提示：滚轮缩放镜头，按住鼠标中键拖动可移动镜头。",
+  },
+  reward: {
+    en: "Step reward: +{amount} {resource}",
+    tr: "Adım ödülü: +{amount} {resource}",
+    "pt-BR": "Recompensa da etapa: +{amount} {resource}",
+    es: "Recompensa del paso: +{amount} {resource}",
+    ru: "Награда за этап: +{amount} {resource}",
+    "zh-CN": "阶段奖励：+{amount} {resource}",
+  },
+  step: {
+    en: "Step {current}/{total}",
+    tr: "Adım {current}/{total}",
+    "pt-BR": "Etapa {current}/{total}",
+    es: "Paso {current}/{total}",
+    ru: "Этап {current}/{total}",
+    "zh-CN": "第 {current}/{total} 步",
+  },
+} satisfies Record<string, LocalizedText>;
+
+export const getTutorialUiText = (
+  key: keyof typeof TUTORIAL_UI_TEXTS,
+  language: Language,
+  params: Record<string, string | number> = {},
+): string => {
+  const text = localizeText(TUTORIAL_UI_TEXTS[key], language);
+  return text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match));
 };
 
 const RESOURCE_LABELS: Record<string, LocalizedText> = {

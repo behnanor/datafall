@@ -15,6 +15,8 @@ import { getSteamLeaderboardEntries, isSteamAvailable, setSteamLeaderboardScore,
 import { ResourcePanel } from '@/components/game/ResourcePanel';
 import { UpgradePanel } from '@/components/game/UpgradePanel';
 import { MainView } from '@/components/game/MainView';
+import { usePublishLiveResources } from '@/lib/liveResources';
+import { useStableCallback } from '@/lib/useStableCallback';
 import { FloatingPickup } from '@/components/game/FloatingPickup';
 import { TutorialPanel } from '@/components/game/TutorialPanel';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
@@ -163,6 +165,7 @@ export default function GamePage() {
       resetGame, setFullscreen, setWindowed, 
       saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder 
     } = useGame();
+  usePublishLiveResources(resources.data.amount, resources.credits.amount, resources.data.perSecond);
 
   const currentTutorialPhase = useMemo(() => getCurrentTutorialPhase(), [getCurrentTutorialPhase]);
   const currentUtcCycleKey = useMemo(() => getCurrentUtcDateStamp(), []);
@@ -661,17 +664,19 @@ export default function GamePage() {
   const ownedLootBoxSkinsSet = useMemo(() => new Set(cosmetics.ownedLootBoxSkins), [cosmetics.ownedLootBoxSkins]);
   const ownedMachineBoxSkinsSet = useMemo(() => new Set(cosmetics.ownedMachineBoxSkins), [cosmetics.ownedMachineBoxSkins]);
   const ownedAscensionPetsSet = useMemo(() => new Set(cosmetics.ownedAscensionPets), [cosmetics.ownedAscensionPets]);
-  const equippedSkin = getActiveSkin();
-  const equippedTheme = getActiveTheme();
-  const equippedAccessory = getActiveAccessory();
-  const equippedCape = getActiveCape();
-  const equippedWing = getActiveWing();
-  const equippedHeadStyle = getActiveHeadStyle();
-  const equippedPet = getActivePet();
-  const equippedAscensionPet = getActiveAscensionPet();
-  const equippedClickEffect = getActiveClickEffect();
-  const equippedLootBoxSkin = getActiveLootBoxSkin();
-  const equippedMachineBoxSkin = getActiveMachineBoxSkin();
+  // v1.04 CPU: the getters return a fresh localized object on every call. Memoize so the room view's
+  // memo checks hold (they were failing on every tick and re-rendering the whole room).
+  const equippedSkin = useMemo(() => getActiveSkin(), [getActiveSkin]);
+  const equippedTheme = useMemo(() => getActiveTheme(), [getActiveTheme]);
+  const equippedAccessory = useMemo(() => getActiveAccessory(), [getActiveAccessory]);
+  const equippedCape = useMemo(() => getActiveCape(), [getActiveCape]);
+  const equippedWing = useMemo(() => getActiveWing(), [getActiveWing]);
+  const equippedHeadStyle = useMemo(() => getActiveHeadStyle(), [getActiveHeadStyle]);
+  const equippedPet = useMemo(() => getActivePet(), [getActivePet]);
+  const equippedAscensionPet = useMemo(() => getActiveAscensionPet(), [getActiveAscensionPet]);
+  const equippedClickEffect = useMemo(() => getActiveClickEffect(), [getActiveClickEffect]);
+  const equippedLootBoxSkin = useMemo(() => getActiveLootBoxSkin(), [getActiveLootBoxSkin]);
+  const equippedMachineBoxSkin = useMemo(() => getActiveMachineBoxSkin(), [getActiveMachineBoxSkin]);
   const activeLootBoxColors = equippedLootBoxSkin.colors;
   const isBlackMarketUnlockedByUpgrade = useMemo(
     () => (upgrades.find(u => u.id === 'unlock_black_market')?.count ?? 0) > 0,
@@ -1767,6 +1772,29 @@ export default function GamePage() {
     return clickResourceBurst(resource, count, meta);
   }, [clickResourceBurst]);
 
+  // v1.04 CPU: MainView is memoized, but several of these handlers change identity on every game tick
+  // (they depend on resources), which re-rendered the whole room view each tick. Pass stable wrappers.
+  const mvHandleCoreClick = useStableCallback(handleCoreClick);
+  const mvHandleCoreAutoClickBurst = useStableCallback(handleCoreAutoClickBurst);
+  const mvAddDebugData = useStableCallback(addDebugData);
+  const mvAddDebugCredits = useStableCallback(addDebugCredits);
+  const mvAddDebugCrypto = useStableCallback(addDebugCrypto);
+  const mvAddDebugPrestige = useStableCallback(addDebugPrestige);
+  const mvAddDebugAscensionCount = useStableCallback(addDebugAscensionCount);
+  const mvSpawnDebugPickup = useStableCallback(spawnDebugPickup);
+  const mvSpawnAllDebugPickups = useStableCallback(spawnAllDebugPickups);
+  const mvForceDebugTimeWarp = useStableCallback(forceDebugTimeWarp);
+  const mvHandleClearLastUpgradeInfo = useStableCallback(handleClearLastUpgradeInfo);
+  const mvHandleClearAchievementToast = useStableCallback(handleClearAchievementToast);
+  const mvHandleClearPickupToast = useStableCallback(handleClearPickupToast);
+  const mvClearTimeWarpFeedback = useStableCallback(clearTimeWarpFeedback);
+  const mvOnTimeWarpMiniGameClick = useStableCallback(onTimeWarpMiniGameClick);
+  const mvUpdateMachinePosition = useStableCallback(updateMachinePosition);
+  const mvRemoveMachinePosition = useStableCallback(removeMachinePosition);
+  const mvHandleOpenBlackMarket = useStableCallback(handleOpenBlackMarket);
+  const mvHandleOpenCryptoRelicShop = useStableCallback(handleOpenCryptoRelicShop);
+  const mvHandleOpenParagonLab = useStableCallback(handleOpenParagonLab);
+
   // Wrapped sellResource to track tutorial
   const handleSellResource = useCallback((from: ResourceType, amount: number) => {
     sellResource(from, amount);
@@ -2267,32 +2295,29 @@ export default function GamePage() {
         </div>
       ) : (
         <MainView
-          onClick={handleCoreClick}
-          onAutoClickBurst={handleCoreAutoClickBurst}
-          onAddDebugData={addDebugData}
-          onAddDebugCredits={addDebugCredits}
-          onAddDebugCrypto={addDebugCrypto}
-          onAddDebugPrestige={addDebugPrestige}
-          onAddDebugAscensionCount={addDebugAscensionCount}
-          onSpawnDebugPickup={spawnDebugPickup}
-          onSpawnAllDebugPickups={spawnAllDebugPickups}
-          onForceDebugTimeWarp={forceDebugTimeWarp}
+          onClick={mvHandleCoreClick}
+          onAutoClickBurst={mvHandleCoreAutoClickBurst}
+          onAddDebugData={mvAddDebugData}
+          onAddDebugCredits={mvAddDebugCredits}
+          onAddDebugCrypto={mvAddDebugCrypto}
+          onAddDebugPrestige={mvAddDebugPrestige}
+          onAddDebugAscensionCount={mvAddDebugAscensionCount}
+          onSpawnDebugPickup={mvSpawnDebugPickup}
+          onSpawnAllDebugPickups={mvSpawnAllDebugPickups}
+          onForceDebugTimeWarp={mvForceDebugTimeWarp}
           lastUpgradeInfo={lastUpgradeInfo}
-          onClearUpgrade={handleClearLastUpgradeInfo}
-          dataPerSecond={resources.data.perSecond}
+          onClearUpgrade={mvHandleClearLastUpgradeInfo}
           upgrades={upgrades}
-          totalData={resources.data.amount}
-          totalCredits={resources.credits.amount}
           onAchievementUnlocked={achievementUnlocked}
           onPickupCollected={pickupCollected}
-          onClearAchievement={handleClearAchievementToast}
-          onClearPickup={handleClearPickupToast}
+          onClearAchievement={mvHandleClearAchievementToast}
+          onClearPickup={mvHandleClearPickupToast}
           autoClickBoostEndTime={autoClickBoostEndTime}
           critBoostEndTime={critBoostEndTime}
           activeTimeWarpMiniGame={activeTimeWarpMiniGame}
           timeWarpFeedback={timeWarpFeedback}
-          onClearTimeWarpFeedback={clearTimeWarpFeedback}
-          onTimeWarpMiniGameClick={onTimeWarpMiniGameClick}
+          onClearTimeWarpFeedback={mvClearTimeWarpFeedback}
+          onTimeWarpMiniGameClick={mvOnTimeWarpMiniGameClick}
           themeColors={mainViewThemeColors}
           skinPalette={mainViewSkinPalette}
           activeAccessoryId={equippedAccessory.id}
@@ -2306,16 +2331,16 @@ export default function GamePage() {
           activeMachineBoxSkin={mainViewMachineBoxSkin}
           ascensionLevel={stats.totalAscensions}
           machinePositions={roomLayout.machinePositions}
-          onUpdatePosition={updateMachinePosition}
-          onRemovePosition={removeMachinePosition}
+          onUpdatePosition={mvUpdateMachinePosition}
+          onRemovePosition={mvRemoveMachinePosition}
           tutorialHighlight={tutorialHighlight}
           showBlackMarketShip={isBlackMarketUnlocked}
           reduceSceneGlow={reduceSceneGlow}
-          onOpenBlackMarket={handleOpenBlackMarket}
+          onOpenBlackMarket={mvHandleOpenBlackMarket}
           showCryptoRelicShip={isCryptoRelicShopUnlocked}
-          onOpenCryptoRelicShop={handleOpenCryptoRelicShop}
+          onOpenCryptoRelicShop={mvHandleOpenCryptoRelicShop}
           showParagonShip={isParagonLabUnlocked}
-          onOpenParagonShop={handleOpenParagonLab}
+          onOpenParagonShop={mvHandleOpenParagonLab}
         />
       )}
 

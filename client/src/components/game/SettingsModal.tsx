@@ -5,6 +5,7 @@ import { Volume2, VolumeX, Music, LogOut, Settings, BookOpen, SkipForward, Rotat
 import { Slider } from '@/components/ui/slider';
 import { useI18n, type Language } from '@/lib/i18n';
 import { FPS_CAP_OPTIONS, getFpsCap, setFpsCap, type FpsCap } from '@/lib/fpsLimiter';
+import { canOpenLogsFolder, openLogsFolder } from '@/lib/errorLog';
 import { UI_SCALE_OPTIONS, setUiScale, setClickEffectsEnabled, useDisplayPrefs } from '@/lib/displayPrefs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -447,6 +448,15 @@ export function SettingsModal({
               <div className="text-center mb-6 space-y-1">
                 <p className="text-xs font-mono text-slate-500 uppercase tracking-wider">{import.meta.env.VITE_TEST_BUILD === 'true' ? 'DataFall V1.03 TEST' : 'DataFall V1.03'}</p>
                 <p className="text-[10px] font-mono text-[#ffffff]">{t('settings.autoSave')}</p>
+                {canOpenLogsFolder() && (
+                  <button
+                    type="button"
+                    onClick={openLogsFolder}
+                    className="text-[10px] font-mono text-slate-500 underline hover:text-slate-300"
+                  >
+                    {language === 'tr' ? 'Log klasörünü aç' : language === 'pt-BR' ? 'Abrir pasta de logs' : language === 'es' ? 'Abrir carpeta de registros' : language === 'ru' ? 'Открыть папку логов' : language === 'zh-CN' ? '打开日志文件夹' : 'Open log folder'}
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">

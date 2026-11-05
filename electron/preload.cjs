@@ -34,6 +34,10 @@ contextBridge.exposeInMainWorld("df", {
   // file-based save/load (mirrored by Steam Auto-Cloud)
   saveFile: (data) => ipcRenderer.invoke("df:save-file", data),
   loadFile: (opts) => ipcRenderer.invoke("df:load-file", opts),
+
+  // v1.04 crash diagnostics: write to the local log file / open its folder
+  logError: (text) => ipcRenderer.send("df:log-error", String(text)),
+  openLogsFolder: () => ipcRenderer.send("df:open-logs-folder"),
 });
 
 // Your renderer code (useGame.ts) expects window.electronAPI.
@@ -59,6 +63,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onFlushSaveRequest: (callback) => setFlushSaveHandler(callback),
   importLiveSave: () => ipcRenderer.invoke("df:import-live-save"),
   importDemoSave: () => ipcRenderer.invoke("df:import-demo-save"),
+  logError: (text) => ipcRenderer.send("df:log-error", String(text)),
+  openLogsFolder: () => ipcRenderer.send("df:open-logs-folder"),
 });
 
 

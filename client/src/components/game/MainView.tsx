@@ -4,6 +4,7 @@ import { memo, useRef, useState, useEffect, useMemo, useCallback, type RefObject
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings2, X } from 'lucide-react';
 import { formatNumber } from '@/lib/useGame';
+import { useLiveResource, type LiveResources } from '@/lib/liveResources';
 import type { ResourceType, TimeWarpMiniGameState, TimeWarpResolutionFeedback } from '@/lib/useGame';
 import { CyberpunkRoom, type CharacterReaction, type ThemeColors, type SkinPalette } from './CyberpunkRoom';
 import { localizeInlineText, useI18n } from '@/lib/i18n';
@@ -36,10 +37,7 @@ interface MainViewProps {
   onTutorialCameraPan?: () => void;
   lastUpgradeInfo: { name: string; effect: string } | null;
   onClearUpgrade: () => void;
-  dataPerSecond?: number;
   upgrades?: any[];
-  totalData?: number;
-  totalCredits?: number;
   onAchievementUnlocked?: boolean;
   onPickupCollected?: boolean;
   onClearAchievement?: () => void;
@@ -178,6 +176,12 @@ interface BoostStatusOverlaysProps {
   critWindowLabel: string;
 }
 
+// Only this tiny label re-renders on each resource tick (see liveResources.ts).
+function LiveNumber({ field, floor = false, prefix = '', suffix = '' }: { field: keyof LiveResources; floor?: boolean; prefix?: string; suffix?: string }) {
+  const value = useLiveResource(field);
+  return <>{prefix}{formatNumber(floor ? Math.floor(value) : value)}{suffix}</>;
+}
+
 const BoostStatusOverlays = memo(function BoostStatusOverlays({
   autoClickBoostEndTime,
   critBoostEndTime,
@@ -264,7 +268,7 @@ const BoostStatusOverlays = memo(function BoostStatusOverlays({
   );
 });
 
-export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRightClick, onAddDebugData, onAddDebugCredits, onAddDebugCrypto, onAddDebugPrestige, onAddDebugAscensionCount, onSpawnDebugPickup, onSpawnAllDebugPickups, onForceDebugTimeWarp, onTutorialCameraZoom, onTutorialCameraPan, lastUpgradeInfo, onClearUpgrade, dataPerSecond = 0, upgrades = [], totalData = 0, totalCredits = 0, onAchievementUnlocked = false, onPickupCollected = false, onClearAchievement, onClearPickup, autoClickBoostEndTime = 0, critBoostEndTime = 0, activeTimeWarpMiniGame = null, timeWarpFeedback = null, onClearTimeWarpFeedback, onTimeWarpMiniGameClick, themeColors, skinPalette, activeAccessoryId = 'none', activeCapeId = 'none', activeWingId = 'none', activeHeadStyleId = 'default', activePetId = 'none', activeAscensionPetId = 'none', activeClickEffectId = 'none', abyssHue = null, activeMachineBoxSkin, ascensionLevel = 0, machinePositions = [], onUpdatePosition, tutorialHighlight, showBlackMarketShip = false, onOpenBlackMarket, showCryptoRelicShip = false, onOpenCryptoRelicShop, showParagonShip = false, onOpenParagonShop, reduceSceneGlow = false }: MainViewProps) {
+export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRightClick, onAddDebugData, onAddDebugCredits, onAddDebugCrypto, onAddDebugPrestige, onAddDebugAscensionCount, onSpawnDebugPickup, onSpawnAllDebugPickups, onForceDebugTimeWarp, onTutorialCameraZoom, onTutorialCameraPan, lastUpgradeInfo, onClearUpgrade, upgrades = [], onAchievementUnlocked = false, onPickupCollected = false, onClearAchievement, onClearPickup, autoClickBoostEndTime = 0, critBoostEndTime = 0, activeTimeWarpMiniGame = null, timeWarpFeedback = null, onClearTimeWarpFeedback, onTimeWarpMiniGameClick, themeColors, skinPalette, activeAccessoryId = 'none', activeCapeId = 'none', activeWingId = 'none', activeHeadStyleId = 'default', activePetId = 'none', activeAscensionPetId = 'none', activeClickEffectId = 'none', abyssHue = null, activeMachineBoxSkin, ascensionLevel = 0, machinePositions = [], onUpdatePosition, tutorialHighlight, showBlackMarketShip = false, onOpenBlackMarket, showCryptoRelicShip = false, onOpenCryptoRelicShop, showParagonShip = false, onOpenParagonShop, reduceSceneGlow = false }: MainViewProps) {
   const { language } = useI18n();
   const l = useCallback((en: string, tr: string, pt: string, es?: string, ru?: string) => (
     localizeInlineText(language, en, tr, pt, es, ru)
@@ -1098,7 +1102,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
             className="font-mono font-bold text-cyan-400 glow-text tracking-tight"
             style={{ fontSize: `clamp(1.5rem, 2.5rem, 3rem)` }}
           >
-            {formatNumber(Math.floor(totalData))}
+            <LiveNumber field="data" floor />
           </div>
           <div className="text-xs font-mono text-cyan-400/60 uppercase tracking-widest mt-2">
             {l('Total Data', 'Toplam Veri', 'Dados Totais', 'Datos Totales')}
@@ -1110,7 +1114,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
             className="font-mono font-bold text-amber-400 glow-text tracking-tight"
             style={{ fontSize: `clamp(1.5rem, 2.5rem, 3rem)` }}
           >
-            {formatNumber(Math.floor(totalCredits))}
+            <LiveNumber field="credits" floor />
           </div>
           <div className="text-xs font-mono text-amber-400/60 uppercase tracking-widest mt-2">
             {nodesLabel}
@@ -1332,7 +1336,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
           {productionRateLabel}
         </div>
         <div className="text-4xl font-mono font-bold text-cyan-400 glow-text tracking-tight">
-          +{formatNumber(dataPerSecond)}/s
+          <LiveNumber field="dataPerSecond" prefix="+" suffix="/s" />
         </div>
       </div>
 
@@ -1506,9 +1510,9 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
           </div>
 
           <div className="mt-2 space-y-1 text-white/80">
-            <div><span className="text-white/60">{l('Total Data:', 'Toplam Veri:', 'Dados Totais:', 'Datos Totales:')}</span> {formatNumber(totalData)}</div>
-            <div><span className="text-white/60">{nodesLabel}:</span> {formatNumber(totalCredits)}</div>
-            <div><span className="text-white/60">DPS:</span> {formatNumber(dataPerSecond)}</div>
+            <div><span className="text-white/60">{l('Total Data:', 'Toplam Veri:', 'Dados Totais:', 'Datos Totales:')}</span> <LiveNumber field="data" /></div>
+            <div><span className="text-white/60">{nodesLabel}:</span> <LiveNumber field="credits" /></div>
+            <div><span className="text-white/60">DPS:</span> <LiveNumber field="dataPerSecond" /></div>
             <div><span className="text-white/60">{l('Tutorial Highlight:', 'Eğitim Vurgusu:', 'Destaque do Tutorial:', 'Resaltado del Tutorial:')}</span> {tutorialHighlight || '-'}</div>
           </div>
 

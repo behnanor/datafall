@@ -1,11 +1,16 @@
 // Global frame-rate cap.
 // requestAnimationFrame normally runs at the monitor refresh rate (144/240Hz on gaming monitors).
-// We wrap requestAnimationFrame so callbacks run at most `cap` times per second.
-// Two kinds of animation bypass requestAnimationFrame and run on the compositor at full refresh:
-//  - framer-motion's hardware-accelerated (WAAPI) opacity/transform animations: we hide
-//    Element.prototype.animate so framer falls back to its rAF-driven JS animations.
-//  - infinite CSS keyframe animations (animate-pulse, animate-spin, index.css loops): we pause
-//    them and step their currentTime from the capped loop.
+// We wrap requestAnimationFrame so callbacks (framer-motion JS animations, canvas effects) run at most
+// `cap` times per second.
+// Infinite CSS keyframe animations (animate-pulse, animate-spin, index.css loops) bypass rAF and run at
+// full refresh; on a screen faster than the cap we pause them and step their currentTime from the
+// capped loop.
+// v1.04 CPU fixes:
+//  - framer-motion's WAAPI (compositor) animations are left alone. v1.03 hid Element.prototype.animate,
+//    which moved those cheap GPU animations onto the main thread as JS, so the cap raised CPU use.
+//  - CSS stepping only runs when the screen refreshes faster than the cap (a 60 cap on a 60Hz screen
+//    does nothing now), and the expensive document.getAnimations() scan runs twice a second instead of
+//    every frame.
 // MUST be imported before anything that captures requestAnimationFrame (see main.tsx).
 
 export const FPS_CAP_OPTIONS = [30, 60, 120, 0] as const; // 0 = unlimited
@@ -40,15 +45,6 @@ export function setFpsCap(cap: FpsCap) {
   onCapChange();
 }
 
-// framer-motion checks Object.hasOwnProperty(Element.prototype, 'animate') once, on first animation.
-if (typeof Element !== 'undefined' && Object.prototype.hasOwnProperty.call(Element.prototype, 'animate')) {
-  try {
-    delete (Element.prototype as { animate?: unknown }).animate;
-  } catch {
-    // ignore
-  }
-}
-
 if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
   const nativeRaf = window.requestAnimationFrame.bind(window);
   const nativeCancel = window.cancelAnimationFrame.bind(window);
@@ -60,6 +56,7 @@ if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'fu
 
   const pump = (now: number) => {
     scheduled = 0;
+    measureFrame(now);
     const minGap = currentCap > 0 ? 1000 / currentCap : 0;
     // Small tolerance so a 60 cap on a 60Hz screen never drops to 30.
     if (minGap > 0 && now - lastFrame < minGap - 2) {
@@ -95,10 +92,31 @@ if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'fu
     }
   };
 
+  // Display refresh interval, measured from native frames (median of recent gaps).
+  const gaps: number[] = [];
+  let lastNative = 0;
+  let displayFrameMs = 1000 / 60;
+  const measureFrame = (now: number) => {
+    if (lastNative) {
+      const gap = now - lastNative;
+      if (gap > 2 && gap < 100) {
+        gaps.push(gap);
+        if (gaps.length > 30) gaps.shift();
+        const sorted = [...gaps].sort((x, y) => x - y);
+        displayFrameMs = sorted[Math.floor(sorted.length / 2)];
+      }
+    }
+    lastNative = now;
+  };
+  // Stepping only helps when the screen draws more often than the cap allows.
+  const cssStepNeeded = () => currentCap > 0 && displayFrameMs < 1000 / currentCap - 2;
+
   // Infinite CSS animations we paused and now step manually.
   const steppedCss = new Set<Animation>();
   let cssLoopActive = false;
   let lastCssTick = 0;
+  let lastScan = 0;
+  const SCAN_INTERVAL_MS = 500;
 
   const isInfiniteCss = (a: Animation) =>
     typeof CSSAnimation !== 'undefined' &&
@@ -116,6 +134,23 @@ if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'fu
     steppedCss.clear();
   };
 
+  const scanCss = () => {
+    const live = new Set<Animation>();
+    for (const a of document.getAnimations()) {
+      if (!isInfiniteCss(a)) continue;
+      live.add(a);
+      if (!steppedCss.has(a)) {
+        if (a.playState !== 'running') continue; // paused by the game's own CSS
+        a.pause();
+        steppedCss.add(a);
+      }
+    }
+    // Forget animations whose element was removed or whose class changed.
+    steppedCss.forEach((a) => {
+      if (!live.has(a)) steppedCss.delete(a);
+    });
+  };
+
   const cssTick = (now: number) => {
     if (currentCap <= 0 || typeof document.getAnimations !== 'function') {
       cssLoopActive = false;
@@ -125,27 +160,23 @@ if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'fu
     const elapsed = lastCssTick ? now - lastCssTick : 0;
     lastCssTick = now;
 
-    const live = new Set<Animation>();
-    for (const a of document.getAnimations()) {
-      if (!isInfiniteCss(a)) continue;
-      live.add(a);
-      if (!steppedCss.has(a)) {
-        if (a.playState !== 'running') continue; // paused by the game's own CSS
-        a.pause();
-        steppedCss.add(a);
-      } else {
-        a.currentTime = (Number(a.currentTime) || 0) + elapsed;
+    if (!cssStepNeeded()) {
+      releaseCss();
+    } else {
+      if (now - lastScan >= SCAN_INTERVAL_MS) {
+        lastScan = now;
+        scanCss();
       }
+      steppedCss.forEach((a) => {
+        a.currentTime = (Number(a.currentTime) || 0) + elapsed;
+      });
     }
-    // Forget animations whose element was removed or whose class changed.
-    steppedCss.forEach((a) => {
-      if (!live.has(a)) steppedCss.delete(a);
-    });
 
     window.requestAnimationFrame(cssTick);
   };
 
   const startCssLoop = () => {
+    lastScan = 0;
     if (cssLoopActive || currentCap <= 0) return;
     cssLoopActive = true;
     lastCssTick = 0;

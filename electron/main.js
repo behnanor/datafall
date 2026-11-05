@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, ipcMain, globalShortcut, protocol, shell } from "electron";
+import { app, BrowserWindow, Menu, ipcMain, protocol, shell, dialog, crashReporter } from "electron";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -20,6 +20,77 @@ if (isProton) {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// -------------------- Log file + crash dumps (v1.04) --------------------
+// Steam launches the game without a console, so stdout was lost and crash reports could not be diagnosed.
+// Everything logged in the main process (and renderer warnings/errors) now also goes to
+// %APPDATA%\DataFall\logs\main.log (rotated at 1 MB, one old copy kept). Crash dumps stay local.
+const LOG_MAX_BYTES = 1024 * 1024;
+let logFile = null;
+
+let logBytes = 0;
+
+function rotateLogIfLarge() {
+  try {
+    logBytes = fs.existsSync(logFile) ? fs.statSync(logFile).size : 0;
+    if (logBytes > LOG_MAX_BYTES) {
+      fs.renameSync(logFile, path.join(path.dirname(logFile), "main.old.log"));
+      logBytes = 0;
+    }
+  } catch {}
+}
+
+function initLogFile() {
+  try {
+    app.setAppLogsPath();
+    const dir = app.getPath("logs");
+    fs.mkdirSync(dir, { recursive: true });
+    logFile = path.join(dir, "main.log");
+    rotateLogIfLarge();
+    writeLog("info", `---- DataFall ${app.getVersion()} started (electron ${process.versions.electron}, ${process.platform}${isProton ? ", proton" : ""}) ----`);
+  } catch {
+    logFile = null;
+  }
+}
+
+function formatLogArg(arg) {
+  if (arg instanceof Error) return arg.stack || arg.message;
+  if (typeof arg === "string") return arg;
+  try { return JSON.stringify(arg); } catch { return String(arg); }
+}
+
+function writeLog(level, ...args) {
+  if (!logFile) return;
+  try {
+    const line = `${new Date().toISOString()} [${level}] ${args.map(formatLogArg).join(" ")}\n`;
+    fs.appendFileSync(logFile, line, "utf8");
+    logBytes += line.length;
+    if (logBytes > LOG_MAX_BYTES) rotateLogIfLarge(); // long sessions: keep the file small
+  } catch {}
+}
+
+for (const [method, level] of [["log", "info"], ["warn", "warn"], ["error", "error"]]) {
+  const original = console[method].bind(console);
+  console[method] = (...args) => {
+    original(...args);
+    writeLog(level, ...args);
+  };
+}
+
+process.on("uncaughtException", (err) => {
+  console.error("[main] uncaught exception:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[main] unhandled rejection:", reason);
+});
+
+try {
+  crashReporter.start({ uploadToServer: false });
+} catch {}
+
+// DevTools are for development and the TEST build only. In the Steam release, F12 belongs to the
+// Steam screenshot key and the console made leaderboard cheating trivial.
+const DEVTOOLS_ALLOWED = !app.isPackaged || process.env.DF_DEVTOOLS === "1";
 
 // v1.03 TEST build (exe name contains "TEST"): runs next to the real game with its own profile and
 // save folder, never writes the real save, and sends no achievements or leaderboard scores.
@@ -458,43 +529,84 @@ function saveLegacyStorageCopy(userData, perOrigin) {
 }
 
 // -------------------- Window --------------------
+let rendererCrashTimes = [];
+
 function attachWebContentsDebug(wc) {
-  wc.on("console-message", (_e, level, message, line, sourceId) => {
-    console.log(`[renderer console][${level}] ${message} (${sourceId}:${line})`);
+  wc.on("console-message", (event) => {
+    const { level, message, lineNumber: line, sourceId } = event;
+    // Only warnings and errors go to the log file, so a chatty renderer cannot fill it.
+    if (level !== "warning" && level !== "error") return;
+    writeLog(`renderer ${level}`, `${message} (${sourceId}:${line})`);
   });
 
   wc.on("render-process-gone", (_e, details) => {
-    console.log("[renderer] gone:", details);
+    console.error("[renderer] gone:", details);
+    if (details?.reason === "clean-exit") return;
+    recoverFromRendererCrash(details?.reason);
+  });
+
+  wc.on("unresponsive", () => {
+    console.warn("[renderer] window not responding");
+  });
+  wc.on("responsive", () => {
+    console.log("[renderer] window responding again");
   });
 
   wc.on("did-fail-load", (_e, errorCode, errorDesc, validatedURL) => {
     console.log("[renderer] did-fail-load:", errorCode, errorDesc, validatedURL);
   });
+
+  // F12 / Ctrl+Shift+I only while the game window has focus, and only when DevTools are allowed.
+  // (v1.03 registered them as system-wide hotkeys, which took F12 away from every other app.)
+  wc.on("before-input-event", (event, input) => {
+    if (!DEVTOOLS_ALLOWED && !IS_TEST_BUILD) return;
+    if (input.type !== "keyDown") return;
+    const isF12 = input.key === "F12";
+    const isCtrlShiftI = (input.control || input.meta) && input.shift && input.key.toLowerCase() === "i";
+    if (!isF12 && !isCtrlShiftI) return;
+    event.preventDefault();
+    try {
+      if (wc.isDevToolsOpened()) wc.closeDevTools();
+      else wc.openDevTools({ mode: "detach" });
+    } catch {}
+  });
 }
 
-function registerDevtoolsShortcuts() {
+// The renderer died (GPU driver, out of memory, ...). Reload it instead of leaving a black window.
+// The game loads the last save on start. After 3 crashes within 2 minutes, stop and tell the player.
+function recoverFromRendererCrash(reason) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const now = Date.now();
+  rendererCrashTimes = rendererCrashTimes.filter((t) => now - t < 120000);
+  rendererCrashTimes.push(now);
+  if (rendererCrashTimes.length <= 3) {
+    console.log("[renderer] reloading after crash, reason =", reason);
+    try { mainWindow.webContents.reload(); } catch (e) { console.error("[renderer] reload failed:", e); }
+    return;
+  }
+  showFatalError(
+    "DataFall keeps crashing",
+    `The game window crashed ${rendererCrashTimes.length} times in a short time (${reason || "unknown"}).\n\n` +
+      "Please restart the game. If it happens again, send us the log file from the folder that opens next " +
+      "(Steam discussions: DataFall > Bug reports)."
+  );
+}
+
+function showFatalError(title, message) {
+  console.error(`[fatal] ${title}: ${message}`);
   try {
-    globalShortcut.unregisterAll();
+    dialog.showMessageBoxSync({ type: "error", title, message: title, detail: message, buttons: ["Open log folder", "Close"] }) === 0 &&
+      openLogsFolder();
+  } catch {}
+}
 
-    // F12
-    globalShortcut.register("F12", () => {
-      if (!mainWindow) return;
-      try {
-        const wc = mainWindow.webContents;
-        if (wc.isDevToolsOpened()) wc.closeDevTools();
-        else wc.openDevTools({ mode: "detach" });
-      } catch {}
-    });
-
-    // Ctrl+Shift+I
-    globalShortcut.register("CommandOrControl+Shift+I", () => {
-      if (!mainWindow) return;
-      try {
-        mainWindow.webContents.openDevTools({ mode: "detach" });
-      } catch {}
-    });
+function openLogsFolder() {
+  try {
+    const dir = app.getPath("logs");
+    fs.mkdirSync(dir, { recursive: true });
+    shell.openPath(dir);
   } catch (e) {
-    console.log("[devtools] shortcut register failed:", e?.message || e);
+    console.error("[logs] open folder failed:", e);
   }
 }
 
@@ -526,6 +638,12 @@ function attachCloseFlush(win) {
   });
 }
 
+ipcMain.on("df:log-error", (_event, payload) => {
+  const text = typeof payload === "string" ? payload : formatLogArg(payload);
+  writeLog("renderer error", String(text).slice(0, 8000));
+});
+ipcMain.on("df:open-logs-folder", () => openLogsFolder());
+
 async function createWindow() {
   Menu.setApplicationMenu(null);
 
@@ -542,7 +660,7 @@ async function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      devTools: true, // allow opening devtools even in packaged
+      devTools: DEVTOOLS_ALLOWED || IS_TEST_BUILD,
     },
   });
 
@@ -551,11 +669,8 @@ async function createWindow() {
 
   attachWebContentsDebug(mainWindow.webContents);
 
-  // Devtools shortcuts must exist because you killed the menu (fair).
-  registerDevtoolsShortcuts();
-
   // Optional: force-open DevTools via env
-  if (process.env.DF_DEVTOOLS === "1") {
+  if (process.env.DF_DEVTOOLS === "1" && DEVTOOLS_ALLOWED) {
     mainWindow.webContents.openDevTools({ mode: "detach" });
   }
 
@@ -1231,16 +1346,19 @@ if (!app.requestSingleInstanceLock()) {
 
 app.whenReady().then(async () => {
   if (!app.hasSingleInstanceLock()) return;
+  initLogFile();
   initSteam();
   registerAppProtocol();
   await migrateLegacyLocalStorage();
   await createWindow();
+}).catch((e) => {
+  // v1.03 left an empty window forever when start-up failed (e.g. the game files could not be served).
+  showFatalError("DataFall could not start", `${e?.message || e}\n\nPlease restart the game. If it keeps failing, send us the log file.`);
+  app.quit();
 });
 
-app.on("will-quit", () => {
-  try {
-    globalShortcut.unregisterAll();
-  } catch {}
+app.on("child-process-gone", (_e, details) => {
+  console.error("[app] child process gone:", details);
 });
 
 app.on("window-all-closed", () => {

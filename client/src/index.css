@@ -4,8 +4,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Inter', sans-serif;
-  --font-display: 'Rajdhani', sans-serif;
+  --font-sans: 'Inter', 'Segoe UI', sans-serif;
+  --font-display: 'Inter', 'Segoe UI', 'Tahoma', sans-serif;
+  --font-mono: 'Cascadia Mono', 'Consolas', 'Inter', 'Segoe UI', monospace;
 
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
@@ -149,6 +150,9 @@
 .cyberpunk-cursor {
   --cyberpunk-cursor-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><circle cx='10' cy='10' r='5' fill='rgba(0,246,255,0.12)'/><path d='M4 4 L4 22 L10 16 L15 27 L17 26 L12 15 L22 15 Z' fill='%2300f6ff' stroke='%2300f6ff' stroke-width='0.9'/><path d='M10 10 L20 10 M10 10 L10 20' stroke='%23ff4fd8' stroke-width='1.1' opacity='0.8'/><circle cx='10' cy='10' r='1.2' fill='%23fef08a'/></svg>");
   cursor: var(--cyberpunk-cursor-image) 4 4, auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
 }
 
 .cyberpunk-cursor--glow-1 {
@@ -181,4 +185,28 @@
 .cyberpunk-cursor [role="button"],
 .cyberpunk-cursor [onclick] {
   cursor: inherit !important;
+}
+
+/* Keep text selection where it is actually needed. */
+.cyberpunk-cursor input,
+.cyberpunk-cursor textarea,
+.cyberpunk-cursor [contenteditable="true"],
+.cyberpunk-cursor .allow-select {
+  user-select: text;
+  -webkit-user-select: text;
+  -ms-user-select: text;
+}
+
+/* Dev-only room view (test builds: Ctrl+Shift+F9; otherwise only via DevTools): hides dialogs,
+   overlays and toasts so the room can be screenshotted. Players cannot reach it. */
+body[data-dev-room-view="1"] [role="dialog"],
+body[data-dev-room-view="1"] [role="alertdialog"],
+body[data-dev-room-view="1"] [data-state="open"].fixed,
+body[data-dev-room-view="1"] [data-testid="finale-credits"],
+body[data-dev-room-view="1"] [data-sonner-toaster],
+body[data-dev-room-view="1"] ol[tabindex="-1"],
+body[data-dev-room-view="1"] .fixed.inset-0.flex.items-center.justify-center,
+body[data-dev-room-view="1"] .fixed.backdrop-blur-sm,
+body[data-dev-room-view="1"] .fixed.top-0.flex-col-reverse {
+  display: none !important;
 }

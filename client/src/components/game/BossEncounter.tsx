@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Shield, Zap, Skull, Trophy, AlertTriangle, Target, Keyboard } from "lucide-react";
+import { localizeInlineText, localizeText, useI18n } from "@/lib/i18n";
+import { BOSS_MODIFIERS, pick6, type BossVariant, type BossModifierId } from "@/lib/bossVariants";
 
 interface BossEncounterProps {
   isOpen: boolean;
@@ -12,21 +14,47 @@ interface BossEncounterProps {
   ascensionLevel: number;
   dataPerClick: number;
   isMainScreen?: boolean;
+  // Finale (ascension 50): the one-time "Breach the Core" boss.
+  isFinale?: boolean;
+  // Player crit chance (0..1); crits matter in the finale.
+  critChance?: number;
+  // Pity: each failed finale attempt weakens the Core (0..0.5 = HP reduction).
+  finaleWeaken?: number;
+  // v1.03: modifiers / Core Signal (asc 45) / Core Echo (Endless, every 10 depths).
+  variant?: BossVariant;
   playSound?: (type: 'click' | 'buy_fab' | 'buy_black' | 'sell' | 'crit' | 'checkpoint' | 'achievement' | 'pickup' | 'boss_hit' | 'weakspot_hit') => void;
 }
 
+const FINAL_BOSS = { name: { en: "THE CORE", tr: "ÇEKİRDEK", "pt-BR": "O NÚCLEO", es: "EL NÚCLEO", ru: "ЯДРО", "zh-CN": "核心" }, baseClicks: 55, bossMultiplier: 1.5, timeLimit: 50, color: "#f97316" };
+const SIGNAL_BOSS = { name: { en: "CORE SIGNAL", tr: "ÇEKİRDEK SİNYALİ", "pt-BR": "SINAL DO NÚCLEO", es: "SEÑAL DEL NÚCLEO", ru: "СИГНАЛ ЯДРА", "zh-CN": "核心信号" }, baseClicks: 42, bossMultiplier: 1.0, timeLimit: 35, color: "#22d3ee" };
+const ECHO_BOSS = { name: { en: "CORE ECHO", tr: "ÇEKİRDEK YANKISI", "pt-BR": "ECO DO NÚCLEO", es: "ECO DEL NÚCLEO", ru: "ЭХО ЯДРА", "zh-CN": "核心回响" }, baseClicks: 55, bossMultiplier: 1.5, timeLimit: 50, color: "#a855f7" };
+const SIGNAL_PHASE_SHIELDS = [0, 0.2, 0.35] as const;
+const ARMORED_SHIELD = 0.3;
+const EVASIVE_WEAK_SPOT_LIFETIME_MS = 1800;
+const REGEN_PER_SECOND = 0.015;
+// Finale: three phases by remaining HP. Shields cut normal hits; weak spots and crits pierce them.
+const FINALE_PHASE_SHIELDS = [0, 0.3, 0.5] as const;
+const FINALE_CRIT_MULTIPLIER = 2.5;
+// Finale weak spots are rarer but hit harder (fewer all-or-nothing outcomes).
+const FINALE_WEAK_SPOT_MULTIPLIER = 5;
+const FINALE_WEAK_SPOT_INTERVAL_MS = 3500;
+const getFinalePhaseIndex = (health: number, max: number): number => {
+  const fraction = max > 0 ? health / max : 1;
+  return fraction > 2 / 3 ? 0 : fraction > 1 / 3 ? 1 : 2;
+};
+
 // Easier boss levels - more time, lower multipliers
 const BOSS_LEVELS = [
-  { name: "Firewall v1.0", baseClicks: 15, bossMultiplier: 1.0, timeLimit: 20, color: "#3b82f6" },
-  { name: "Firewall v2.0", baseClicks: 18, bossMultiplier: 1.0, timeLimit: 20, color: "#8b5cf6" },
-  { name: "Firewall v3.0", baseClicks: 20, bossMultiplier: 1.0, timeLimit: 18, color: "#a855f7" },
-  { name: "Quantum Barrier", baseClicks: 22, bossMultiplier: 1.0, timeLimit: 18, color: "#d946ef" },
-  { name: "Neural Firewall", baseClicks: 25, bossMultiplier: 1.0, timeLimit: 16, color: "#ec4899" },
-  { name: "AI Guardian", baseClicks: 28, bossMultiplier: 1.0, timeLimit: 16, color: "#f43f5e" },
-  { name: "Omega Protocol", baseClicks: 30, bossMultiplier: 1.0, timeLimit: 15, color: "#ef4444" },
-  { name: "Core Sentinel", baseClicks: 32, bossMultiplier: 1.0, timeLimit: 15, color: "#dc2626" },
-  { name: "System Overlord", baseClicks: 35, bossMultiplier: 1.0, timeLimit: 14, color: "#b91c1c" },
-  { name: "The Architect", baseClicks: 38, bossMultiplier: 1.0, timeLimit: 14, color: "#991b1b" },
+  { name: { en: "Firewall v1.0", tr: "Guvenlik Duvari v1.0", "pt-BR": "Firewall v1.0", es: "Firewall v1.0", ru: "Файрвол v1.0", "zh-CN": "防火墙 v1.0" }, baseClicks: 15, bossMultiplier: 1.0, timeLimit: 20, color: "#3b82f6" },
+  { name: { en: "Firewall v2.0", tr: "Guvenlik Duvari v2.0", "pt-BR": "Firewall v2.0", es: "Firewall v2.0", ru: "Файрвол v2.0", "zh-CN": "防火墙 v2.0" }, baseClicks: 18, bossMultiplier: 1.0, timeLimit: 20, color: "#8b5cf6" },
+  { name: { en: "Firewall v3.0", tr: "Guvenlik Duvari v3.0", "pt-BR": "Firewall v3.0", es: "Firewall v3.0", ru: "Файрвол v3.0", "zh-CN": "防火墙 v3.0" }, baseClicks: 20, bossMultiplier: 1.0, timeLimit: 18, color: "#a855f7" },
+  { name: { en: "Quantum Barrier", tr: "Kuantum Bariyeri", "pt-BR": "Barreira Quantica", es: "Barrera Cuantica", ru: "Квантовый барьер", "zh-CN": "量子屏障" }, baseClicks: 22, bossMultiplier: 1.0, timeLimit: 18, color: "#d946ef" },
+  { name: { en: "Neural Firewall", tr: "Nor Guvenlik Duvari", "pt-BR": "Firewall Neural", es: "Firewall Neural", ru: "Нейро-файрвол", "zh-CN": "神经防火墙" }, baseClicks: 25, bossMultiplier: 1.0, timeLimit: 16, color: "#ec4899" },
+  { name: { en: "AI Guardian", tr: "YZ Muhafizi", "pt-BR": "Guardiao IA", es: "Guardian IA", ru: "Страж ИИ", "zh-CN": "AI 守卫者" }, baseClicks: 28, bossMultiplier: 1.0, timeLimit: 16, color: "#f43f5e" },
+  { name: { en: "Omega Protocol", tr: "Omega Protokolu", "pt-BR": "Protocolo Omega", es: "Protocolo Omega", ru: "Протокол Омега", "zh-CN": "欧米伽协议" }, baseClicks: 30, bossMultiplier: 1.0, timeLimit: 15, color: "#ef4444" },
+  { name: { en: "Core Sentinel", tr: "Cekirdek Nobetcisi", "pt-BR": "Sentinela do Nucleo", es: "Centinela del Nucleo", ru: "Страж ядра", "zh-CN": "核心哨兵" }, baseClicks: 32, bossMultiplier: 1.0, timeLimit: 15, color: "#dc2626" },
+  { name: { en: "System Overlord", tr: "Sistem Hukumdari", "pt-BR": "Soberano do Sistema", es: "Soberano del Sistema", ru: "Повелитель системы", "zh-CN": "系统霸主" }, baseClicks: 35, bossMultiplier: 1.0, timeLimit: 14, color: "#b91c1c" },
+  { name: { en: "The Architect", tr: "Mimar", "pt-BR": "O Arquiteto", es: "El Arquitecto", ru: "Архитектор", "zh-CN": "造物主" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 14, color: "#991b1b" },
 ];
 const WEAK_SPOT_MULTIPLIER = 10 / 3; // One-third of previous 10x weak-spot bonus
 const WEAK_SPOT_LIFETIME_MS = 3000;
@@ -52,7 +80,17 @@ interface BreachSequence {
   progress: number;
 }
 
-export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound }: BossEncounterProps) {
+export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound, isFinale = false, critChance = 0.05, finaleWeaken = 0, variant }: BossEncounterProps) {
+  const kind = isFinale ? "finale" : variant?.kind ?? "normal";
+  const modList: BossModifierId[] = isFinale ? [] : variant?.modifiers ?? [];
+  const mods = new Set<BossModifierId>(modList);
+  const phaseShields: readonly number[] | null = kind === "finale" || kind === "echo" ? FINALE_PHASE_SHIELDS : kind === "signal" ? SIGNAL_PHASE_SHIELDS : null;
+  const flatShield = mods.has("armored") ? ARMORED_SHIELD : 0;
+  const usesShields = !!phaseShields || flatShield > 0;
+  const weakSpotLifetimeMs = mods.has("evasive") ? EVASIVE_WEAK_SPOT_LIFETIME_MS : WEAK_SPOT_LIFETIME_MS;
+  const weakSpotMultiplier = kind === "finale" || kind === "echo" ? FINALE_WEAK_SPOT_MULTIPLIER : WEAK_SPOT_MULTIPLIER;
+  const { language } = useI18n();
+  const l = (en: string, tr: string, pt: string, es?: string, ru?: string) => localizeInlineText(language, en, tr, pt, es, ru);
   const [phase, setPhase] = useState<'intro' | 'battle' | 'victory' | 'defeat'>('intro');
   const [bossHealth, setBossHealth] = useState(100);
   const [maxHealth, setMaxHealth] = useState(100);
@@ -72,9 +110,14 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const battleAreaRef = useRef<HTMLDivElement>(null);
   const weakSpotsRef = useRef<WeakSpot[]>([]);
   const breachFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const damageFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const queuedWeakSpotTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   
   const bossIndex = Math.min(ascensionLevel, BOSS_LEVELS.length - 1);
-  const currentBoss = BOSS_LEVELS[bossIndex];
+  const currentBoss = kind === "finale" ? FINAL_BOSS : kind === "signal" ? SIGNAL_BOSS : kind === "echo" ? ECHO_BOSS : BOSS_LEVELS[bossIndex];
+  const timeLimit = Math.round(currentBoss.timeLimit * (mods.has("swift") ? 0.8 : 1));
+  const echoTier = kind === "echo" ? Math.max(1, Math.floor((variant?.depth ?? 10) / 10)) : 0;
+  const currentBossName = localizeText(currentBoss.name, language);
   
   // Balanced difficulty scaling:
   // - logarithmic growth keeps late-game from exploding
@@ -89,10 +132,10 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     );
     const calculatedHealth = Math.max(
       75, // Prevent trivial early HP
-      Math.round(dataPerClick * currentBoss.baseClicks * currentBoss.bossMultiplier * ascensionFactor)
+      Math.round(dataPerClick * currentBoss.baseClicks * currentBoss.bossMultiplier * ascensionFactor * (isFinale ? 1 - Math.min(0.5, Math.max(0, finaleWeaken)) : 1) * (mods.has("bulky") ? 1.25 : 1) * (kind === "echo" ? 1 + 0.15 * (echoTier - 1) : 1))
     );
     return calculatedHealth;
-  }, [dataPerClick, currentBoss, ascensionLevel]);
+  }, [dataPerClick, currentBoss, ascensionLevel, isFinale, finaleWeaken, variant]);
 
   const showBreachFeedback = useCallback((result: 'success' | 'fail') => {
     if (breachFeedbackTimeoutRef.current) {
@@ -103,6 +146,12 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       setBreachFeedback(null);
       breachFeedbackTimeoutRef.current = null;
     }, BREACH_FEEDBACK_DURATION_MS);
+  }, []);
+
+  const clearQueuedWeakSpotTimeouts = useCallback(() => {
+    if (queuedWeakSpotTimeoutsRef.current.length === 0) return;
+    queuedWeakSpotTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+    queuedWeakSpotTimeoutsRef.current = [];
   }, []);
 
   const createBreachSequence = useCallback((): BreachSequence => {
@@ -143,15 +192,23 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       const now = Date.now();
       // Remove expired weak spots (older than 3 seconds) - ensure filter works properly
       setWeakSpots(prev => {
-        const filtered = prev.filter(spot => now - spot.createdAt < WEAK_SPOT_LIFETIME_MS);
+        const filtered = prev.filter(spot => now - spot.createdAt < weakSpotLifetimeMs);
         return filtered;
       });
       // Spawn new weak spot
       generateWeakSpot();
-    }, 2500);
+    }, isFinale ? FINALE_WEAK_SPOT_INTERVAL_MS : 2500);
     
     return () => clearInterval(interval);
-  }, [phase, generateWeakSpot]);
+  }, [phase, generateWeakSpot, isFinale, weakSpotLifetimeMs]);
+
+  // Regenerating modifier: heals a share of max HP every second.
+  useEffect(() => {
+    if (phase !== 'battle' || !mods.has("regen")) return;
+    const interval = setInterval(() => setBossHealth(h => (h <= 0 ? h : Math.min(maxHealth, h + maxHealth * REGEN_PER_SECOND))), 1000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, maxHealth, variant]);
   
   useEffect(() => {
     if (isOpen) {
@@ -159,7 +216,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       const health = calculateBossHealth();
       setBossHealth(health);
       setMaxHealth(health);
-      setTimeLeft(currentBoss.timeLimit);
+      setTimeLeft(timeLimit);
       setClicks(0);
       setHitEffects([]);
       setWeakSpots([]);
@@ -169,7 +226,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       setBattleNow(Date.now());
       setDamagePerClick(dataPerClick);
     }
-  }, [isOpen, currentBoss, calculateBossHealth, dataPerClick]);
+  }, [isOpen, currentBoss, calculateBossHealth, dataPerClick, timeLimit]);
   
   useEffect(() => {
     if (phase !== 'battle') return;
@@ -199,11 +256,15 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       if (breachFeedbackTimeoutRef.current) {
         clearTimeout(breachFeedbackTimeoutRef.current);
       }
+      if (damageFlashTimeoutRef.current) {
+        clearTimeout(damageFlashTimeoutRef.current);
+      }
+      clearQueuedWeakSpotTimeouts();
     };
-  }, []);
+  }, [clearQueuedWeakSpotTimeouts]);
 
   useEffect(() => {
-    if (phase !== 'battle') {
+    if (phase !== 'battle' || mods.has("jammed")) {
       setBreachSequence(null);
       return;
     }
@@ -239,9 +300,14 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
           const nextProgress = prev.progress + 1;
           if (nextProgress >= prev.sequence.length) {
             setOverclockUntil(Date.now() + OVERCLOCK_DURATION_MS);
-            setTimeLeft(current => Math.min(currentBoss.timeLimit + MAX_BATTLE_TIME_BUFFER, current + TIME_BONUS_ON_BREACH));
+            setTimeLeft(current => Math.min(timeLimit + MAX_BATTLE_TIME_BUFFER, current + TIME_BONUS_ON_BREACH));
+            clearQueuedWeakSpotTimeouts();
             for (let i = 0; i < WEAK_SPOT_BONUS_ON_BREACH; i++) {
-              setTimeout(() => generateWeakSpot(), i * 180);
+              const timeout = setTimeout(() => {
+                generateWeakSpot();
+                queuedWeakSpotTimeoutsRef.current = queuedWeakSpotTimeoutsRef.current.filter(item => item !== timeout);
+              }, i * 180);
+              queuedWeakSpotTimeoutsRef.current.push(timeout);
             }
             showBreachFeedback('success');
             playSound?.('weakspot_hit');
@@ -257,7 +323,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [phase, breachSequence, currentBoss.timeLimit, generateWeakSpot, playSound, showBreachFeedback]);
+  }, [phase, breachSequence, timeLimit, generateWeakSpot, playSound, showBreachFeedback, clearQueuedWeakSpotTimeouts]);
 
   // Keep ref in sync with state for click detection (avoids stale closure)
   useEffect(() => {
@@ -300,7 +366,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     const hitWeakSpot = forcedWeakSpot ?? checkWeakSpotHit(x, y, rect.width, rect.height);
     const overclockActive = overclockUntil > Date.now();
     const damageMultiplier =
-      (hitWeakSpot ? WEAK_SPOT_MULTIPLIER : 1) *
+      (hitWeakSpot ? weakSpotMultiplier : 1) *
       (overclockActive ? OVERCLOCK_MULTIPLIER : 1);
 
     // Remove the weak spot if hit - update both ref and state
@@ -327,10 +393,16 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     // Damage with small variance
     const variance = damagePerClick * 0.1;
     const baseDamage = damagePerClick + (Math.random() * variance * 2 - variance);
-    const damage = baseDamage * damageMultiplier;
+    const isFinaleCrit = usesShields && Math.random() < Math.min(1, Math.max(0, critChance));
 
     setClicks((prev) => prev + 1);
     setBossHealth((prev) => {
+      let damage = baseDamage * damageMultiplier;
+      if (usesShields) {
+        const shield = Math.max(flatShield, phaseShields ? phaseShields[getFinalePhaseIndex(prev, maxHealth)] : 0);
+        const pierces = !!hitWeakSpot || isFinaleCrit;
+        damage *= (isFinaleCrit ? FINALE_CRIT_MULTIPLIER : 1) * (pierces ? 1 : 1 - shield);
+      }
       const newHealth = prev - damage;
       if (newHealth <= 0) {
         setPhase('victory');
@@ -340,8 +412,14 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     });
 
     setDamageFlash(true);
-    setTimeout(() => setDamageFlash(false), 50);
-  }, [phase, damagePerClick, checkWeakSpotHit, overclockUntil, playSound]);
+    if (damageFlashTimeoutRef.current) {
+      clearTimeout(damageFlashTimeoutRef.current);
+    }
+    damageFlashTimeoutRef.current = setTimeout(() => {
+      damageFlashTimeoutRef.current = null;
+      setDamageFlash(false);
+    }, 50);
+  }, [phase, damagePerClick, checkWeakSpotHit, overclockUntil, playSound, usesShields, flatShield, phaseShields, critChance, maxHealth]);
 
   const handleBattlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (phase !== 'battle') return;
@@ -378,7 +456,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   };
   
   const healthPercent = (bossHealth / maxHealth) * 100;
-  const timePercent = Math.max(0, (timeLeft / currentBoss.timeLimit) * 100);
+  const timePercent = Math.max(0, (timeLeft / timeLimit) * 100);
   const overclockRemaining = Math.max(0, overclockUntil - battleNow);
   const overclockActive = overclockRemaining > 0;
   const lowHealthDanger = healthPercent <= 30;
@@ -450,39 +528,72 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold" style={{ color: currentBoss.color }}>
-                  {currentBoss.name}
+                  {currentBossName}
                 </h2>
                 <p className="text-muted-foreground">
-                  Ascension Level {ascensionLevel + 1} Boss
+                  {isFinale ? l('FINAL BREACH: break the Core', 'SON SIZMA: Çekirdeği kır', 'INVASÃO FINAL: quebre o Núcleo', 'BRECHA FINAL: rompe el Núcleo', 'ФИНАЛЬНЫЙ ВЗЛОМ: сломай Ядро') : kind === 'signal' ? pick6(language, ['The Core is calling. Silence its signal: the final Core loses 15% HP.', 'Çekirdek çağırıyor. Sinyalini sustur: son Çekirdek %15 can kaybeder.', 'O Núcleo está chamando. Cale o sinal: o Núcleo final perde 15% de vida.', 'El Núcleo llama. Silencia su señal: el Núcleo final pierde un 15% de vida.', 'Ядро зовёт. Заглуши сигнал: финальное Ядро теряет 15% HP.', '核心在呼唤。压制它的信号：最终核心生命 -15%。']) : kind === 'echo' ? pick6(language, [`Endless depth ${variant?.depth}: an echo of the Core. Win for x1.5 prestige.`, `Sonsuz derinlik ${variant?.depth}: Çekirdeğin yankısı. Kazanırsan x1.5 prestij.`, `Profundidade infinita ${variant?.depth}: um eco do Núcleo. Vença para x1,5 de prestígio.`, `Profundidad infinita ${variant?.depth}: un eco del Núcleo. Gana para x1,5 de prestigio.`, `Бесконечная глубина ${variant?.depth}: эхо Ядра. Победа даёт x1,5 престижа.`, `无尽深度 ${variant?.depth}：核心的回响。获胜可得 x1.5 声望。`]) : l(
+                    `Ascension Level ${ascensionLevel + 1} Boss`,
+                    `Yükseliş ${ascensionLevel + 1} Bossu`,
+                    `Chefe da Ascensao ${ascensionLevel + 1}`,
+                    `Jefe de Ascension ${ascensionLevel + 1}`,
+                    `Босс возвышения ${ascensionLevel + 1}`,
+                  )}
                 </p>
               </div>
+              {modList.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2" data-testid="boss-modifiers">
+                  {modList.map(id => (
+                    <span key={id} className="rounded border border-amber-500/40 bg-amber-950/30 px-2 py-1 text-xs font-mono text-amber-200" title={pick6(language, BOSS_MODIFIERS[id].desc)}>
+                      {pick6(language, BOSS_MODIFIERS[id].name)}: <span className="text-amber-100/70">{pick6(language, BOSS_MODIFIERS[id].desc)}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
               
               <div className="bg-slate-900/50 rounded-lg p-4 space-y-2 border border-slate-700">
                 <p className="text-sm text-cyan-400">
                   <Zap className="w-4 h-4 inline mr-1" />
-                  Click anywhere to attack - hit the glowing weak spots for {WEAK_SPOT_MULTIPLIER.toFixed(1)}x damage!
+                  {l(
+                    `Click anywhere to attack - hit the glowing weak spots for ${weakSpotMultiplier.toFixed(1)}x damage!`,
+                    `Saldirmak icin herhangi bir yere tikla - parlayan zayif noktalara vurarak ${weakSpotMultiplier.toFixed(1)}x hasar ver!`,
+                    `Clique em qualquer lugar para atacar. Acerte os pontos fracos brilhantes para causar ${weakSpotMultiplier.toFixed(1)}x de dano!`,
+                    `Haz clic en cualquier lugar para atacar. Golpea los puntos debiles brillantes para causar ${weakSpotMultiplier.toFixed(1)}x de dano!`,
+                    `Нажимайте где угодно для атаки — бейте по светящимся слабым точкам и наносите ${weakSpotMultiplier.toFixed(1)}x урона!`,
+                  )}
                 </p>
                 <p className="text-sm text-fuchsia-300">
                   <Keyboard className="w-4 h-4 inline mr-1" />
-                  Breach Sequence (Optional): Press shown keys in order anytime for Overclock, +{TIME_BONUS_ON_BREACH}s battle time, and +{WEAK_SPOT_BONUS_ON_BREACH} weak spot spawns.
+                  {l(
+                    `Breach Sequence (Optional): Press shown keys in order anytime for Overclock, +${TIME_BONUS_ON_BREACH}s battle time, and +${WEAK_SPOT_BONUS_ON_BREACH} weak spot spawns.`,
+                    `Ihlal Dizisi (Istege Bagli): Gosterilen tuslara istedigin zaman sirayla bas; Overclock, +${TIME_BONUS_ON_BREACH}sn savas suresi ve +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta kazan.`,
+                    `Sequencia de Invasao (Opcional): pressione as teclas exibidas na ordem, a qualquer momento, para ativar Overclock, ganhar +${TIME_BONUS_ON_BREACH}s de batalha e +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos.`,
+                    `Secuencia de Brecha (Opcional): pulsa las teclas mostradas en orden en cualquier momento para activar Overclock, ganar +${TIME_BONUS_ON_BREACH}s de combate y +${WEAK_SPOT_BONUS_ON_BREACH} apariciones de puntos debiles.`,
+                    `Последовательность взлома (необязательно): нажимайте показанные клавиши по порядку в любой момент, чтобы активировать Оверклок, получить +${TIME_BONUS_ON_BREACH}с ко времени боя и +${WEAK_SPOT_BONUS_ON_BREACH} слабые точки.`,
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Battle Timer: {currentBoss.timeLimit}s | Click Power: {Math.round(damagePerClick)} | Weak Spot: {Math.round(damagePerClick * WEAK_SPOT_MULTIPLIER)}
+                  {l(
+                    `Battle Timer: ${timeLimit}s | Click Power: ${Math.round(damagePerClick)} | Weak Spot: ${Math.round(damagePerClick * weakSpotMultiplier)}`,
+                    `Savaş Sayacı: ${timeLimit}sn | Tıklama Gücü: ${Math.round(damagePerClick)} | Zayıf Nokta: ${Math.round(damagePerClick * weakSpotMultiplier)}`,
+                    `Tempo de Batalha: ${timeLimit}s | Poder de Clique: ${Math.round(damagePerClick)} | Ponto Fraco: ${Math.round(damagePerClick * weakSpotMultiplier)}`,
+                    `Temporizador de Combate: ${timeLimit}s | Poder de Clic: ${Math.round(damagePerClick)} | Punto Debil: ${Math.round(damagePerClick * weakSpotMultiplier)}`,
+                    `Таймер боя: ${timeLimit}с | Сила клика: ${Math.round(damagePerClick)} | Слабая точка: ${Math.round(damagePerClick * weakSpotMultiplier)}`,
+                  )}
                 </p>
               </div>
               
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
                   <Trophy className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
-                  <p className="text-emerald-400 font-bold">Victory</p>
-                  <p className="text-xs text-muted-foreground">+{prestigeGain} Prestige</p>
-                  <p className="text-xs text-emerald-300">Full Ascension</p>
+                  <p className="text-emerald-400 font-bold">{l('Victory', 'Zafer', 'Vitoria', 'Victoria', 'Победа')}</p>
+                  <p className="text-xs text-muted-foreground">+{prestigeGain} {l('Prestige', 'Prestij', 'Prestigio', 'Prestigio', 'Престиж')}</p>
+                  <p className="text-xs text-emerald-300">{l('Full Ascension', 'Tam Yükseliş', 'Ascensao Completa', 'Ascension Completa', 'Полное вознесение')}</p>
                 </div>
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
                   <Skull className="w-5 h-5 mx-auto mb-1 text-red-400" />
-                  <p className="text-red-400 font-bold">Defeat</p>
-                  <p className="text-xs text-muted-foreground">+{penaltyPrestige} Prestige (25%)</p>
-                  <p className="text-xs text-red-300">No Ascension Level</p>
+                  <p className="text-red-400 font-bold">{l('Defeat', 'Yenilgi', 'Derrota', 'Derrota', 'Поражение')}</p>
+                  <p className="text-xs text-muted-foreground">+{penaltyPrestige} {l('Prestige', 'Prestij', 'Prestigio', 'Prestigio', 'Престиж')} (25%)</p>
+                  <p className="text-xs text-red-300">{l('No Ascension Level', 'Yükseliş Seviyesi Yok', 'Sem Nivel de Ascensao', 'Sin Nivel de Ascension', 'Без уровня вознесения')}</p>
                 </div>
               </div>
               
@@ -492,7 +603,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   onClick={onClose}
                   className="flex-1 border-muted-foreground/30"
                 >
-                  Retreat
+                  {l('Retreat', 'Geri Cekil', 'Recuar', 'Retirarse', 'Отступить')}
                 </Button>
                 <Button
                   onClick={startBattle}
@@ -501,7 +612,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   data-testid="button-start-boss"
                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  INITIATE HACK
+                  {l('INITIATE HACK', 'SALDIRIYI BASLAT', 'INICIAR HACK', 'INICIAR HACK', 'НАЧАТЬ ВЗЛОМ')}
                 </Button>
               </div>
             </div>
@@ -513,10 +624,11 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
                     <Shield className="w-5 h-5" style={{ color: currentBoss.color }} />
-                    <span className="font-bold" style={{ color: currentBoss.color }}>{currentBoss.name}</span>
+                    <span className="font-bold" style={{ color: currentBoss.color }}>{currentBossName}</span>
+                    {modList.map(id => <span key={id} className="rounded border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-mono text-amber-200">{pick6(language, BOSS_MODIFIERS[id].name)}</span>)}
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="font-mono text-sm">Clicks: {clicks}</span>
+                    <span className="font-mono text-sm">{l(`Clicks: ${clicks}`, `Tıklama: ${clicks}`, `Cliques: ${clicks}`, `Clics: ${clicks}`, `Клики: ${clicks}`)}</span>
                     <span className={`font-mono text-lg font-bold ${timeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-cyan-400'}`}>
                       {timeLeft}s
                     </span>
@@ -532,7 +644,13 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="font-mono text-xs font-bold text-white drop-shadow-lg">
-                      {Math.ceil(bossHealth)} / {maxHealth} HP
+                      {Math.ceil(bossHealth)} / {maxHealth} {l('HP', 'Can', 'HP', 'HP', 'HP')}
+                      {usesShields && (
+                        <span className="ml-2 font-bold text-orange-300" data-testid="finale-phase">
+                          {phaseShields ? <>{l('PHASE', 'AŞAMA', 'FASE', 'FASE', 'ФАЗА')} {getFinalePhaseIndex(bossHealth, maxHealth) + 1}/3 · </> : null}{l('SHIELD', 'KALKAN', 'ESCUDO', 'ESCUDO', 'ЩИТ')} {Math.round(Math.max(flatShield, phaseShields ? phaseShields[getFinalePhaseIndex(bossHealth, maxHealth)] : 0) * 100)}% · {l('crits & weak spots pierce', 'kritik ve zayıf noktalar deler', 'críticos e pontos fracos perfuram', 'críticos y puntos débiles perforan', 'криты и слабые точки пробивают')}
+                          {finaleWeaken > 0 && <> · {l('Core weakened', 'Çekirdek zayıfladı', 'Núcleo enfraquecido', 'Núcleo debilitado', 'Ядро ослаблено')}: -{Math.round(Math.min(0.5, finaleWeaken) * 100)}%</>}
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -544,9 +662,15 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   />
                 </div>
                 <div className="mt-2 flex items-center justify-between text-[11px] font-mono">
-                  <span className="text-yellow-300">Weak Spots: {weakSpots.length}</span>
+                  <span className="text-yellow-300">{l(`Weak Spots: ${weakSpots.length}`, `Zayıf Nokta: ${weakSpots.length}`, `Pontos Fracos: ${weakSpots.length}`, `Puntos Debiles: ${weakSpots.length}`, `Слабые точки: ${weakSpots.length}`)}</span>
                   <span className={overclockActive ? 'text-emerald-300' : 'text-slate-400'}>
-                    {overclockActive ? `Overclock x${OVERCLOCK_MULTIPLIER.toFixed(2)} (${(overclockRemaining / 1000).toFixed(1)}s)` : 'Overclock: idle'}
+                    {overclockActive
+                      ? l(
+                        `Overclock x${OVERCLOCK_MULTIPLIER.toFixed(2)} (${(overclockRemaining / 1000).toFixed(1)}s)`,
+                        `Overclock x${OVERCLOCK_MULTIPLIER.toFixed(2)} (${(overclockRemaining / 1000).toFixed(1)}sn)`,
+                        `Overclock x${OVERCLOCK_MULTIPLIER.toFixed(2)} (${(overclockRemaining / 1000).toFixed(1)}s)`,
+                      )
+                      : l('Overclock: idle', 'Overclock: bekliyor', 'Overclock: ocioso', 'Overclock: inactivo', 'Оверклок: ожидание')}
                   </span>
                 </div>
               </div>
@@ -624,7 +748,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 {/* Weak spots - clickable targets for bonus damage */}
                 <AnimatePresence>
                   {weakSpots.map((spot) => {
-                    const lifeRatio = Math.max(0, 1 - (battleNow - spot.createdAt) / WEAK_SPOT_LIFETIME_MS);
+                    const lifeRatio = Math.max(0, 1 - (battleNow - spot.createdAt) / weakSpotLifetimeMs);
                     return (
                       <motion.div
                         key={spot.id}
@@ -643,7 +767,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                       >
                         <button
                           type="button"
-                          aria-label="Weak spot"
+                          aria-label={l('Weak spot', 'Zayif nokta', 'Ponto fraco', 'Punto debil', 'Слабая точка')}
                           className="absolute rounded-full bg-transparent border-0 outline-none"
                           style={{
                             left: '50%',
@@ -716,7 +840,13 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                           animate={{ y: -30, opacity: 0 }}
                           transition={{ duration: 0.5 }}
                         >
-                          {WEAK_SPOT_MULTIPLIER.toFixed(1)}x DAMAGE!
+                          {l(
+                            `${weakSpotMultiplier.toFixed(1)}x DAMAGE!`,
+                            `${weakSpotMultiplier.toFixed(1)}x HASAR!`,
+                            `${weakSpotMultiplier.toFixed(1)}x DANO!`,
+                            `¡${weakSpotMultiplier.toFixed(1)}x DANO!`,
+                            `${weakSpotMultiplier.toFixed(1)}x УРОН!`,
+                          )}
                         </motion.span>
                       )}
                       {!hit.isWeakSpot && hit.isOverclocked && (
@@ -726,7 +856,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                           animate={{ y: -22, opacity: 0 }}
                           transition={{ duration: 0.45 }}
                         >
-                          OVERCLOCK
+                          {l('OVERCLOCK', 'ASIRI YUK', 'OVERCLOCK', 'OVERCLOCK', 'ОВЕРКЛОК')}
                         </motion.span>
                       )}
                     </motion.div>
@@ -736,10 +866,10 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 <div className="absolute top-3 left-3 w-64 rounded-lg border border-fuchsia-400/35 bg-slate-900/70 backdrop-blur-sm p-2 pointer-events-none">
                   <div className="flex items-center justify-between mb-1">
                     <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-fuchsia-300 font-semibold">
-                      <Keyboard className="w-3 h-3" /> Breach Sequence
+                      <Keyboard className="w-3 h-3" /> {l('Breach Sequence', 'Ihlal Dizisi', 'Sequencia de Invasao', 'Secuencia de Brecha', 'Последовательность взлома')}
                     </span>
                     <span className="text-[10px] text-slate-300">
-                      {breachSequence ? 'optional' : 'idle'}
+                      {breachSequence ? l('optional', 'istege bagli', 'opcional', 'opcional', 'необязательно') : l('idle', 'bekliyor', 'ocioso', 'inactivo', 'ожидание')}
                     </span>
                   </div>
 
@@ -766,12 +896,24 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                         })}
                       </div>
                       <p className="text-[10px] text-cyan-300/85">
-                        No time limit. Reward: +{TIME_BONUS_ON_BREACH}s and +{WEAK_SPOT_BONUS_ON_BREACH} weak spots.
+                        {l(
+                          `No time limit. Reward: +${TIME_BONUS_ON_BREACH}s and +${WEAK_SPOT_BONUS_ON_BREACH} weak spots.`,
+                          `Sure siniri yok. Odul: +${TIME_BONUS_ON_BREACH}sn ve +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta.`,
+                          `Sem limite de tempo. Recompensa: +${TIME_BONUS_ON_BREACH}s e +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos.`,
+                          `Sin limite de tiempo. Recompensa: +${TIME_BONUS_ON_BREACH}s y +${WEAK_SPOT_BONUS_ON_BREACH} puntos debiles.`,
+                          `Без лимита времени. Награда: +${TIME_BONUS_ON_BREACH}с и +${WEAK_SPOT_BONUS_ON_BREACH} слабых точки.`,
+                        )}
                       </p>
                     </>
                   ) : (
                     <p className="text-[11px] text-slate-400">
-                      Optional prompt appears periodically. Complete it for Overclock, +{TIME_BONUS_ON_BREACH}s, and +{WEAK_SPOT_BONUS_ON_BREACH} weak spots.
+                      {l(
+                        `Optional prompt appears periodically. Complete it for Overclock, +${TIME_BONUS_ON_BREACH}s, and +${WEAK_SPOT_BONUS_ON_BREACH} weak spots.`,
+                        `Istege bagli komut belli araliklarla gelir. Tamamlarsan Overclock, +${TIME_BONUS_ON_BREACH}sn ve +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta kazanirsin.`,
+                        `O comando opcional aparece periodicamente. Complete-o para ganhar Overclock, +${TIME_BONUS_ON_BREACH}s e +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos.`,
+                        `La secuencia opcional aparece periodicamente. Completala para ganar Overclock, +${TIME_BONUS_ON_BREACH}s y +${WEAK_SPOT_BONUS_ON_BREACH} puntos debiles.`,
+                        `Дополнительная последовательность появляется периодически. Завершите её, чтобы получить Overclock, +${TIME_BONUS_ON_BREACH}с и +${WEAK_SPOT_BONUS_ON_BREACH} слабых точки.`,
+                      )}
                     </p>
                   )}
                 </div>
@@ -789,8 +931,14 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                       exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     >
                       {breachFeedback === 'success'
-                        ? `SEQUENCE BREACHED! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} WEAK SPOTS`
-                        : 'SEQUENCE FAILED'}
+                        ? l(
+                          `SEQUENCE BREACHED! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} WEAK SPOTS`,
+                          `DIZI ASILDI! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}sn +${WEAK_SPOT_BONUS_ON_BREACH} ZAYIF NOKTA`,
+                          `SEQUENCIA CONCLUIDA! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} PONTOS FRACOS`,
+                          `SECUENCIA COMPLETADA! OVERCLOCK x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} PUNTOS DEBILES`,
+                          `ВЗЛОМ УСПЕШЕН! ОВЕРКЛОК x${OVERCLOCK_MULTIPLIER.toFixed(2)} +${TIME_BONUS_ON_BREACH}с +${WEAK_SPOT_BONUS_ON_BREACH} СЛАБЫЕ ТОЧКИ`,
+                        )
+                        : l('SEQUENCE FAILED', 'DIZI BASARISIZ', 'SEQUENCIA FALHOU', 'SECUENCIA FALLIDA', 'ПОСЛЕДОВАТЕЛЬНОСТЬ ПРОВАЛЕНА')}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -802,7 +950,13 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                     animate={{ opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 0.5, repeat: Infinity }}
                   >
-                    Click anywhere - Hit yellow targets for {WEAK_SPOT_MULTIPLIER.toFixed(1)}x! | Optional breach (no timer): OVERCLOCK +{TIME_BONUS_ON_BREACH}s +{WEAK_SPOT_BONUS_ON_BREACH} weak spots
+                    {l(
+                      `Click anywhere - Hit yellow targets for ${weakSpotMultiplier.toFixed(1)}x! | Optional breach (no timer): OVERCLOCK +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} weak spots`,
+                      `Herhangi bir yere tikla - sari hedeflerde ${weakSpotMultiplier.toFixed(1)}x! | Istege bagli ihlal (suresiz): OVERCLOCK +${TIME_BONUS_ON_BREACH}sn +${WEAK_SPOT_BONUS_ON_BREACH} zayif nokta`,
+                      `Clique em qualquer lugar. Acerte os alvos amarelos para ${weakSpotMultiplier.toFixed(1)}x! | Invasao opcional (sem timer): OVERCLOCK +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} pontos fracos`,
+                      `Haz clic en cualquier lugar. Golpea los objetivos amarillos para ${weakSpotMultiplier.toFixed(1)}x! | Brecha opcional (sin temporizador): OVERCLOCK +${TIME_BONUS_ON_BREACH}s +${WEAK_SPOT_BONUS_ON_BREACH} puntos debiles`,
+                      `Нажимайте где угодно. Попадайте по жёлтым целям для ${weakSpotMultiplier.toFixed(1)}x! | Доп. взлом (без таймера): ОВЕРКЛОК +${TIME_BONUS_ON_BREACH}с +${WEAK_SPOT_BONUS_ON_BREACH} слабые точки`,
+                    )}
                   </motion.p>
                 </div>
               </div>
@@ -820,9 +974,15 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               </motion.div>
               
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-emerald-400">FIREWALL BREACHED!</h2>
+                <h2 className="text-3xl font-bold text-emerald-400">{l('FIREWALL BREACHED!', 'GUVENLIK ASILDI!', 'FIREWALL ROMPIDO!', '¡FIREWALL ROTO!', 'ФАЙРВОЛ ВЗЛОМАН!')}</h2>
                 <p className="text-muted-foreground">
-                  {currentBoss.name} defeated in {clicks} clicks
+                  {l(
+                    `${currentBossName} defeated in ${clicks} clicks`,
+                    `${currentBossName}, ${clicks} tiklamada yenildi`,
+                    `${currentBossName} foi derrotado em ${clicks} cliques`,
+                    `${currentBossName} fue derrotado en ${clicks} clics`,
+                    `${currentBossName} побежден за ${clicks} кликов`,
+                  )}
                 </p>
               </div>
               
@@ -832,9 +992,17 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                <p className="text-sm text-muted-foreground mb-2">Prestige Reward</p>
+                <p className="text-sm text-muted-foreground mb-2">{l('Prestige Reward', 'Prestij Odulu', 'Recompensa de Prestigio', 'Recompensa de Prestigio', 'Награда престижа')}</p>
                 <p className="text-4xl font-bold text-emerald-400">+{prestigeGain}</p>
-                <p className="text-sm text-cyan-400 mt-2">Ascending to Level {ascensionLevel + 2}!</p>
+                <p className="text-sm text-cyan-400 mt-2">
+                  {l(
+                    `Ascending to Level ${ascensionLevel + 2}!`,
+                    `${ascensionLevel + 2}. seviyeye yukseliyorsun!`,
+                    `Ascendendo para o Nivel ${ascensionLevel + 2}!`,
+                    `Ascendiendo al Nivel ${ascensionLevel + 2}!`,
+                    `Возвышение до уровня ${ascensionLevel + 2}!`,
+                  )}
+                </p>
               </motion.div>
               
               <Button
@@ -843,7 +1011,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 data-testid="button-claim-victory"
               >
                 <Trophy className="w-5 h-5 mr-2" />
-                CLAIM REWARDS & ASCEND
+                {l('CLAIM REWARDS & ASCEND', 'ODULLERI AL VE YUKSEL', 'RESGATAR RECOMPENSAS E ASCENDER', 'RECLAMAR RECOMPENSAS Y ASCENDER', 'ЗАБРАТЬ НАГРАДЫ И ВОЗНЕСТИСЬ')}
               </Button>
             </div>
           )}
@@ -859,9 +1027,15 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               </motion.div>
               
               <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-red-400">HACK FAILED!</h2>
+                <h2 className="text-3xl font-bold text-red-400">{l('HACK FAILED!', 'SALDIRI BASARISIZ!', 'HACK FALHOU!', '¡HACK FALLÓ!', 'ВЗЛОМ ПРОВАЛЕН!')}</h2>
                 <p className="text-muted-foreground">
-                  {currentBoss.name} resisted your attack
+                  {l(
+                    `${currentBossName} resisted your attack`,
+                    `${currentBossName} saldirina direndi`,
+                    `${currentBossName} resistiu ao seu ataque`,
+                    `${currentBossName} resistio tu ataque`,
+                    `${currentBossName} отразил вашу атаку`,
+                  )}
                 </p>
               </div>
               
@@ -873,16 +1047,22 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               >
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-amber-400" />
-                  <p className="text-sm text-amber-400">Penalty Applied</p>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">Consolation Prestige (25%)</p>
-                <p className="text-3xl font-bold text-amber-400">+{penaltyPrestige}</p>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Ascension level remains at {ascensionLevel + 1}
-                </p>
-                <p className="text-xs text-cyan-400 mt-1">
-                  Run resets - try again to break through!
-                </p>
+                   <p className="text-sm text-amber-400">{l('Penalty Applied', 'Ceza Uygulandi', 'Penalidade Aplicada', 'Penalizacion Aplicada', 'Штраф применён')}</p>
+                  </div>
+                 <p className="text-sm text-muted-foreground mb-2">{l('Consolation Prestige (25%)', 'Teselli Prestiji (25%)', 'Prestigio de Consolacao (25%)', 'Prestigio de Consolacion (25%)', 'Утешительный престиж (25%)')}</p>
+                 <p className="text-3xl font-bold text-amber-400">+{penaltyPrestige}</p>
+                 <p className="text-xs text-muted-foreground mt-3">
+                   {l(
+                     `Ascension level remains at ${ascensionLevel + 1}`,
+                     `Yükseliş seviyesi ${ascensionLevel + 1} olarak kalir`,
+                     `O nivel de ascensao permanece em ${ascensionLevel + 1}`,
+                     `El nivel de ascension permanece en ${ascensionLevel + 1}`,
+                     `Уровень возвышения остается ${ascensionLevel + 1}`,
+                   )}
+                 </p>
+                 <p className="text-xs text-cyan-400 mt-1">
+                   {l('Run resets - try again to break through!', 'Koşu sıfırlanır - yeniden dene ve aş!', 'A run reinicia. Tente de novo para romper a defesa!', 'La partida se reinicia. Vuelve a intentarlo para romper la defensa!', 'Забег будет сброшен — попробуйте снова, чтобы прорваться!')}
+                  </p>
               </motion.div>
               
               <Button
@@ -891,7 +1071,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 data-testid="button-accept-defeat"
               >
                 <RotateCcw className="w-5 h-5 mr-2" />
-                ACCEPT & RESTART RUN
+                 {l('ACCEPT & RESTART RUN', 'KABUL ET VE YENIDEN BASLA', 'ACEITAR E REINICIAR RUN', 'ACEPTAR Y REINICIAR PARTIDA', 'ПРИНЯТЬ И ПЕРЕЗАПУСТИТЬ ЗАБЕГ')}
               </Button>
             </div>
           )}
@@ -909,3 +1089,4 @@ function RotateCcw(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+

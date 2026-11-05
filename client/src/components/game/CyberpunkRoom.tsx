@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 export type CharacterReaction = 'idle' | 'checkpoint' | 'crit' | 'achievement' | 'pickup';
 
-type MachineVariant = 'data' | 'data_gold' | 'crypto' | 'quantum' | 'ai' | 'botnet' | 'defi' | 'neural' | 'singularity' | 'mining1' | 'mining2' | 'mining3' | 'mining4' | 'mining5';
+type MachineVariant = 'data' | 'data_gold' | 'crypto' | 'quantum' | 'ai' | 'botnet' | 'defi' | 'neural' | 'singularity' | 'mining1' | 'mining2' | 'mining3' | 'mining4' | 'mining5' | 'overclock' | 'mining6';
 
 const VARIANT_COLORS: Record<MachineVariant, { primary: string; secondary: string; glow: string }> = {
   data: { primary: '#06b6d4', secondary: '#0891b2', glow: 'rgba(6, 182, 212, 0.6)' },
@@ -20,6 +21,10 @@ const VARIANT_COLORS: Record<MachineVariant, { primary: string; secondary: strin
   mining3: { primary: '#ef4444', secondary: '#dc2626', glow: 'rgba(239, 68, 68, 0.6)' },
   mining4: { primary: '#dc2626', secondary: '#b91c1c', glow: 'rgba(220, 38, 38, 0.6)' },
   mining5: { primary: '#b91c1c', secondary: '#991b1b', glow: 'rgba(185, 28, 28, 0.7)' },
+  // Overclock tier: hot orange/white, distinct from the violet singularity and red rigs.
+  overclock: { primary: '#fb923c', secondary: '#f97316', glow: 'rgba(251, 146, 60, 0.8)' },
+  // White-hot, clearly apart from the gold Server Rack.
+  mining6: { primary: '#f8fafc', secondary: '#fdba74', glow: 'rgba(255, 237, 213, 0.9)' },
 };
 
 interface MachineColorSkin {
@@ -118,6 +123,8 @@ const MACHINE_VISUAL_ANCHOR: Record<MachineVariant, { x: number; y: number; scal
   mining3: { x: 0, y: 0, scale: 0.84 },
   mining4: { x: 0, y: 0, scale: 0.82 },
   mining5: { x: 0, y: 0, scale: 0.8 },
+  overclock: { x: 0, y: 0, scale: 0.9 },
+  mining6: { x: 0, y: 0, scale: 0.8 },
 };
 
 function gridToScreen(row: number, col: number): { x: number; y: number } {
@@ -150,6 +157,8 @@ const MACHINE_CONFIGS: MachineConfig[] = [
   { upgradeId: 'crypto_farm', variant: 'mining3', gridRow: 0, gridCol: 0, size: 26, name: 'Crypto Farm' },
   { upgradeId: 'quantum_miner', variant: 'mining4', gridRow: 0, gridCol: 0, size: 24, name: 'Quantum Miner' },
   { upgradeId: 'mining_datacenter', variant: 'mining5', gridRow: 0, gridCol: 0, size: 30, name: 'Mining Datacenter' },
+  { upgradeId: 'overclock_core', variant: 'overclock', gridRow: 0, gridCol: 0, size: 30, name: 'Overclocked Core' },
+  { upgradeId: 'overclock_rig', variant: 'mining6', gridRow: 0, gridCol: 0, size: 32, name: 'Overclocked Rig' },
 ];
 
 function getEvolutionTier(count: number): number {
@@ -166,11 +175,7 @@ const TIER_COLORS = {
   4: { badge: '#f59e0b', glow: 'rgba(245, 158, 11, 0.7)' },
 };
 
-// Performance guardrail:
-// keep only top stack layer fully animated and render lower layers as lightweight static shells.
-const STACK_LAYER_LOD_THRESHOLD = 22;
-
-const IsoMachine = React.memo(function IsoMachine({ variant, size, count = 1, colorOverride }: { variant: MachineVariant; size: number; count?: number; colorOverride?: { primary: string; secondary: string; glow: string } }) {
+const IsoMachine = React.memo(function IsoMachine({ variant, size, count = 1, colorOverride, disableGlow = false }: { variant: MachineVariant; size: number; count?: number; colorOverride?: { primary: string; secondary: string; glow: string }; disableGlow?: boolean }) {
   const colors = colorOverride || VARIANT_COLORS[variant];
   const tier = getEvolutionTier(count);
   const tierGlow = TIER_COLORS[tier as keyof typeof TIER_COLORS].glow;
@@ -191,15 +196,15 @@ const IsoMachine = React.memo(function IsoMachine({ variant, size, count = 1, co
   return (
     <motion.div 
       className="relative"
-      style={{ width: w, height: h }}
-      animate={{
+      style={{ width: w, height: h, filter: disableGlow ? 'none' : undefined }}
+      animate={disableGlow ? undefined : {
         filter: [
           `drop-shadow(0 0 ${glowIntensity}px ${colors.glow})`,
           `drop-shadow(0 0 ${glowMax}px ${colors.glow})`,
           `drop-shadow(0 0 ${glowIntensity}px ${colors.glow})`,
         ],
       }}
-      transition={{ duration: 2 - tier * 0.2, repeat: Infinity, ease: "easeInOut" }}
+      transition={disableGlow ? undefined : { duration: 2 - tier * 0.2, repeat: Infinity, ease: "easeInOut" }}
     >
       <svg width={w} height={h} viewBox="0 0 100 75">
         <defs>
@@ -369,7 +374,7 @@ const IsoMachine = React.memo(function IsoMachine({ variant, size, count = 1, co
   );
 });
 
-const MiningRig = React.memo(function MiningRig({ size, variant, count = 1, colorOverride }: { size: number; variant: MachineVariant; count?: number; colorOverride?: { primary: string; secondary: string; glow: string } }) {
+const MiningRig = React.memo(function MiningRig({ size, variant, count = 1, colorOverride, disableGlow = false }: { size: number; variant: MachineVariant; count?: number; colorOverride?: { primary: string; secondary: string; glow: string }; disableGlow?: boolean }) {
   const tier = getEvolutionTier(count);
   const tierGlow = TIER_COLORS[tier as keyof typeof TIER_COLORS].glow;
   
@@ -399,15 +404,15 @@ const MiningRig = React.memo(function MiningRig({ size, variant, count = 1, colo
   return (
     <motion.div 
       className="relative"
-      style={{ width: w, height: h }}
-      animate={{
+      style={{ width: w, height: h, filter: disableGlow ? 'none' : undefined }}
+      animate={disableGlow ? undefined : {
         filter: [
           `drop-shadow(0 0 ${glowMin}px ${colors.glow})`,
           `drop-shadow(0 0 ${glowMax}px ${colors.glow})`,
           `drop-shadow(0 0 ${glowMin}px ${colors.glow})`,
         ],
       }}
-      transition={{ duration: 1.5 - tier * 0.15, repeat: Infinity, ease: "easeInOut" }}
+      transition={disableGlow ? undefined : { duration: 1.5 - tier * 0.15, repeat: Infinity, ease: "easeInOut" }}
     >
       <svg width={w} height={h} viewBox="0 0 100 80">
         <defs>
@@ -567,66 +572,6 @@ const MiningRig = React.memo(function MiningRig({ size, variant, count = 1, colo
       </svg>
       
     </motion.div>
-  );
-});
-
-const MachineStackProxy = React.memo(function MachineStackProxy({
-  size,
-  variant,
-  count = 1,
-  colorOverride
-}: {
-  size: number;
-  variant: MachineVariant;
-  count?: number;
-  colorOverride?: { primary: string; secondary: string; glow: string };
-}) {
-  const tier = getEvolutionTier(count);
-  const sizeBonus = (tier - 1) * 0.08;
-  const adjustedSize = size * (1 + sizeBonus);
-  const w = adjustedSize * 2;
-  const h = adjustedSize * (variant.startsWith('mining') ? 1.6 : 1.5);
-  const colors = colorOverride || VARIANT_COLORS[variant];
-
-  return (
-    <div
-      className="relative pointer-events-none"
-      style={{
-        width: w,
-        height: h,
-        opacity: 0.9,
-        filter: `drop-shadow(0 0 ${Math.max(4, adjustedSize / 3)}px ${colors.glow})`,
-      }}
-    >
-      <svg width={w} height={h} viewBox="0 0 100 78">
-        <ellipse cx="50" cy="67" rx="28" ry="6" fill="rgba(15, 23, 42, 0.62)" />
-        <polygon
-          points="50,8 88,26 50,44 12,26"
-          fill="rgba(15, 23, 42, 0.86)"
-          stroke={colors.primary}
-          strokeWidth="1.2"
-        />
-        <polygon
-          points="12,26 50,44 50,70 12,52"
-          fill="rgba(2, 6, 23, 0.9)"
-          stroke={colors.secondary}
-          strokeWidth="1"
-        />
-        <polygon
-          points="50,44 88,26 88,52 50,70"
-          fill="rgba(15, 23, 42, 0.9)"
-          stroke={colors.secondary}
-          strokeWidth="1"
-        />
-        <polygon
-          points="50,15 72,26 50,37 28,26"
-          fill={colors.primary}
-          opacity="0.18"
-          stroke={colors.primary}
-          strokeWidth="0.7"
-        />
-      </svg>
-    </div>
   );
 });
 
@@ -1610,6 +1555,30 @@ export const CSSCharacter = React.memo(function CSSCharacter({
             </svg>
           </motion.div>
         );
+      case 'paragon_void_diadem':
+        return (
+          <motion.div
+            className="absolute"
+            style={{ top: -11, left: HEAD_CENTER - 14, zIndex: 11, filter: 'drop-shadow(0 0 10px rgba(167, 139, 250, 0.8))' }}
+            animate={{ y: [0, -1.5, 0], opacity: [0.9, 1, 0.9] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <svg width="28" height="20" viewBox="0 0 28 20">
+              <defs>
+                <linearGradient id="paragon-diadem-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#22d3ee" />
+                  <stop offset="55%" stopColor="#60a5fa" />
+                  <stop offset="100%" stopColor="#a78bfa" />
+                </linearGradient>
+              </defs>
+              <path d="M2 14 Q6 6 14 4 Q22 6 26 14 L24 18 L4 18 Z" fill="rgba(8,20,45,0.92)" stroke="url(#paragon-diadem-grad)" strokeWidth="1.8" />
+              <path d="M6 13 Q14 8 22 13" fill="none" stroke="#67e8f9" strokeWidth="1.4" opacity="0.9" />
+              <path d="M14 2 L17 8 L14 14 L11 8 Z" fill="rgba(34,211,238,0.45)" stroke="#a5f3fc" strokeWidth="1.2" />
+              <circle cx="9" cy="12" r="1.2" fill="#c4b5fd" />
+              <circle cx="19" cy="12" r="1.2" fill="#c4b5fd" />
+            </svg>
+          </motion.div>
+        );
       default:
         return null;
     }
@@ -2170,6 +2139,38 @@ export const CSSCharacter = React.memo(function CSSCharacter({
             />
           </motion.svg>
         );
+      case 'paragon_quantum_crown':
+        return (
+          <motion.svg
+            width="28"
+            height="24"
+            viewBox="0 0 28 24"
+            style={{
+              position: 'absolute',
+              top: -9,
+              left: '50%',
+              marginLeft: -14,
+              zIndex: 7,
+              filter: 'drop-shadow(0 0 10px rgba(34, 211, 238, 0.85))',
+              overflow: 'visible'
+            }}
+            animate={{ y: [0, -1.8, 0], opacity: [0.88, 1, 0.88] }}
+            transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <defs>
+              <linearGradient id="paragon-crown-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="50%" stopColor="#7dd3fc" />
+                <stop offset="100%" stopColor="#a78bfa" />
+              </linearGradient>
+            </defs>
+            <path d="M3 20 L3 10 L8 14 L14 4 L20 14 L25 10 L25 20 Z" fill="rgba(8,24,46,0.72)" stroke="url(#paragon-crown-grad)" strokeWidth="1.8" />
+            <path d="M6 18 L22 18" stroke="#67e8f9" strokeWidth="1.4" />
+            <circle cx="14" cy="9" r="2.2" fill="#a5f3fc" />
+            <circle cx="9" cy="13" r="1.4" fill="#c4b5fd" />
+            <circle cx="19" cy="13" r="1.4" fill="#c4b5fd" />
+          </motion.svg>
+        );
       case 'relic_celestial_crown':
         return (
           <motion.svg
@@ -2413,13 +2414,19 @@ export const CSSCharacter = React.memo(function CSSCharacter({
 });
 
 const CharacterReactionText = React.memo(function CharacterReactionText({ reaction }: { reaction: CharacterReaction }) {
+  const { language } = useI18n();
   if (reaction === 'idle') return null;
   
   const getText = () => {
     switch (reaction) {
       case 'checkpoint': return 'CHECKPOINT!';
       case 'crit': return 'CRIT!';
-      case 'achievement': return 'ACHIEVEMENT!';
+      case 'achievement':
+        if (language === 'tr') return 'BASARI!';
+        if (language === 'pt-BR') return 'CONQUISTA!';
+        if (language === 'es') return 'LOGRO!';
+        if (language === 'ru') return 'ДОСТИЖЕНИЕ!';
+        return 'ACHIEVEMENT!';
       case 'pickup': return 'BONUS!';
       default: return '';
     }
@@ -2874,7 +2881,7 @@ function SpaceSpriteGlyph({ sprite }: { sprite: SpaceSpriteConfig }) {
   }
 }
 
-function AscensionSpacePhenomena({ ascensionLevel = 0 }: { ascensionLevel?: number }) {
+function AscensionSpacePhenomena({ ascensionLevel = 0, reducedEffects = false }: { ascensionLevel?: number; reducedEffects?: boolean }) {
   const spaceField = useMemo(() => buildAscensionSpaceField(ascensionLevel), [ascensionLevel]);
 
   return (
@@ -2922,69 +2929,67 @@ function AscensionSpacePhenomena({ ascensionLevel = 0 }: { ascensionLevel?: numb
       })}
 
       {spaceField.animatedSprites.map((sprite) => (
-        <motion.div
-          key={sprite.id}
-          className="absolute"
-          style={{
-            left: `${sprite.x}%`,
-            top: `${sprite.y}%`,
-            width: sprite.size,
-            height: sprite.size,
-            opacity: sprite.opacity,
-          }}
-          animate={{
-            x: sprite.motion === 'sweep'
-              ? [0, sprite.driftX]
-              : [0, sprite.driftX, 0, -sprite.driftX * 0.4, 0],
-            y: sprite.motion === 'sweep'
-              ? [0, sprite.driftY]
-              : [0, -sprite.driftY, sprite.driftY * 0.35, 0],
-            rotate: [sprite.rotate, sprite.rotate + (sprite.motion === 'sweep' ? 18 : 10), sprite.rotate],
-            scale: sprite.kind === 'rift' || sprite.kind === 'relic'
-              ? [1, 1.13, 0.98, 1]
-              : [1, 1.05, 1],
-            opacity: [sprite.opacity * 0.58, sprite.opacity, sprite.opacity * 0.7],
-          }}
-          transition={{
-            duration: sprite.duration,
-            repeat: Infinity,
-            ease: sprite.motion === 'sweep' ? 'linear' : 'easeInOut',
-            delay: sprite.delay,
-          }}
-        >
-          <SpaceSpriteGlyph sprite={sprite} />
-        </motion.div>
+        reducedEffects ? (
+          <div
+            key={sprite.id}
+            className="absolute"
+            style={{
+              left: `${sprite.x}%`,
+              top: `${sprite.y}%`,
+              width: sprite.size,
+              height: sprite.size,
+              opacity: sprite.opacity * 0.8,
+            }}
+          >
+            <SpaceSpriteGlyph sprite={sprite} />
+          </div>
+        ) : (
+          <motion.div
+            key={sprite.id}
+            className="absolute"
+            style={{
+              left: `${sprite.x}%`,
+              top: `${sprite.y}%`,
+              width: sprite.size,
+              height: sprite.size,
+              opacity: sprite.opacity,
+            }}
+            animate={{
+              x: sprite.motion === 'sweep'
+                ? [0, sprite.driftX]
+                : [0, sprite.driftX, 0, -sprite.driftX * 0.4, 0],
+              y: sprite.motion === 'sweep'
+                ? [0, sprite.driftY]
+                : [0, -sprite.driftY, sprite.driftY * 0.35, 0],
+              rotate: [sprite.rotate, sprite.rotate + (sprite.motion === 'sweep' ? 18 : 10), sprite.rotate],
+              scale: sprite.kind === 'rift' || sprite.kind === 'relic'
+                ? [1, 1.13, 0.98, 1]
+                : [1, 1.05, 1],
+              opacity: [sprite.opacity * 0.58, sprite.opacity, sprite.opacity * 0.7],
+            }}
+            transition={{
+              duration: sprite.duration,
+              repeat: Infinity,
+              ease: sprite.motion === 'sweep' ? 'linear' : 'easeInOut',
+              delay: sprite.delay,
+            }}
+          >
+            <SpaceSpriteGlyph sprite={sprite} />
+          </motion.div>
+        )
       ))}
     </div>
   );
 }
 
-function AmbientPlanets({ ascensionLevel = 0 }: { ascensionLevel?: number }) {
+function AmbientPlanets({ ascensionLevel = 0, reducedEffects = false }: { ascensionLevel?: number; reducedEffects?: boolean }) {
   const planets = useMemo(() => buildAmbientPlanets(ascensionLevel), [ascensionLevel]);
   const stars = useMemo(() => buildAmbientStars(ascensionLevel), [ascensionLevel]);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 1 }}>
-      {planets.map((planet) => (
-        <motion.div
-          key={`ambient-planet-${planet.id}`}
-          className="absolute"
-          style={{
-            left: `${planet.x}%`,
-            top: `${planet.y}%`,
-            width: planet.size,
-            height: planet.size,
-          }}
-          animate={{
-            y: [0, -3, 0, 3, 0],
-            opacity: [0.64, 0.84, 0.64],
-          }}
-          transition={{
-            duration: planet.orbitDuration / 10,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-        >
+      {planets.map((planet) => {
+        const planetVisual = (
           <svg width={planet.size} height={planet.size} viewBox="0 0 24 24">
             <defs>
               <radialGradient id={`planet-grad-${ascensionLevel}-${planet.id}`} cx="35%" cy="35%">
@@ -3027,8 +3032,50 @@ function AmbientPlanets({ ascensionLevel = 0 }: { ascensionLevel?: number }) {
             )}
             <ellipse cx="8" cy="8" rx="3" ry="2" fill="rgba(255,255,255,0.15)" />
           </svg>
-        </motion.div>
-      ))}
+        );
+
+        if (reducedEffects) {
+          return (
+            <div
+              key={`ambient-planet-${planet.id}`}
+              className="absolute"
+              style={{
+                left: `${planet.x}%`,
+                top: `${planet.y}%`,
+                width: planet.size,
+                height: planet.size,
+                opacity: 0.74,
+              }}
+            >
+              {planetVisual}
+            </div>
+          );
+        }
+
+        return (
+          <motion.div
+            key={`ambient-planet-${planet.id}`}
+            className="absolute"
+            style={{
+              left: `${planet.x}%`,
+              top: `${planet.y}%`,
+              width: planet.size,
+              height: planet.size,
+            }}
+            animate={{
+              y: [0, -3, 0, 3, 0],
+              opacity: [0.64, 0.84, 0.64],
+            }}
+            transition={{
+              duration: planet.orbitDuration / 10,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          >
+            {planetVisual}
+          </motion.div>
+        );
+      })}
 
       {stars.map((star) => (
         <motion.div
@@ -3056,7 +3103,7 @@ function AmbientPlanets({ ascensionLevel = 0 }: { ascensionLevel?: number }) {
   );
 }
 
-function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
+function OrbitalPlanetView({ planet, reducedEffects = false }: { planet: OrbitalPlanetConfig; reducedEffects?: boolean }) {
   const renderPlanet = () => {
     switch (planet.type) {
       case 'crystal':
@@ -3065,9 +3112,9 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
             width="200" 
             height="200" 
             viewBox="0 0 200 200"
-            style={{ filter: `drop-shadow(0 0 30px ${planet.primaryColor})` }}
-            animate={{ rotate: 360 }}
-            transition={{ duration: 300, repeat: Infinity, ease: "linear" }}
+            style={{ filter: reducedEffects ? 'none' : `drop-shadow(0 0 30px ${planet.primaryColor})` }}
+            animate={reducedEffects ? undefined : { rotate: 360 }}
+            transition={reducedEffects ? undefined : { duration: 300, repeat: Infinity, ease: "linear" }}
           >
             <defs>
               <radialGradient id="ice-planet-grad" cx="30%" cy="30%">
@@ -3111,7 +3158,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
             width="220" 
             height="220" 
             viewBox="0 0 220 220"
-            style={{ filter: `drop-shadow(0 0 40px ${planet.primaryColor})` }}
+            style={{ filter: reducedEffects ? 'none' : `drop-shadow(0 0 40px ${planet.primaryColor})` }}
           >
             <defs>
               <radialGradient id="lava-planet-grad" cx="40%" cy="40%">
@@ -3147,7 +3194,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
             width="260" 
             height="200" 
             viewBox="0 0 260 200"
-            style={{ filter: `drop-shadow(0 0 35px ${planet.primaryColor})` }}
+            style={{ filter: reducedEffects ? 'none' : `drop-shadow(0 0 35px ${planet.primaryColor})` }}
             animate={{ rotate: [0, 1, 0, -1, 0] }}
             transition={{ duration: 20, repeat: Infinity }}
           >
@@ -3205,7 +3252,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
               {planet.hasRings && (
                 <motion.ellipse cx="100" cy="100" rx="95" ry="25" fill="none" 
                   stroke={planet.accentColor} strokeWidth="6"
-                  style={{ filter: `drop-shadow(0 0 15px ${planet.accentColor})` }}
+                  style={{ filter: reducedEffects ? 'none' : `drop-shadow(0 0 15px ${planet.accentColor})` }}
                   animate={{ rotate: [0, 360] }}
                   transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
                 />
@@ -3215,7 +3262,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
               className="absolute inset-0 rounded-full"
               style={{ 
                 background: `radial-gradient(circle at 50% 50%, transparent 20%, ${planet.accentColor} 40%, transparent 60%)`,
-                filter: `blur(10px)`
+                filter: reducedEffects ? 'none' : `blur(10px)`
               }}
               animate={{ rotate: -360, scale: [1, 1.1, 1] }}
               transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
@@ -3247,12 +3294,12 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
               style={{ transformOrigin: '120px 90px' }}
             >
               <motion.circle cx="70" cy="90" r="45" fill="url(#star1-grad)"
-                style={{ filter: `drop-shadow(0 0 30px ${planet.primaryColor})` }}
+                style={{ filter: reducedEffects ? 'none' : `drop-shadow(0 0 30px ${planet.primaryColor})` }}
                 animate={{ scale: [1, 1.05, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
               <motion.circle cx="170" cy="90" r="35" fill="url(#star2-grad)"
-                style={{ filter: `drop-shadow(0 0 25px ${planet.secondaryColor})` }}
+                style={{ filter: reducedEffects ? 'none' : `drop-shadow(0 0 25px ${planet.secondaryColor})` }}
                 animate={{ scale: [1, 1.08, 1] }}
                 transition={{ duration: 2.5, repeat: Infinity }}
               />
@@ -3281,7 +3328,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
                   left: 40 + i * 15,
                   top: 30 + i * 10,
                   background: `radial-gradient(ellipse, ${i % 2 === 0 ? planet.primaryColor : planet.secondaryColor} 0%, transparent 70%)`,
-                  filter: 'blur(15px)',
+                  filter: reducedEffects ? 'none' : 'blur(15px)',
                 }}
                 animate={{ 
                   scale: [1, 1.1, 1],
@@ -3317,7 +3364,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
               animate={{ rotate: [0, 360] }}
               transition={{ duration: 400, repeat: Infinity, ease: "linear" }}
             >
-              <svg width="160" height="160" viewBox="0 0 260 260" style={{ filter: 'drop-shadow(0 0 20px rgba(100, 100, 100, 0.5))' }}>
+              <svg width="160" height="160" viewBox="0 0 260 260" style={{ filter: reducedEffects ? 'none' : 'drop-shadow(0 0 20px rgba(100, 100, 100, 0.5))' }}>
                 <defs>
                   <radialGradient id="deathStarGrad" cx="35%" cy="35%">
                     <stop offset="0%" stopColor="#9ca3af" />
@@ -3351,7 +3398,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
                   fill="#4ade80"
                   animate={{ opacity: [0.6, 1, 0.6], scale: [0.9, 1.1, 0.9] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  style={{ filter: 'drop-shadow(0 0 10px #22c55e)' }}
+                  style={{ filter: reducedEffects ? 'none' : 'drop-shadow(0 0 10px #22c55e)' }}
                 />
                 
                 {/* Equatorial trench */}
@@ -3410,7 +3457,7 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
                   width: 14, 
                   height: 14, 
                   background: 'radial-gradient(circle, #4ade80 0%, #22c55e 50%, transparent 70%)',
-                  filter: 'drop-shadow(0 0 15px #22c55e)'
+                  filter: reducedEffects ? 'none' : 'drop-shadow(0 0 15px #22c55e)'
                 }}
               />
             </motion.div>
@@ -3441,14 +3488,13 @@ function OrbitalPlanetView({ planet }: { planet: OrbitalPlanetConfig }) {
   );
 }
 
-function TravelingSpaceship({ ascensionLevel = 0 }: { ascensionLevel?: number }) {
+function TravelingSpaceship({ ascensionLevel = 0, reducedEffects = false }: { ascensionLevel?: number; reducedEffects?: boolean }) {
   const safeAscension = Math.max(0, Math.floor(ascensionLevel));
-  const [spaceship, setSpaceship] = useState<SpaceshipState | null>(null);
+  const [spaceships, setSpaceships] = useState<SpaceshipState[]>([]);
   
   useEffect(() => {
     let isActive = true;
     let nextTimeout: NodeJS.Timeout | null = null;
-    let clearTimeout_: NodeJS.Timeout | null = null;
     
     const spawnSpaceship = () => {
       if (!isActive) return;
@@ -3492,7 +3538,7 @@ function TravelingSpaceship({ ascensionLevel = 0 }: { ascensionLevel?: number })
         duration *= 1.08;
       }
       
-      setSpaceship({
+      const spawnedShip: SpaceshipState = {
         id: Date.now(),
         type,
         startX,
@@ -3501,12 +3547,14 @@ function TravelingSpaceship({ ascensionLevel = 0 }: { ascensionLevel?: number })
         endY,
         duration,
         size,
+      };
+
+      setSpaceships((prev) => {
+        const next = [...prev, spawnedShip];
+        if (next.length > 4) return next.slice(next.length - 4);
+        return next;
       });
-      
-      clearTimeout_ = setTimeout(() => {
-        if (isActive) setSpaceship(null);
-      }, duration * 1000);
-      
+
       scheduleNext();
     };
     
@@ -3524,24 +3572,10 @@ function TravelingSpaceship({ ascensionLevel = 0 }: { ascensionLevel?: number })
     return () => {
       isActive = false;
       if (nextTimeout) clearTimeout(nextTimeout);
-      if (clearTimeout_) clearTimeout(clearTimeout_);
     };
   }, [safeAscension]);
-  
-  if (!spaceship) return null;
-  const shipTilt =
-    spaceship.type === 'asteroid'
-      ? {
-          rotate: [0, 360],
-        }
-      : spaceship.type === 'voyager1'
-        ? {
-            rotate: [-6, 6, -6],
-            y: [0, -1.2, 0],
-          }
-        : undefined;
-  
-  const renderSpaceship = () => {
+
+  const renderSpaceship = (spaceship: SpaceshipState) => {
     const { type, size } = spaceship;
     
     if (type === 'ufo') {
@@ -3653,51 +3687,77 @@ function TravelingSpaceship({ ascensionLevel = 0 }: { ascensionLevel?: number })
     );
   };
   
+
+  if (spaceships.length === 0) return null;
+
   return (
-    <motion.div
-      key={spaceship.id}
-      className="absolute pointer-events-none z-5"
-      initial={{ 
-        left: `${spaceship.startX}%`, 
-        top: `${spaceship.startY}%`,
-        opacity: 0 
-      }}
-      animate={{ 
-        left: `${spaceship.endX}%`, 
-        top: `${spaceship.endY}%`,
-        opacity: [0, 0.85, 0.85, 0.85, 0]
-      }}
-      transition={{ 
-        duration: spaceship.duration,
-        ease: "linear",
-        opacity: { 
-          times: [0, 0.05, 0.5, 0.95, 1],
-          duration: spaceship.duration 
-        }
-      }}
-      style={{
-        filter: spaceship.type === 'frigate'
-          ? 'drop-shadow(0 0 8px rgba(167, 139, 250, 0.75))'
-          : spaceship.type === 'asteroid'
-            ? 'drop-shadow(0 0 8px rgba(244, 114, 182, 0.55))'
-            : spaceship.type === 'voyager1'
-              ? 'drop-shadow(0 0 10px rgba(125, 211, 252, 0.68))'
-              : 'drop-shadow(0 0 6px rgba(6, 182, 212, 0.6))',
-      }}
-    >
-      <motion.div
-        animate={shipTilt}
-        transition={
+    <>
+      {spaceships.map((spaceship) => {
+        const shipTilt =
           spaceship.type === 'asteroid'
-            ? { duration: 5.8, repeat: Infinity, ease: 'linear' }
+            ? {
+                rotate: [0, 360],
+              }
             : spaceship.type === 'voyager1'
-              ? { duration: 2.8, repeat: Infinity, ease: 'easeInOut' }
-              : undefined
-        }
-      >
-        {renderSpaceship()}
-      </motion.div>
-    </motion.div>
+              ? {
+                  rotate: [-6, 6, -6],
+                  y: [0, -1.2, 0],
+                }
+              : undefined;
+
+        return (
+          <motion.div
+            key={spaceship.id}
+            className="absolute pointer-events-none z-5"
+            onAnimationComplete={() => {
+              setSpaceships((current) => current.filter((ship) => ship.id !== spaceship.id));
+            }}
+            initial={{ 
+              left: `${spaceship.startX}%`, 
+              top: `${spaceship.startY}%`,
+              opacity: 0 
+            }}
+            animate={{ 
+              left: `${spaceship.endX}%`, 
+              top: `${spaceship.endY}%`,
+              opacity: [0, 0.85, 0.85, 0.85, 0]
+            }}
+            transition={{ 
+              duration: spaceship.duration,
+              ease: "linear",
+              opacity: { 
+                times: [0, 0.05, 0.5, 0.95, 1],
+                duration: spaceship.duration 
+              }
+            }}
+            style={{
+              filter: reducedEffects
+                ? 'none'
+                : spaceship.type === 'frigate'
+                  ? 'drop-shadow(0 0 8px rgba(167, 139, 250, 0.75))'
+                  : spaceship.type === 'asteroid'
+                    ? 'drop-shadow(0 0 8px rgba(244, 114, 182, 0.55))'
+                    : spaceship.type === 'voyager1'
+                      ? 'drop-shadow(0 0 10px rgba(125, 211, 252, 0.68))'
+                      : 'drop-shadow(0 0 6px rgba(6, 182, 212, 0.6))',
+            }}
+          >
+            <motion.div
+              animate={shipTilt}
+              transition={
+                spaceship.type === 'asteroid'
+                  ? { duration: 5.8, repeat: Infinity, ease: 'linear' }
+                  : spaceship.type === 'voyager1'
+                    ? { duration: 2.8, repeat: Infinity, ease: 'easeInOut' }
+                    : undefined
+              }
+            >
+              {renderSpaceship(spaceship)}
+            </motion.div>
+          </motion.div>
+        );
+      })}
+    </>
   );
 }
 
@@ -3727,6 +3787,7 @@ interface CyberpunkRoomProps {
   cameraFollowCharacter?: boolean;
   cameraZoom?: number;
   onUpdateMachinePosition?: (upgradeId: string, gridX: number, gridY: number) => void;
+  reduceSceneGlow?: boolean;
 }
 
 const WALK_STEP_INTERVAL_MS = 1400;
@@ -3832,8 +3893,10 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
   showEmptyHint = true,
   cameraFollowCharacter = false,
   cameraZoom = 1,
-  onUpdateMachinePosition
+  onUpdateMachinePosition,
+  reduceSceneGlow = false,
 }: CyberpunkRoomProps) {
+  const { language } = useI18n();
   const [pathIndex, setPathIndex] = useState(0);
   const [isWalking, setIsWalking] = useState(false);
   
@@ -3872,11 +3935,31 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
   const followOffsetY = followCharacterCamera ? followTargetY - characterAnchorY : 0;
   const safeAscensionLevel = Math.max(0, Math.floor(ascensionLevel));
   const deepSpaceProgress = clampNumber(safeAscensionLevel / 60, 0, 1);
+  const ascensionBandEarly = clampNumber(safeAscensionLevel / 10, 0, 1); // 0-10
+  const ascensionBandMid = clampNumber((safeAscensionLevel - 10) / 20, 0, 1); // 10-30
+  const ascensionBandLate = clampNumber((safeAscensionLevel - 30) / 30, 0, 1); // 30+
   const starLayerCount = 48 + Math.min(28, Math.floor(safeAscensionLevel * 0.8));
   const nebulaFade = 1 - deepSpaceProgress * 0.38;
-  const deepSpaceShade = 0.07 + deepSpaceProgress * 0.24;
-  const deepSpaceVignette = 0.14 + deepSpaceProgress * 0.34;
-  const abyssTint = 0.05 + deepSpaceProgress * 0.13;
+  const deepSpaceTintAlpha =
+    0.035 +
+    ascensionBandEarly * 0.035 +
+    ascensionBandMid * 0.085 +
+    ascensionBandLate * 0.09;
+  const deepSpaceMultiplyAlpha =
+    0.025 +
+    ascensionBandEarly * 0.025 +
+    ascensionBandMid * 0.06 +
+    ascensionBandLate * 0.075;
+  const deepSpaceEdgeShadeAlpha =
+    0.07 +
+    ascensionBandEarly * 0.03 +
+    ascensionBandMid * 0.08 +
+    ascensionBandLate * 0.11;
+  const deepSpaceHazeAlpha =
+    0.018 +
+    ascensionBandEarly * 0.018 +
+    ascensionBandMid * 0.03 +
+    ascensionBandLate * 0.045;
 
   const backgroundStars = useMemo(() => {
     return Array.from({ length: starLayerCount }, (_, index) => {
@@ -3955,12 +4038,6 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
     });
     return byTile;
   }, [unlockedMachines]);
-
-  const totalStackLayers = useMemo(
-    () => unlockedMachines.reduce((sum, machine) => sum + machine.stackCount, 0),
-    [unlockedMachines]
-  );
-  const useStackLayerLod = totalStackLayers >= STACK_LAYER_LOD_THRESHOLD;
 
   const floorRef = useRef<HTMLDivElement>(null);
   const [draggingMachineId, setDraggingMachineId] = useState<string | null>(null);
@@ -4057,7 +4134,7 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
               height: star.size,
               opacity: star.opacity,
               backgroundColor: star.color,
-              boxShadow: `0 0 ${star.size * 2.2}px ${star.color}`,
+              boxShadow: reduceSceneGlow ? 'none' : `0 0 ${star.size * 2.2}px ${star.color}`,
             }}
           />
         ))}
@@ -4076,22 +4153,35 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
           }}
         />
         {themeColors.orbitalPlanet ? (
-          <OrbitalPlanetView planet={themeColors.orbitalPlanet} />
+          <OrbitalPlanetView planet={themeColors.orbitalPlanet} reducedEffects={reduceSceneGlow} />
         ) : (
-          <AmbientPlanets ascensionLevel={ascensionLevel} />
+          <AmbientPlanets ascensionLevel={ascensionLevel} reducedEffects={reduceSceneGlow} />
         )}
-        <AscensionSpacePhenomena ascensionLevel={ascensionLevel} />
-        <TravelingSpaceship ascensionLevel={ascensionLevel} />
+        <AscensionSpacePhenomena ascensionLevel={ascensionLevel} reducedEffects={reduceSceneGlow} />
+        <TravelingSpaceship ascensionLevel={ascensionLevel} reducedEffects={reduceSceneGlow} />
+        {/* Deep-space grading: keep it screen-stable and zoom-independent to avoid delayed dark/light shifts. */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ backgroundColor: `rgba(2, 6, 23, ${deepSpaceTintAlpha})` }}
+        />
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `linear-gradient(180deg, rgba(2, 6, 23, ${abyssTint * 0.42}) 0%, rgba(2, 6, 23, ${abyssTint * 0.82}) 52%, rgba(0, 0, 0, ${deepSpaceShade}) 100%)`,
+            background: `linear-gradient(180deg, rgba(2, 6, 23, ${deepSpaceMultiplyAlpha * 0.35}) 0%, rgba(0, 0, 0, ${deepSpaceMultiplyAlpha}) 100%)`,
+            mixBlendMode: 'multiply',
           }}
         />
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse at 50% 42%, rgba(15, 23, 42, 0) 34%, rgba(2, 6, 23, ${deepSpaceVignette * 0.56}) 74%, rgba(0, 0, 0, ${deepSpaceVignette * 0.86}) 100%)`,
+            background: `radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, ${deepSpaceEdgeShadeAlpha * 0.45}) 74%, rgba(0, 0, 0, ${deepSpaceEdgeShadeAlpha}) 100%)`,
+          }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse at 50% 26%, rgba(56, 189, 248, ${deepSpaceHazeAlpha}) 0%, rgba(56, 189, 248, 0) 58%)`,
+            mixBlendMode: 'screen',
           }}
         />
       </div>
@@ -4100,18 +4190,25 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
         <div>
           <div
             className="relative"
-            ref={floorRef}
             style={{
               width: floorWidth,
               height: floorHeight,
               transform: followCharacterCamera
-                ? `translate(${followOffsetX}px, ${followOffsetY}px) scale(${previewZoom})`
+                ? `translate(${followOffsetX}px, ${followOffsetY}px)`
                 : undefined,
               transformOrigin: followCharacterCamera ? '0 0' : undefined,
-              transition: followCharacterCamera ? 'transform 800ms ease-in-out' : undefined,
+              transition: followCharacterCamera ? 'transform 220ms linear' : undefined,
             }}
           >
-            <IsometricFloor themeColors={themeColors} offsetX={floorOffsetX} showCenters={debugTileCenters} />
+            <div
+              className="relative w-full h-full"
+              ref={floorRef}
+              style={{
+                transform: followCharacterCamera ? `scale(${previewZoom})` : undefined,
+                transformOrigin: followCharacterCamera ? '0 0' : undefined,
+              }}
+            >
+              <IsometricFloor themeColors={themeColors} offsetX={floorOffsetX} showCenters={debugTileCenters} />
             {editMode && dropPreviewTile && (() => {
               const { x, y } = gridToScreen(dropPreviewTile.row, dropPreviewTile.col);
               const isBlocked = dropPreviewTile.blocked;
@@ -4177,8 +4274,7 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
                   )}
                   {stackIndices.map((stackIndex) => {
                     const isTopLayer = stackIndex === machine.stackCount - 1;
-                    const useLiteLayer = useStackLayerLod && !isTopLayer;
-                    const anchorX = baseAnchorX + (stackIndex % 2 === 1 ? 1 : 0);
+                    const anchorX = baseAnchorX;
                     const anchorY = baseAnchorY - (stackIndex * stackOffset);
                     const layerStyle: React.CSSProperties = {
                       left: anchorX - machineWidth * visualAnchorX,
@@ -4187,23 +4283,6 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
                       height: machineHeight,
                       zIndex: machine.zIndex + 10 + stackIndex,
                     };
-
-                    if (useLiteLayer) {
-                      return (
-                        <div
-                          key={`${machine.upgradeId}-${stackIndex}`}
-                          className="absolute pointer-events-none"
-                          style={layerStyle}
-                        >
-                          <MachineStackProxy
-                            size={renderSize}
-                            variant={machine.variant}
-                            count={machine.count}
-                            colorOverride={machineColors}
-                          />
-                        </div>
-                      );
-                    }
 
                     return (
                       <motion.div
@@ -4229,9 +4308,9 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
                         }}
                       >
                         {isMining ? (
-                          <MiningRig size={renderSize} variant={machine.variant} count={machine.count} colorOverride={machineColors} />
+                          <MiningRig size={renderSize} variant={machine.variant} count={machine.count} colorOverride={machineColors} disableGlow={reduceSceneGlow} />
                         ) : (
-                          <IsoMachine variant={machine.variant} size={renderSize} count={machine.count} colorOverride={machineColors} />
+                          <IsoMachine variant={machine.variant} size={renderSize} count={machine.count} colorOverride={machineColors} disableGlow={reduceSceneGlow} />
                         )}
                       </motion.div>
                     );
@@ -4343,6 +4422,7 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
                 )}
               </div>
             </motion.div>
+            </div>
           </div>
         </div>
       </div>
@@ -4354,8 +4434,12 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
         >
-          <p className="text-cyan-400/50 text-sm font-mono tracking-wide">[ LAB EMPTY ]</p>
-          <p className="text-muted-foreground/50 text-xs mt-1">Purchase upgrades to spawn machines</p>
+          <p className="text-cyan-400/50 text-sm font-mono tracking-wide">
+            {language === 'tr' ? '[ LAB BOS ]' : language === 'pt-BR' ? '[ LAB VAZIO ]' : language === 'es' ? '[ LAB VACIO ]' : language === 'ru' ? '[ ЛАБ ПУСТА ]' : '[ LAB EMPTY ]'}
+          </p>
+          <p className="text-muted-foreground/50 text-xs mt-1">
+            {language === 'tr' ? 'Makinelerin ortaya cikmasi icin yukseltme satin al' : language === 'pt-BR' ? 'Compre upgrades para fazer as maquinas surgirem' : language === 'es' ? 'Compra mejoras para hacer aparecer las maquinas' : language === 'ru' ? 'Купите улучшения, чтобы появились машины' : 'Purchase upgrades to spawn machines'}
+          </p>
         </motion.div>
       )}
 

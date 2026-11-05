@@ -1,15 +1,20 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webFrame } = require("electron");
 
 contextBridge.exposeInMainWorld("df", {
   // steam helpers
   isSteamReady: () => ipcRenderer.invoke("df:is-steam-ready"),
+  getSteamLanguage: () => ipcRenderer.invoke("df:get-steam-language"),
+  getSteamLanguageSync: () => ipcRenderer.sendSync("df:get-steam-language-sync"),
   openOverlay: (type) => ipcRenderer.send("df:open-overlay", type),
+  setUiScale: (factor) => { const f = Number(factor); if (f >= 0.5 && f <= 2) webFrame.setZoomFactor(f); },
+  openStore: (appId) => ipcRenderer.send("df:open-store", appId),
   unlockAchievement: (id) => ipcRenderer.send("df:unlock-achievement", id),
 
   // window helpers
   setFullscreen: (val) => ipcRenderer.send("df:set-fullscreen", val),
   toggleFullscreen: () => ipcRenderer.send("df:toggle-fullscreen"),
   isFullscreen: () => ipcRenderer.invoke("df:is-fullscreen"),
+  setFpsLimit: (fps) => ipcRenderer.send("df:set-fps-limit", fps),
 
   // file-based save/load (mirrored by Steam Auto-Cloud)
   saveFile: (data) => ipcRenderer.invoke("df:save-file", data),
@@ -20,15 +25,22 @@ contextBridge.exposeInMainWorld("df", {
 // So we expose a compatibility alias to the same functions.
 contextBridge.exposeInMainWorld("electronAPI", {
   isSteamReady: () => ipcRenderer.invoke("df:is-steam-ready"),
+  getSteamLanguage: () => ipcRenderer.invoke("df:get-steam-language"),
+  getSteamLanguageSync: () => ipcRenderer.sendSync("df:get-steam-language-sync"),
   openOverlay: (type) => ipcRenderer.send("df:open-overlay", type),
+  setUiScale: (factor) => { const f = Number(factor); if (f >= 0.5 && f <= 2) webFrame.setZoomFactor(f); },
+  openStore: (appId) => ipcRenderer.send("df:open-store", appId),
   unlockAchievement: (id) => ipcRenderer.send("df:unlock-achievement", id),
 
   setFullscreen: (val) => ipcRenderer.send("df:set-fullscreen", val),
   toggleFullscreen: () => ipcRenderer.send("df:toggle-fullscreen"),
   isFullscreen: () => ipcRenderer.invoke("df:is-fullscreen"),
+  setFpsLimit: (fps) => ipcRenderer.send("df:set-fps-limit", fps),
 
   saveFile: (data) => ipcRenderer.invoke("df:save-file", data),
   loadFile: () => ipcRenderer.invoke("df:load-file"),
+  importLiveSave: () => ipcRenderer.invoke("df:import-live-save"),
+  importDemoSave: () => ipcRenderer.invoke("df:import-demo-save"),
 });
 
 

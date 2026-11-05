@@ -80,6 +80,8 @@ const getIpcRenderer = (): any => {
 
 // Steam achievement ID mappings (internal ID -> Steam ID)
 // These must match the achievements configured in Steamworks Partner dashboard
+// v1.03: removed the K/M overrides for data/credits/crypto (ACH_DATA_1K etc.). Steamworks uses the full numbers
+// (ACH_DATA_1000), so those 13 achievements could never unlock.
 export const STEAM_ACHIEVEMENT_MAP: Record<string, string> = {
   // Clicking Achievements
   'first_click': 'ACH_FIRST_CLICK',
@@ -91,25 +93,12 @@ export const STEAM_ACHIEVEMENT_MAP: Record<string, string> = {
   
   // Data Collection Achievements
   'data_100': 'ACH_DATA_100',
-  'data_1000': 'ACH_DATA_1K',
-  'data_10000': 'ACH_DATA_10K',
-  'data_100000': 'ACH_DATA_100K',
-  'data_1000000': 'ACH_DATA_1M',
-  'data_10000000': 'ACH_DATA_10M',
-  'data_100000000': 'ACH_DATA_100M',
   
   // Credits Achievements
-  'credits_1000': 'ACH_CREDITS_1K',
-  'credits_10000': 'ACH_CREDITS_10K',
-  'credits_100000': 'ACH_CREDITS_100K',
-  'credits_1000000': 'ACH_CREDITS_1M',
-  'credits_10000000': 'ACH_CREDITS_10M',
   
   // Crypto Achievements
   'crypto_10': 'ACH_CRYPTO_10',
   'crypto_100': 'ACH_CRYPTO_100',
-  'crypto_1000': 'ACH_CRYPTO_1K',
-  'crypto_10000': 'ACH_CRYPTO_10K',
   
   // Prestige/Ascension Achievements
   'first_ascension': 'ACH_FIRST_ASCEND',
@@ -166,6 +155,24 @@ export const STEAM_ACHIEVEMENT_MAP: Record<string, string> = {
   'all_upgrades': 'ACH_ALL_UPGRADES',
   'speed_run': 'ACH_SPEED_RUN',
 };
+
+// v1.03: these 13 Steam slots are reused for the new milestones (Steam caps the app at 100 achievements).
+// They stay as in-game achievements; the game just stops sending them to Steam.
+export const RETIRED_STEAM_ACHIEVEMENTS = new Set<string>([
+  "ACH_DATA_1000",
+  "ACH_DATA_10000",
+  "ACH_DATA_100000",
+  "ACH_DATA_1000000",
+  "ACH_DATA_10000000",
+  "ACH_DATA_100000000",
+  "ACH_CREDITS_1000",
+  "ACH_CREDITS_10000",
+  "ACH_CREDITS_100000",
+  "ACH_CREDITS_1000000",
+  "ACH_CREDITS_10000000",
+  "ACH_CRYPTO_1000",
+  "ACH_CRYPTO_10000",
+]);
 
 // Best-effort conversion for internal ids that are not in the explicit map.
 // Steamworks achievement API names are typically uppercase with an ACH_ prefix.
@@ -256,7 +263,7 @@ class SteamIntegration {
       ? maybe
       : (toSteamApiName(maybe) || STEAM_ACHIEVEMENT_MAP[maybe] || null);
 
-    if (!steamId) return;
+    if (!steamId || RETIRED_STEAM_ACHIEVEMENTS.has(steamId)) return;
     if (this.unlockedAchievements.has(steamId)) return;
 
     const ipc = getIpcRenderer();
@@ -270,7 +277,7 @@ class SteamIntegration {
    * Save game to Steam Cloud
    * @param saveData - The game save data object
    */
-  saveToCloud(saveData: any): Promise<boolean> {
+  saveToCloud(saveData: any, fileName?: string): Promise<boolean> {
     return new Promise((resolve) => {
       const ipc = getIpcRenderer();
       if (!isElectron() || !ipc) {
@@ -286,7 +293,7 @@ class SteamIntegration {
       };
 
       ipc.on('steam-cloud-save-result', handler);
-      ipc.send('steam-cloud-save', saveData);
+      ipc.send('steam-cloud-save', { data: saveData, fileName });
 
       // Timeout after 5 seconds
       setTimeout(() => {
@@ -299,7 +306,7 @@ class SteamIntegration {
   /**
    * Load game from Steam Cloud
    */
-  loadFromCloud(): Promise<any | null> {
+  loadFromCloud(fileName?: string): Promise<any | null> {
     return new Promise((resolve) => {
       const ipc = getIpcRenderer();
       if (!isElectron() || !ipc) {
@@ -319,7 +326,7 @@ class SteamIntegration {
       };
 
       ipc.on('steam-cloud-load-result', handler);
-      ipc.send('steam-cloud-load');
+      ipc.send('steam-cloud-load', { fileName });
 
       // Timeout after 5 seconds
       setTimeout(() => {
@@ -437,8 +444,8 @@ export const steamIntegration = new SteamIntegration();
 // Export helper functions for easy use
 export const isSteamAvailable = () => steamIntegration.isAvailable();
 export const unlockSteamAchievement = (id: string) => steamIntegration.unlockAchievement(id);
-export const saveToSteamCloud = (data: any) => steamIntegration.saveToCloud(data);
-export const loadFromSteamCloud = () => steamIntegration.loadFromCloud();
+export const saveToSteamCloud = (data: any, fileName?: string) => steamIntegration.saveToCloud(data, fileName);
+export const loadFromSteamCloud = (fileName?: string) => steamIntegration.loadFromCloud(fileName);
 export const openSteamOverlay = (type?: 'friends' | 'community' | 'store' | 'achievements') => steamIntegration.openOverlay(type);
 export const setSteamFullscreen = (isFullscreen: boolean) => steamIntegration.setFullscreen(isFullscreen);
 export const toggleSteamFullscreen = () => steamIntegration.toggleFullscreen();

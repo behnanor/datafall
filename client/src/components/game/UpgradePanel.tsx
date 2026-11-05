@@ -4,9 +4,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, FileText, Zap, Database, Coins, Bitcoin } from "lucide-react";
+import { CurrencyIcon } from "@/components/game/CurrencyIcon";
 import { memo, useMemo } from "react";
 import { getCheckpointProgress } from "@/lib/useGame";
 import { ContractsTerminal } from "./ContractsTerminal";
+import { translate, useI18n, type Language } from "@/lib/i18n";
+import { getResourceLabel, getUpgradeCategoryLabel } from "@/lib/gameText";
 
 interface UpgradePanelProps {
   upgrades: Upgrade[];
@@ -69,9 +72,7 @@ const CATEGORY_STYLES: Record<string, CategoryStyle> = {
   },
 };
 
-const toResourceLabel = (resource: string): string => {
-  return resource === 'credits' ? 'nodes' : resource;
-};
+const toResourceLabel = (resource: string, language: Language): string => getResourceLabel(resource, language);
 
 const getQuantityForMode = (upgrade: Upgrade, resources: Record<ResourceType, Resource>, buyMode: BuyMode, isOneTimeUnlock: boolean): number => {
   if (isOneTimeUnlock) return 1;
@@ -104,33 +105,38 @@ const getEffectiveUpgradeValue = (upgrade: Upgrade, count: number): number => {
   return valuePerLevel * Math.pow(3, checkpointsPassed);
 };
 
-const formatUpgradeEffect = (upgrade: Upgrade, count: number): string => {
+const formatUpgradeEffect = (upgrade: Upgrade, count: number, language: Language): string => {
   if (upgrade.effect.type === 'unlock') {
-    return upgrade.count > 0 ? 'Unlocked' : `Unlock ${String(upgrade.effect.unlocksCategory || '').replace('_', ' ')}`;
+    return upgrade.count > 0
+      ? translate(language, 'upgradePanel.unlocked')
+      : translate(language, 'upgradePanel.unlockCategory', {
+          category: getUpgradeCategoryLabel(String(upgrade.effect.unlocksCategory || ''), language),
+        });
   }
-  if (count <= 0) return 'No bonus yet';
+  if (count <= 0) return translate(language, 'upgradePanel.noBonus');
 
   const value = getEffectiveUpgradeValue(upgrade, count);
-  if (upgrade.effect.type === 'production' && upgrade.effect.resource) return `+${formatNumber(value)} ${toResourceLabel(upgrade.effect.resource)}/s`;
-  if (upgrade.effect.type === 'click') return `+${formatNumber(value)} click value`;
-  if (upgrade.effect.type === 'click_multiplier') return `+${(value * 100).toFixed(0)}% click multiplier`;
-  if (upgrade.effect.type === 'crit_chance') return `+${(value * 100).toFixed(1)}% crit chance`;
-  if (upgrade.effect.type === 'crit_multiplier') return `+${formatNumber(value)}x crit multiplier`;
-  if (upgrade.effect.type === 'interest_boost') return `+${(value * 100).toFixed(1)}% interest`;
+  if (upgrade.effect.type === 'production' && upgrade.effect.resource) return `+${formatNumber(value)} ${toResourceLabel(upgrade.effect.resource, language)}/s`;
+  if (upgrade.effect.type === 'click') return `+${formatNumber(value)} ${translate(language, 'upgradePanel.clickValue')}`;
+  if (upgrade.effect.type === 'click_multiplier') return `+${(value * 100).toFixed(0)}% ${translate(language, 'upgradePanel.clickMultiplier')}`;
+  if (upgrade.effect.type === 'crit_chance') return `+${(value * 100).toFixed(1)}% ${translate(language, 'upgradePanel.critChanceValue')}`;
+  if (upgrade.effect.type === 'crit_multiplier') return `+${formatNumber(value)}x ${translate(language, 'upgradePanel.critMultiplier')}`;
   return '';
 };
 
-const getMissingCostLine = (costs: Record<string, number>, resources: Record<ResourceType, Resource>): string | null => {
+const getMissingCostLine = (costs: Record<string, number>, resources: Record<ResourceType, Resource>, language: Language): string | null => {
   const deficits = Object.entries(costs)
     .map(([res, cost]) => {
       const missing = cost - resources[res as ResourceType].amount;
       return { res, missing };
     })
-    .filter(x => x.missing > 0)
-    .sort((a, b) => b.missing - a.missing);
+    .filter(x => x.missing > 0);
 
   if (deficits.length === 0) return null;
-  return `Need ${formatNumber(Math.floor(deficits[0].missing))} ${toResourceLabel(deficits[0].res)}`;
+  const missingSegments = deficits.map(
+    ({ res, missing }) => `${formatNumber(Math.floor(missing))} ${toResourceLabel(res, language)}`
+  );
+  return translate(language, 'upgradePanel.needResources', { resources: missingSegments.join(' + ') });
 };
 
 const calculateMaxAffordable = (upgrade: Upgrade, resources: Record<ResourceType, Resource>): number => {
@@ -172,7 +178,7 @@ const calculateUpgradeCost = (upgrade: Upgrade, quantity: number): Record<string
   return costs;
 };
 
-const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain }: {
+const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain, language }: {
   upgrade: Upgrade;
   category: string;
   resources: Record<ResourceType, Resource>;
@@ -180,6 +186,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
   getUpgradePreview: (u: Upgrade) => string;
   buyMode: BuyMode;
   getBulkProductionGain: (upgrade: Upgrade, quantity: number) => number;
+  language: Language;
 }) => {
   const isOneTimeUnlock = upgrade.effect?.type === 'unlock';
   const styles = CATEGORY_STYLES[category] ?? CATEGORY_STYLES.fabrication;
@@ -194,9 +201,9 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
     ([key, cost]) => resources[key as ResourceType].amount >= cost
   ), [totalCost, resources]);
 
-  const missingCostLine = useMemo(() => getMissingCostLine(totalCost, resources), [totalCost, resources]);
-  const currentEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count), [upgrade]);
-  const afterBuyEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count + quantity), [upgrade, quantity]);
+  const missingCostLine = useMemo(() => getMissingCostLine(totalCost, resources, language), [totalCost, resources, language]);
+  const currentEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count, language), [upgrade, language]);
+  const afterBuyEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count + quantity, language), [upgrade, quantity, language]);
 
   const checkpointProgress = useMemo(() => getCheckpointProgress(upgrade.count, category), [upgrade.count, category]);
   const progressPercent = (checkpointProgress.current / checkpointProgress.max) * 100;
@@ -206,7 +213,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
     <div className="transition-transform active:scale-[0.98]">
       <Button
         variant="outline"
-        className={`w-full h-auto p-4 flex flex-col items-start gap-3 border-l-4 transition-all duration-200
+        className={`w-full min-w-0 h-auto p-4 flex flex-col items-stretch justify-start gap-3 text-left whitespace-normal border-l-4 transition-all duration-200
           ${canAfford 
             ? `${styles.accentBorder} ${styles.cardTone} ${styles.hoverTone}`
             : 'border-l-muted opacity-50 cursor-not-allowed hover:bg-transparent'
@@ -214,48 +221,48 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
         disabled={!canAfford}
         onClick={() => onBuy(upgrade.id, quantity)}
       >
-        <div className="flex items-start justify-between w-full">
-          <div className="flex items-center gap-2">
-            <span className={`font-bold text-lg font-display ${styles.accentText}`}>
+        <div className="flex w-full flex-wrap items-start gap-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <span className={`block min-w-0 flex-1 font-bold text-lg font-display break-words leading-tight ${styles.accentText}`}>
               {upgrade.name}
             </span>
             {isOnline && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                <Zap className="w-2.5 h-2.5" />
-                ONLINE
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5">
+                <span className="inline-flex shrink-0 items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <Zap className="w-2.5 h-2.5" />
+                  {translate(language, 'upgradePanel.online')}
+                </span>
+              )}
+            </div>
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 self-start">
             {buyMode !== '1x' && !isOneTimeUnlock && (
               <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${styles.chipTone}`}>
                 x{quantity}
               </span>
             )}
-            <Badge variant="secondary" className="font-mono text-xs">Lvl {upgrade.count}</Badge>
+            <Badge variant="secondary" className="font-mono text-xs">{translate(language, 'common.levelShort')} {upgrade.count}</Badge>
           </div>
         </div>
 
         <div className="w-full grid grid-cols-2 gap-2 text-[10px] font-mono">
           <div className="rounded border border-border/50 bg-black/20 px-2 py-1.5">
-            <p className="text-muted-foreground uppercase tracking-wider">Current</p>
-            <p className={`${styles.previewText} mt-0.5 font-semibold truncate`}>{currentEffect}</p>
+            <p className="text-muted-foreground uppercase tracking-wider">{translate(language, 'upgradePanel.current')}</p>
+            <p className={`${styles.previewText} mt-0.5 font-semibold break-words whitespace-normal leading-snug`}>{currentEffect}</p>
           </div>
           <div className="rounded border border-border/50 bg-black/20 px-2 py-1.5">
-            <p className="text-muted-foreground uppercase tracking-wider">After Buy</p>
-            <p className={`${styles.previewText} mt-0.5 font-semibold truncate`}>{afterBuyEffect}</p>
+            <p className="text-muted-foreground uppercase tracking-wider">{translate(language, 'upgradePanel.afterBuy')}</p>
+            <p className={`${styles.previewText} mt-0.5 font-semibold break-words whitespace-normal leading-snug`}>{afterBuyEffect}</p>
           </div>
         </div>
 
-        <p className="text-xs text-left text-muted-foreground leading-relaxed whitespace-normal">
+        <p className="text-xs text-left text-muted-foreground leading-relaxed whitespace-normal break-words">
           {upgrade.description}
         </p>
 
         <div className={`text-xs font-mono font-bold ${canAfford ? 'text-emerald-400' : 'text-emerald-800'} w-full`}>
-          <span>{getUpgradePreview(upgrade)}</span>
+            <span>{getUpgradePreview(upgrade)}</span>
           {buyMode !== '1x' && upgrade.effect.type === 'production' && (
             <span className={`block mt-1 ${canAfford ? 'text-emerald-400' : 'text-emerald-800'}`}>
-              Total: +{formatNumber(getBulkProductionGain(upgrade, quantity))} {toResourceLabel(upgrade.effect.resource || '')}/s
+              {translate(language, 'upgradePanel.total')}: +{formatNumber(getBulkProductionGain(upgrade, quantity))} {toResourceLabel(upgrade.effect.resource || '', language)}/s
             </span>
           )}
           {!canAfford && missingCostLine && (
@@ -273,7 +280,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
                 key={res} 
                 className={`text-xs font-mono ${canAffordThis ? baseColor : dimColor}`}
               >
-                {formatNumber(cost)} {toResourceLabel(res)}
+                {formatNumber(cost)} {toResourceLabel(res, language)}
               </span>
             );
           })}
@@ -281,7 +288,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
 
         <div className="w-full mt-2 space-y-1">
           <div className="text-[10px] text-muted-foreground font-mono">
-            Checkpoint: {checkpointProgress.current} / {checkpointProgress.max}
+            {translate(language, 'upgradePanel.checkpoint')}: {checkpointProgress.current} / {checkpointProgress.max}
           </div>
           <div className="w-full bg-muted/40 rounded-full h-2 overflow-hidden border border-border/50">
             <div
@@ -290,7 +297,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
             />
           </div>
           <div className={`text-[10px] font-mono ${styles.previewText}`}>
-            Next: 2x multiplier at lvl {checkpointProgress.nextCheckpoint}
+            {translate(language, 'upgradePanel.nextMultiplier', { level: checkpointProgress.nextCheckpoint })}
           </div>
         </div>
       </Button>
@@ -300,7 +307,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
 
 UpgradeCard.displayName = 'UpgradeCard';
 
-const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain }: { 
+const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain, language }: { 
   category: string;
   upgrades: Upgrade[];
   resources: Record<ResourceType, Resource>;
@@ -308,6 +315,7 @@ const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePrev
   getUpgradePreview: (u: Upgrade) => string;
   buyMode: BuyMode;
   getBulkProductionGain: (upgrade: Upgrade, quantity: number) => number;
+  language: Language;
 }) => {
   const filteredUpgrades = useMemo(() => 
     upgrades.filter(u => u.category === category && !(u.effect.type === 'unlock' && u.count > 0)),
@@ -315,7 +323,7 @@ const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePrev
   );
 
   return (
-    <div className="space-y-4 pt-4 pb-4">
+    <div className="space-y-4 px-6 pb-4 pt-4">
       {filteredUpgrades.map((upgrade) => (
         <UpgradeCard
           key={upgrade.id}
@@ -326,6 +334,7 @@ const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePrev
           getUpgradePreview={getUpgradePreview}
           buyMode={buyMode}
           getBulkProductionGain={getBulkProductionGain}
+          language={language}
         />
       ))}
     </div>
@@ -334,7 +343,8 @@ const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePrev
 
 UpgradeList.displayName = 'UpgradeList';
 
-export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgradePreview, getBulkProductionGain, selectedBulkOption, onBulkOptionChange, contracts, onClaimContractReward, onRefreshContracts, totalCritChance = 0, ascensionLevel = 0, tutorialHighlight, activeUpgradeTab = 'fabrication', onSetActiveUpgradeTab }: UpgradePanelProps) {
+export const UpgradePanel = memo(function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgradePreview, getBulkProductionGain, selectedBulkOption, onBulkOptionChange, contracts, onClaimContractReward, onRefreshContracts, totalCritChance = 0, ascensionLevel = 0, tutorialHighlight, activeUpgradeTab = 'fabrication', onSetActiveUpgradeTab }: UpgradePanelProps) {
+  const { t, language } = useI18n();
   const buyMode: BuyMode = selectedBulkOption === 1 ? '1x' : selectedBulkOption === 10 ? '10x' : selectedBulkOption === 100 ? '100x' : 'MAX';
   const clickUnlocked = (upgrades.find(u => u.id === 'unlock_click_upgrades')?.count ?? 0) > 0;
   const cryptoMiningUnlocked = (upgrades.find(u => u.id === 'unlock_crypto_mining')?.count ?? 0) > 0;
@@ -346,9 +356,14 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
   const hasZeroDay = zeroDay && zeroDay.count > 0;
   const hasExploitFinder = exploitFinder && exploitFinder.count > 0;
   const showCritChance = ascensionLevel > 0 || hasZeroDay || hasExploitFinder;
+  // Overclock-tier upgrades stay hidden until their ascension requirement is met.
+  const unlockedUpgrades = useMemo(
+    () => upgrades.filter(u => (u.requiredAscensions ?? 0) <= ascensionLevel),
+    [upgrades, ascensionLevel]
+  );
   const visibleUpgrades = useMemo(
-    () => upgrades.filter(u => u.category === activeUpgradeTab && !(u.effect.type === 'unlock' && u.count > 0)),
-    [upgrades, activeUpgradeTab]
+    () => upgrades.filter(u => u.category === activeUpgradeTab && !(u.effect.type === 'unlock' && u.count > 0) && (u.requiredAscensions ?? 0) <= ascensionLevel),
+    [upgrades, activeUpgradeTab, ascensionLevel]
   );
   const totalLevelsInTab = useMemo(
     () => visibleUpgrades.reduce((sum, u) => sum + u.count, 0),
@@ -373,16 +388,16 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
   };
 
   return (
-    <div className="w-96 bg-card/50 border-l border-border flex flex-col h-full backdrop-blur-md">
+    <div className="w-full min-w-0 bg-card/50 border-l border-border flex flex-col h-full backdrop-blur-md">
       <div className="p-4 border-b border-border space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold tracking-wider text-secondary">MARKET</h2>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Upgrade Systems</p>
+            <h2 className="text-xl font-bold tracking-wider text-secondary">{t('upgradePanel.market')}</h2>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{t('upgradePanel.upgradeSystems')}</p>
           </div>
           {showCritChance && (
             <div className="text-right">
-              <div className="text-[9px] text-muted-foreground uppercase">Crit Chance</div>
+              <div className="text-[9px] text-muted-foreground uppercase">{t('upgradePanel.critChance')}</div>
               <div className="text-lg font-mono font-bold text-red-400">{(totalCritChance * 100).toFixed(1)}%</div>
             </div>
           )}
@@ -391,7 +406,7 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded border border-cyan-500/20 bg-cyan-500/5 px-2 py-1.5">
             <p className="text-[9px] uppercase tracking-widest text-cyan-300/70">
-              {activeUpgradeTab === 'contracts' ? 'Active' : 'Visible'}
+              {activeUpgradeTab === 'contracts' ? t('common.active') : t('common.visible')}
             </p>
             <p className="text-sm font-mono font-semibold text-cyan-200">
               {activeUpgradeTab === 'contracts' ? activeContracts : visibleUpgrades.length}
@@ -399,7 +414,7 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
           </div>
           <div className="rounded border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5">
             <p className="text-[9px] uppercase tracking-widest text-emerald-300/70">
-              {activeUpgradeTab === 'contracts' ? 'Ready' : 'Affordable'}
+              {activeUpgradeTab === 'contracts' ? t('common.ready') : t('common.affordable')}
             </p>
             <p className="text-sm font-mono font-semibold text-emerald-200">
               {activeUpgradeTab === 'contracts' ? completedContracts : affordableInTab}
@@ -407,7 +422,7 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
           </div>
           <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5">
             <p className="text-[9px] uppercase tracking-widest text-amber-300/70">
-              {activeUpgradeTab === 'contracts' ? 'Completed' : 'Total Lvls'}
+              {activeUpgradeTab === 'contracts' ? t('common.completed') : t('upgradePanel.totalLevels')}
             </p>
             <p className="text-sm font-mono font-semibold text-amber-200">
               {activeUpgradeTab === 'contracts' ? contracts.totalContractsCompleted : totalLevelsInTab}
@@ -417,15 +432,15 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
 
         <div className="grid grid-cols-3 gap-2 text-[10px] font-mono">
           <div className="rounded border border-cyan-500/20 bg-cyan-500/5 px-2 py-1.5 flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 text-cyan-300"><Database className="w-3 h-3" />Data</span>
+            <span className="inline-flex items-center gap-1 text-cyan-300"><Database className="w-3 h-3" />{t('common.data')}</span>
             <span className="text-cyan-100">{formatNumber(Math.floor(resources.data.amount))}</span>
           </div>
           <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5 flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 text-amber-300"><Coins className="w-3 h-3" />Nodes</span>
+            <span className="inline-flex items-center gap-1 text-amber-300"><CurrencyIcon kind="credits" className="w-3 h-3" />{t('common.nodes')}</span>
             <span className="text-amber-100">{formatNumber(Math.floor(resources.credits.amount))}</span>
           </div>
           <div className="rounded border border-red-500/20 bg-red-500/5 px-2 py-1.5 flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 text-red-300"><Bitcoin className="w-3 h-3" />Crypto</span>
+            <span className="inline-flex items-center gap-1 text-red-300"><Bitcoin className="w-3 h-3" />{t('common.crypto')}</span>
             <span className="text-red-100">{formatNumber(Math.floor(resources.crypto.amount))}</span>
           </div>
         </div>
@@ -465,7 +480,7 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
             className={`flex-1 text-xs h-7 px-2 font-mono transition-all duration-200 ${selectedBulkOption === 'max' ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' : 'bg-emerald-500/5 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15'}`}
             data-testid="button-buy-max"
           >
-            MAX
+            {language === 'ru' ? 'МАКС' : 'MAX'}
           </Button>
         </div>
       </div>
@@ -475,21 +490,21 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
           <TabsList className={`w-full grid grid-cols-4 h-auto ${tutorialHighlight === 'upgrades' ? 'tutorial-highlight rounded' : ''}`}>
             <TabsTrigger value="fabrication" className="data-[state=active]:text-cyan-400 text-xs px-2 flex items-center gap-1">
               <Database className="w-3 h-3" />
-              Factory
+              {t('upgradePanel.factory')}
             </TabsTrigger>
             <TabsTrigger value="click_upgrades" disabled={!clickUnlocked} className={`text-xs px-2 flex items-center gap-1 ${!clickUnlocked ? "opacity-50 cursor-not-allowed data-[state=active]:text-yellow-500" : "data-[state=active]:text-yellow-500"}`}>
                {!clickUnlocked && <Lock className="w-3 h-3 mr-0.5 inline" />}
                {clickUnlocked && <Zap className="w-3 h-3" />}
-               Click
+               {t('upgradePanel.click')}
             </TabsTrigger>
             <TabsTrigger 
               value="crypto_mining" 
               disabled={!cryptoMiningUnlocked} 
-              className={`text-xs px-2 ${!cryptoMiningUnlocked ? "opacity-50 cursor-not-allowed flex items-center gap-0.5 data-[state=active]:text-red-500" : "text-red-500 data-[state=active]:text-red-500"} flex items-center gap-1`}
+              className={`text-xs px-2 ${!cryptoMiningUnlocked ? "opacity-50 cursor-not-allowed flex items-center gap-0.5 data-[state=active]:text-red-500" : "text-red-500 data-[state=active]:text-red-500"} flex items-center gap-1 ${tutorialHighlight === 'crypto_tab' ? 'tutorial-highlight rounded' : ''}`}
             >
               {!cryptoMiningUnlocked && <Lock className="w-3 h-3 text-red-500 shrink-0" />}
               {cryptoMiningUnlocked && <Bitcoin className="w-3 h-3 shrink-0" />}
-              Mining
+              {t('upgradePanel.mining')}
             </TabsTrigger>
             <TabsTrigger 
               value="contracts" 
@@ -498,7 +513,7 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
             >
               {!jobsUnlocked && <Lock className="w-3 h-3 mr-0.5 inline" />}
               <FileText className="w-3 h-3 mr-0.5 inline" />
-              Jobs
+              {t('upgradePanel.jobs')}
               {completedContracts > 0 && jobsUnlocked && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full text-[10px] flex items-center justify-center text-white">
                   {completedContracts}
@@ -510,20 +525,20 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
 
         <div className="flex-1 overflow-hidden relative">
           <TabsContent value="fabrication" className="h-full mt-0 absolute inset-0">
-            <ScrollArea className="h-full px-6">
-              <UpgradeList category="fabrication" upgrades={upgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} />
+            <ScrollArea className="h-full">
+              <UpgradeList category="fabrication" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} />
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="click_upgrades" className="h-full mt-0 absolute inset-0">
-            <ScrollArea className="h-full px-6">
-              <UpgradeList category="click_upgrades" upgrades={upgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} />
+            <ScrollArea className="h-full">
+              <UpgradeList category="click_upgrades" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} />
             </ScrollArea>
           </TabsContent>
           
           <TabsContent value="crypto_mining" className="h-full mt-0 absolute inset-0">
-             <ScrollArea className="h-full px-6">
-              <UpgradeList category="crypto_mining" upgrades={upgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} />
+             <ScrollArea className="h-full">
+              <UpgradeList category="crypto_mining" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} />
             </ScrollArea>
           </TabsContent>
 
@@ -538,4 +553,4 @@ export function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgrade
       </Tabs>
     </div>
   );
-}
+});

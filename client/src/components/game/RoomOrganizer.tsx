@@ -4,6 +4,7 @@ import { Grid3X3, Trash2, Settings2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Upgrade, MachinePosition, RoomLayout } from '@/lib/useGame';
+import { localizeInlineText, useI18n } from '@/lib/i18n';
 
 interface RoomOrganizerProps {
   upgrades: Upgrade[];
@@ -38,8 +39,23 @@ const getMachineColor = (category: string): string => {
 };
 
 export function RoomOrganizer({ upgrades, roomLayout, onUpdatePosition, onRemovePosition }: RoomOrganizerProps) {
+  const { language } = useI18n();
+  const l = (en: string, tr: string, pt: string, es?: string, ru?: string) => localizeInlineText(language, en, tr, pt, es, ru);
   const [draggedMachine, setDraggedMachine] = useState<string | null>(null);
   const [dragOverCell, setDragOverCell] = useState<{ x: number; y: number } | null>(null);
+  const titleLabel = l('Room Organizer', 'Oda Duzeni', 'Organizador de Sala', 'Organizador de Sala');
+  const clearLabel = l('Clear', 'Temizle', 'Limpar', 'Limpiar');
+  const instructionLabel = l(
+    'Drag machines onto the grid to arrange your room',
+    'Odanin yerlesimini duzenlemek icin makineleri izgaraya surukle',
+    'Arraste as maquinas para a grade para organizar sua sala',
+    'Arrastra las maquinas a la cuadricula para organizar tu sala',
+  );
+  const availableMachinesLabel = l('Available Machines', 'Mevcut Makineler', 'Maquinas Disponiveis', 'Maquinas Disponibles');
+  const ownedLabel = l('owned', 'sahip', 'possuidas', 'poseidas');
+  const placedLabel = l('Placed', 'Yerlesti', 'Posicionadas', 'Colocadas');
+  const emptyTitle = l('No machines to arrange yet', 'Henuz yerlestirilecek makine yok', 'Ainda não h? maquinas para organizar', 'Aun no hay maquinas para organizar');
+  const emptySubtitle = l('Buy production upgrades first', 'Once uretim yukseltmeleri satin al', 'Compre upgrades de produção primeiro', 'Compra primero mejoras de produccion');
 
   const ownedUpgrades = upgrades.filter(u => u.count > 0 && u.effect.type === 'production');
 
@@ -103,7 +119,7 @@ export function RoomOrganizer({ upgrades, roomLayout, onUpdatePosition, onRemove
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <Settings2 className="w-5 h-5 text-purple-400" />
-          <h3 className="font-display text-lg text-purple-400">Room Organizer</h3>
+          <h3 className="font-display text-lg text-purple-400">{titleLabel}</h3>
         </div>
         {roomLayout.machinePositions.length > 0 && (
           <Button
@@ -114,13 +130,13 @@ export function RoomOrganizer({ upgrades, roomLayout, onUpdatePosition, onRemove
             data-testid="clear-all-positions"
           >
             <Trash2 className="w-3 h-3 mr-1" />
-            Clear
+            {clearLabel}
           </Button>
         )}
       </div>
 
       <p className="text-[10px] text-muted-foreground mb-2 px-1">
-        Drag machines onto the grid to arrange your room
+        {instructionLabel}
       </p>
 
       <div className="mb-3">
@@ -201,7 +217,7 @@ export function RoomOrganizer({ upgrades, roomLayout, onUpdatePosition, onRemove
 
       <div className="text-xs text-muted-foreground mb-2 px-1 flex items-center gap-1">
         <Grid3X3 className="w-3 h-3" />
-        Available Machines ({ownedUpgrades.length})
+        {availableMachinesLabel} ({ownedUpgrades.length})
       </div>
 
       <ScrollArea className="flex-1 -mx-2 px-2">
@@ -235,11 +251,11 @@ export function RoomOrganizer({ upgrades, roomLayout, onUpdatePosition, onRemove
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate">{upgrade.name}</p>
                       <p className="text-[10px] text-muted-foreground">
-                        x{upgrade.count} owned
+                        x{upgrade.count} {ownedLabel}
                       </p>
                     </div>
                     {placed && (
-                      <span className="text-[10px] text-emerald-400">Placed</span>
+                      <span className="text-[10px] text-emerald-400">{placedLabel}</span>
                     )}
                   </div>
                 </motion.div>
@@ -250,8 +266,8 @@ export function RoomOrganizer({ upgrades, roomLayout, onUpdatePosition, onRemove
           {ownedUpgrades.length === 0 && (
             <div className="text-center py-4 text-muted-foreground">
               <Grid3X3 className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No machines to arrange yet</p>
-              <p className="text-[10px]">Buy production upgrades first</p>
+              <p className="text-xs">{emptyTitle}</p>
+              <p className="text-[10px]">{emptySubtitle}</p>
             </div>
           )}
         </div>

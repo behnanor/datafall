@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion } from "framer-motion";
 import { GitBranch, Cpu, Bitcoin, MousePointerClick, Filter, Zap, Lock } from "lucide-react";
 import { useMemo, useState } from "react";
+import { localizeInlineText, localizeText, useI18n, type Language } from "@/lib/i18n";
 
 interface UpgradePathVisualizerProps {
   upgrades: Upgrade[];
@@ -20,26 +21,7 @@ interface PathConfig {
   tiers: { upgrades: string[]; label: string }[];
 }
 
-type PathKey = keyof typeof UPGRADE_PATHS;
-type SelectedPath = "all" | PathKey;
-
-interface PathNodeView {
-  pathKey: PathKey;
-  upgrade: Upgrade;
-  tierIndex: number;
-  tierLabel: string;
-  isUnlocked: boolean;
-  isAffordable: boolean;
-  nextCosts: Partial<Record<ResourceType, number>>;
-  missing: { resource: ResourceType; amount: number } | null;
-  totalNextCost: number;
-}
-
-const toResourceLabel = (resource: string): string => (
-  resource === "credits" ? "nodes" : resource
-);
-
-const UPGRADE_PATHS: Record<string, PathConfig> = {
+const UPGRADE_PATHS = {
   fabrication: {
     name: "Factory Path",
     icon: Cpu,
@@ -52,6 +34,7 @@ const UPGRADE_PATHS: Record<string, PathConfig> = {
       { upgrades: ["ai_core"], label: "Tier 5" },
       { upgrades: ["neural_network"], label: "Tier 6" },
       { upgrades: ["singularity_nexus"], label: "Tier 7" },
+      { upgrades: ["overclock_core"], label: "Tier 8" },
     ],
   },
   click_upgrades: {
@@ -76,27 +59,45 @@ const UPGRADE_PATHS: Record<string, PathConfig> = {
       { upgrades: ["crypto_farm"], label: "Tier 3" },
       { upgrades: ["quantum_miner"], label: "Tier 4" },
       { upgrades: ["mining_datacenter"], label: "Tier 5" },
+      { upgrades: ["overclock_rig"], label: "Tier 6" },
     ],
   },
-};
+} as const satisfies Record<string, PathConfig>;
+
+type PathKey = keyof typeof UPGRADE_PATHS;
+type SelectedPath = "all" | PathKey;
+
+interface PathNodeView {
+  pathKey: PathKey;
+  upgrade: Upgrade;
+  tierIndex: number;
+  tierLabel: string;
+  isUnlocked: boolean;
+  isAffordable: boolean;
+  nextCosts: Partial<Record<ResourceType, number>>;
+  missing: { resource: ResourceType; amount: number } | null;
+  totalNextCost: number;
+}
 
 const RESOURCE_TEXT_COLORS: Partial<Record<ResourceType, string>> = {
   data: "text-cyan-300",
   credits: "text-amber-300",
   crypto: "text-red-300",
   silicon: "text-violet-300",
-  interest: "text-emerald-300",
   prestige: "text-fuchsia-300",
 };
 
-const PATH_THEME: Record<PathKey, {
-  accentText: string;
-  border: string;
-  bg: string;
-  chip: string;
-  icon: string;
-  progress: string;
-}> = {
+const PATH_THEME: Record<
+  PathKey,
+  {
+    accentText: string;
+    border: string;
+    bg: string;
+    chip: string;
+    icon: string;
+    progress: string;
+  }
+> = {
   fabrication: {
     accentText: "text-cyan-300",
     border: "border-cyan-500/35",
@@ -121,6 +122,61 @@ const PATH_THEME: Record<PathKey, {
     icon: "text-red-300",
     progress: "from-red-500 to-rose-500",
   },
+};
+
+const localizePathUiText = (language: Language, en: string, tr: string, ptBR: string, es?: string, ru?: string): string =>
+  localizeInlineText(language, en, tr, ptBR, es, ru);
+
+const toResourceLabel = (resource: string, language: Language): string => {
+  if (resource === "credits") return localizePathUiText(language, "nodes", "dizin", "nos", "nodos", "узлы");
+  if (resource === "crypto") return localizePathUiText(language, "crypto", "kripto", "cripto", "cripto", "крипта");
+  if (resource === "data") return localizePathUiText(language, "data", "veri", "dados", "datos", "данные");
+  if (resource === "prestige") return localizePathUiText(language, "crown", "tac", "coroa", "corona", "корона");
+  return resource;
+};
+
+const getPathName = (pathKey: PathKey, language: Language): string => {
+  if (language === "tr") {
+    if (pathKey === "fabrication") return "Fabrika Hatti";
+    if (pathKey === "click_upgrades") return "Tıklama Hattı";
+    return "Madencilik Hatti";
+  }
+  if (language === "pt-BR") {
+    if (pathKey === "fabrication") return "Rota de Produção";
+    if (pathKey === "click_upgrades") return "Rota de Clique";
+    return "Rota de Mineração";
+  }
+  if (language === "es") {
+    if (pathKey === "fabrication") return "Ruta de Produccion";
+    if (pathKey === "click_upgrades") return "Ruta de Clic";
+    return "Ruta de Mineria";
+  }
+  if (language === "ru") {
+    if (pathKey === "fabrication") return "Линия производства";
+    if (pathKey === "click_upgrades") return "Линия клика";
+    return "Линия майнинга";
+  }
+  if (language === "zh-CN") {
+    if (pathKey === "fabrication") return "生产路线";
+    if (pathKey === "click_upgrades") return "点击路线";
+    return "挖矿路线";
+  }
+  return UPGRADE_PATHS[pathKey].name;
+};
+
+const getTierLabel = (pathKey: PathKey, tierLabel: string, language: Language): string => {
+  if (language === "en") return tierLabel;
+  if (language === "tr" && tierLabel.startsWith("Tier ")) return `Kademe ${tierLabel.replace("Tier ", "")}`;
+  if (language === "pt-BR" && tierLabel.startsWith("Tier ")) return `Nivel ${tierLabel.replace("Tier ", "")}`;
+  if (language === "es" && tierLabel.startsWith("Tier ")) return `Nivel ${tierLabel.replace("Tier ", "")}`;
+  if (language === "ru" && tierLabel.startsWith("Tier ")) return `Уровень ${tierLabel.replace("Tier ", "")}`;
+  if (language === "zh-CN" && tierLabel.startsWith("Tier ")) return `阶段 ${tierLabel.replace("Tier ", "")}`;
+  if (pathKey === "click_upgrades") {
+    if (tierLabel === "Click Power") return localizePathUiText(language, tierLabel, "Tıklama Gücü", "Poder de Clique", "Poder de Clic", "Сила клика");
+    if (tierLabel === "Crit Damage") return localizePathUiText(language, tierLabel, "Kritik Hasar", "Dano Crítico", "Dano Crítico", "Критический урон");
+    if (tierLabel === "Crit Chance") return localizePathUiText(language, tierLabel, "Kritik Şans", "Chance Crítica", "Prob. Critica", "Шанс крита");
+  }
+  return tierLabel;
 };
 
 const getNextCosts = (upgrade: Upgrade): Partial<Record<ResourceType, number>> => {
@@ -159,17 +215,19 @@ const isAffordable = (
   return true;
 };
 
-const getEffectLabel = (upgrade: Upgrade): string => {
+const getEffectLabel = (upgrade: Upgrade, language: Language): string => {
   if (upgrade.effect.type === "production" && upgrade.effect.resource) {
+    if (language === "tr") return `+${formatNumber(upgrade.effect.value)} ${toResourceLabel(upgrade.effect.resource, language)}/sv`;
+    if (language === "pt-BR") return `+${formatNumber(upgrade.effect.value)} ${toResourceLabel(upgrade.effect.resource, language)}/nvl`;
+    if (language === "ru") return `+${formatNumber(upgrade.effect.value)} ${toResourceLabel(upgrade.effect.resource, language)}/ур`;
     return `+${formatNumber(upgrade.effect.value)} ${upgrade.effect.resource}/lvl`;
   }
-  if (upgrade.effect.type === "click") return `+${formatNumber(upgrade.effect.value)} click/lvl`;
-  if (upgrade.effect.type === "click_multiplier") return `+${(upgrade.effect.value * 100).toFixed(0)}% click mult/lvl`;
-  if (upgrade.effect.type === "crit_chance") return `+${(upgrade.effect.value * 100).toFixed(1)}% crit/lvl`;
-  if (upgrade.effect.type === "crit_multiplier") return `+${upgrade.effect.value}x crit dmg/lvl`;
-  if (upgrade.effect.type === "interest_boost") return `+${upgrade.effect.value} interest/lvl`;
-  if (upgrade.effect.type === "unlock") return "Path unlock";
-  return "Upgrade";
+  if (upgrade.effect.type === "click") return localizePathUiText(language, `+${formatNumber(upgrade.effect.value)} click/lvl`, `+${formatNumber(upgrade.effect.value)} tik/sv`, `+${formatNumber(upgrade.effect.value)} clique/nvl`, undefined, `+${formatNumber(upgrade.effect.value)} клик/ур`);
+  if (upgrade.effect.type === "click_multiplier") return localizePathUiText(language, `+${(upgrade.effect.value * 100).toFixed(0)}% click mult/lvl`, `+${(upgrade.effect.value * 100).toFixed(0)}% tik carpani/sv`, `+${(upgrade.effect.value * 100).toFixed(0)}% mult. de clique/nvl`, undefined, `+${(upgrade.effect.value * 100).toFixed(0)}% множ. клика/ур`);
+  if (upgrade.effect.type === "crit_chance") return localizePathUiText(language, `+${(upgrade.effect.value * 100).toFixed(1)}% crit/lvl`, `+${(upgrade.effect.value * 100).toFixed(1)}% krit/sv`, `+${(upgrade.effect.value * 100).toFixed(1)}% crit/nvl`, undefined, `+${(upgrade.effect.value * 100).toFixed(1)}% крит/ур`);
+  if (upgrade.effect.type === "crit_multiplier") return localizePathUiText(language, `+${upgrade.effect.value}x crit dmg/lvl`, `+${upgrade.effect.value}x krit hasar/sv`, `+${upgrade.effect.value}x dano critico/nvl`, undefined, `+${upgrade.effect.value}x крит. урон/ур`);
+  if (upgrade.effect.type === "unlock") return localizePathUiText(language, "Path unlock", "Hat kilidi", "Desbloqueio de rota", undefined, "Открытие линии");
+  return localizePathUiText(language, "Upgrade", "Yükseltme", "Melhoria", undefined, "Улучшение");
 };
 
 const buildPathNodes = (
@@ -178,8 +236,9 @@ const buildPathNodes = (
   resources: Record<ResourceType, Resource>,
 ): PathNodeView[] => {
   const path = UPGRADE_PATHS[pathKey];
-  const prerequisiteUnlocked = path.prerequisite
-    ? (upgrades.find((upgrade) => upgrade.id === path.prerequisite)?.count ?? 0) > 0
+  const prerequisiteId = "prerequisite" in path ? path.prerequisite : undefined;
+  const prerequisiteUnlocked = prerequisiteId
+    ? (upgrades.find((upgrade) => upgrade.id === prerequisiteId)?.count ?? 0) > 0
     : true;
 
   const nodes: PathNodeView[] = [];
@@ -222,9 +281,9 @@ function PathSection({
   nodes: PathNodeView[];
   unlockedOnly: boolean;
 }) {
-  const path = UPGRADE_PATHS[pathKey];
+  const { language } = useI18n();
   const theme = PATH_THEME[pathKey];
-  const Icon = path.icon;
+  const Icon = UPGRADE_PATHS[pathKey].icon;
 
   const filteredNodes = unlockedOnly ? nodes.filter((node) => node.isUnlocked) : nodes;
   const unlockedCount = nodes.filter((node) => node.isUnlocked).length;
@@ -238,11 +297,11 @@ function PathSection({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <Icon className={`h-4 w-4 ${theme.icon}`} />
-          <h3 className={`text-sm font-bold tracking-wide ${theme.accentText}`}>{path.name}</h3>
+          <h3 className={`text-sm font-bold tracking-wide ${theme.accentText}`}>{getPathName(pathKey, language)}</h3>
         </div>
         <div className="text-right text-[10px] text-muted-foreground">
-          <p>{unlockedCount}/{nodes.length} unlocked</p>
-          <p>{affordableCount} affordable now</p>
+          <p>{unlockedCount}/{nodes.length} {localizePathUiText(language, "unlocked", "acik", "desbloqueados")}</p>
+          <p>{affordableCount} {localizePathUiText(language, "affordable now", "su an alinabilir", "disponíveis agora")}</p>
         </div>
       </div>
 
@@ -254,21 +313,23 @@ function PathSection({
           transition={{ duration: 0.4 }}
         />
       </div>
-      <p className="mt-1 text-[10px] text-muted-foreground">{progressPct}% path activation</p>
+      <p className="mt-1 text-[10px] text-muted-foreground">
+        {progressPct}% {localizePathUiText(language, "path activation", "hat etkinligi", "ativacao da rota")}
+      </p>
 
       <div className="mt-3 space-y-2">
         {filteredNodes.length === 0 && (
           <div className="rounded border border-muted/40 bg-muted/10 px-3 py-2 text-xs text-muted-foreground">
-            No nodes match current filter.
+            {localizePathUiText(language, "No nodes match current filter.", "Geçerli filtreyle eşleşen dizin yok.", "Nenhum node corresponde ao filtro atual.")}
           </div>
         )}
 
         {filteredNodes.map((node) => {
           const statusLabel = !node.isUnlocked
-            ? "Locked"
+            ? localizePathUiText(language, "Locked", "Kilitli", "Bloqueado")
             : node.isAffordable
-              ? "Can Upgrade"
-              : "Missing Resources";
+              ? localizePathUiText(language, "Can Upgrade", "Yükseltilebilir", "Pode melhorar")
+              : localizePathUiText(language, "Missing Resources", "Kaynak Eksik", "Faltam recursos");
           const statusClass = !node.isUnlocked
             ? "text-slate-400 border-slate-600/40 bg-slate-700/20"
             : node.isAffordable
@@ -284,7 +345,7 @@ function PathSection({
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-100">{node.upgrade.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{node.tierLabel}</p>
+                  <p className="text-[10px] text-muted-foreground">{getTierLabel(pathKey, node.tierLabel, language)}</p>
                 </div>
                 <span className={`rounded border px-2 py-0.5 text-[10px] font-mono ${statusClass}`}>
                   {statusLabel}
@@ -293,12 +354,12 @@ function PathSection({
 
               <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
                 <div className="rounded border border-border/50 bg-background/40 px-2 py-1">
-                  <p className="uppercase tracking-wide text-muted-foreground">Level</p>
+                  <p className="uppercase tracking-wide text-muted-foreground">{localizePathUiText(language, "Level", "Seviye", "Nivel")}</p>
                   <p className="font-mono text-cyan-200">{node.upgrade.count}</p>
                 </div>
                 <div className="rounded border border-border/50 bg-background/40 px-2 py-1">
-                  <p className="uppercase tracking-wide text-muted-foreground">Effect</p>
-                  <p className="truncate text-cyan-200">{getEffectLabel(node.upgrade)}</p>
+                  <p className="uppercase tracking-wide text-muted-foreground">{localizePathUiText(language, "Effect", "Etki", "Efeito")}</p>
+                  <p className="truncate text-cyan-200">{getEffectLabel(node.upgrade, language)}</p>
                 </div>
               </div>
 
@@ -308,19 +369,23 @@ function PathSection({
                     key={`${node.upgrade.id}-${resource}`}
                     className={`rounded border border-border/50 bg-background/50 px-1.5 py-0.5 text-[10px] font-mono ${RESOURCE_TEXT_COLORS[resource as ResourceType] || "text-slate-200"}`}
                   >
-                    {formatNumber(cost || 0)} {toResourceLabel(resource)}
+                    {formatNumber(cost || 0)} {toResourceLabel(resource, language)}
                   </span>
                 ))}
               </div>
 
               {node.isUnlocked && !node.isAffordable && node.missing && (
                 <p className="mt-2 text-[10px] text-amber-300">
-                  Need {formatNumber(Math.floor(node.missing.amount))} more {toResourceLabel(node.missing.resource)}
+                  {language === "tr"
+                    ? `${formatNumber(Math.floor(node.missing.amount))} ${toResourceLabel(node.missing.resource, language)} daha gerekli`
+                    : language === "pt-BR"
+                      ? `Faltam ${formatNumber(Math.floor(node.missing.amount))} ${toResourceLabel(node.missing.resource, language)}`
+                      : `Need ${formatNumber(Math.floor(node.missing.amount))} more ${toResourceLabel(node.missing.resource, language)}`}
                 </p>
               )}
               {!node.isUnlocked && (
                 <p className="mt-2 text-[10px] text-slate-400">
-                  Unlock previous tier to activate this node.
+                  {localizePathUiText(language, "Unlock previous tier to activate this node.", "Bu dizini etkinleştirmek için önceki kademeyi aç.", "Desbloqueie o nível anterior para ativar este node.")}
                 </p>
               )}
             </div>
@@ -332,6 +397,7 @@ function PathSection({
 }
 
 export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: UpgradePathVisualizerProps) {
+  const { language } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPath, setSelectedPath] = useState<SelectedPath>("all");
   const [showUnlockedOnly, setShowUnlockedOnly] = useState(false);
@@ -390,7 +456,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
           data-testid="button-upgrade-path"
         >
           <GitBranch className="h-4 w-4" />
-          Upgrade Paths
+          {localizePathUiText(language, "Upgrade Paths", "Yükseltme Hatları", "Rotas de Melhoria", "Rutas de Mejora")}
         </Button>
       </DialogTrigger>
 
@@ -398,7 +464,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-purple-300 font-display tracking-wide">
             <GitBranch className="h-5 w-5" />
-            Machine Upgrade Paths
+            {localizePathUiText(language, "Machine Upgrade Paths", "Makine Yükseltme Hatları", "Rotas de Melhoria das Maquinas", "Rutas de Mejora de Maquinas")}
           </DialogTitle>
         </DialogHeader>
 
@@ -406,19 +472,19 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               <div className="rounded border border-cyan-500/30 bg-cyan-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-cyan-300/80">Nodes</p>
+                <p className="text-[10px] uppercase tracking-wide text-cyan-300/80">{localizePathUiText(language, "Nodes", "Dizinler", "Nodes")}</p>
                 <p className="text-sm font-mono text-cyan-200">{allNodes.length}</p>
               </div>
               <div className="rounded border border-emerald-500/30 bg-emerald-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-emerald-300/80">Unlocked</p>
+                <p className="text-[10px] uppercase tracking-wide text-emerald-300/80">{localizePathUiText(language, "Unlocked", "Acik", "Desbloqueados")}</p>
                 <p className="text-sm font-mono text-emerald-200">{unlockedNodes.length}</p>
               </div>
               <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-amber-300/80">Affordable</p>
+                <p className="text-[10px] uppercase tracking-wide text-amber-300/80">{localizePathUiText(language, "Affordable", "Alinabilir", "Acessiveis")}</p>
                 <p className="text-sm font-mono text-amber-200">{affordableNowCount}</p>
               </div>
               <div className="rounded border border-fuchsia-500/30 bg-fuchsia-500/10 p-2">
-                <p className="text-[10px] uppercase tracking-wide text-fuchsia-300/80">Total Levels</p>
+                <p className="text-[10px] uppercase tracking-wide text-fuchsia-300/80">{localizePathUiText(language, "Total Levels", "Toplam Seviye", "Niveis Totais")}</p>
                 <p className="text-sm font-mono text-fuchsia-200">{formatNumber(purchasedLevelTotal)}</p>
               </div>
             </div>
@@ -431,22 +497,19 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
                   onClick={() => setSelectedPath("all")}
                   className={selectedPath === "all" ? "bg-purple-500/20 border-purple-400/60 text-purple-200" : ""}
                 >
-                  All Paths
+                  {localizePathUiText(language, "All Paths", "Tum Hatlar", "Todas as Rotas")}
                 </Button>
-                {pathKeys.map((key) => {
-                  const path = UPGRADE_PATHS[key];
-                  return (
-                    <Button
-                      key={key}
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setSelectedPath(key)}
-                      className={selectedPath === key ? "bg-purple-500/20 border-purple-400/60 text-purple-200" : ""}
-                    >
-                      {path.name}
-                    </Button>
-                  );
-                })}
+                {pathKeys.map((key) => (
+                  <Button
+                    key={key}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedPath(key)}
+                    className={selectedPath === key ? "bg-purple-500/20 border-purple-400/60 text-purple-200" : ""}
+                  >
+                    {getPathName(key, language)}
+                  </Button>
+                ))}
 
                 <Button
                   size="sm"
@@ -455,7 +518,7 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
                   className={`ml-auto gap-1 ${showUnlockedOnly ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-200" : ""}`}
                 >
                   <Filter className="h-3.5 w-3.5" />
-                  Unlocked Only
+                  {localizePathUiText(language, "Unlocked Only", "Sadece Aciklar", "Somente Desbloqueados")}
                 </Button>
               </div>
             </div>
@@ -463,30 +526,36 @@ export function UpgradePathVisualizer({ upgrades, resources, buttonClassName }: 
             <div className="rounded border border-amber-500/30 bg-amber-500/10 p-3">
               <div className="mb-2 flex items-center gap-2">
                 <Zap className="h-4 w-4 text-amber-300" />
-                <p className="text-sm font-semibold text-amber-200">Priority Queue</p>
+                <p className="text-sm font-semibold text-amber-200">{localizePathUiText(language, "Priority Queue", "Oncelik Sirasi", "Fila Prioritaria")}</p>
               </div>
               <div className="space-y-1.5">
                 {priorityNodes.length === 0 && (
-                  <p className="text-xs text-slate-400">No unlocked upgrades yet.</p>
+                  <p className="text-xs text-slate-400">{localizePathUiText(language, "No unlocked upgrades yet.", "Henüz açık yükseltme yok.", "Ainda não h? melhorias desbloqueadas.")}</p>
                 )}
                 {priorityNodes.map((node) => {
-                  const pathName = UPGRADE_PATHS[node.pathKey].name;
+                  const pathName = getPathName(node.pathKey, language);
                   return (
                     <div key={`priority-${node.pathKey}-${node.upgrade.id}`} className="flex items-center justify-between rounded border border-amber-500/20 bg-slate-950/60 px-2 py-1">
                       <div className="min-w-0">
                         <p className="truncate text-xs text-amber-100">{node.upgrade.name}</p>
-                        <p className="text-[10px] text-slate-400">{pathName} • Lvl {node.upgrade.count}</p>
+                        <p className="text-[10px] text-slate-400">{pathName} • {localizePathUiText(language, "Lvl", "Sv", "Nvl")} {node.upgrade.count}</p>
                       </div>
                       {node.isAffordable ? (
-                        <span className="text-[10px] text-emerald-300">Ready</span>
+                        <span className="text-[10px] text-emerald-300">{localizePathUiText(language, "Ready", "Hazir", "Pronto")}</span>
                       ) : node.missing ? (
                         <span className="text-[10px] text-amber-300">
-                          Need {formatNumber(Math.floor(node.missing.amount))} {toResourceLabel(node.missing.resource)}
+                          {language === "tr"
+                            ? `${formatNumber(Math.floor(node.missing.amount))} ${toResourceLabel(node.missing.resource, language)} eksik`
+                            : language === "pt-BR"
+                              ? `Faltam ${formatNumber(Math.floor(node.missing.amount))} ${toResourceLabel(node.missing.resource, language)}`
+                              : language === "ru"
+                                ? `Нужно ${formatNumber(Math.floor(node.missing.amount))} ${toResourceLabel(node.missing.resource, language)}`
+                              : `Need ${formatNumber(Math.floor(node.missing.amount))} ${toResourceLabel(node.missing.resource, language)}`}
                         </span>
                       ) : (
                         <span className="text-[10px] text-slate-400 flex items-center gap-1">
                           <Lock className="h-3 w-3" />
-                          Locked
+                          {localizePathUiText(language, "Locked", "Kilitli", "Bloqueado")}
                         </span>
                       )}
                     </div>

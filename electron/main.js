@@ -23,6 +23,20 @@ if (isProton) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// v1.03 TEST build (exe name contains "TEST"): runs next to the real game with its own profile and
+// save folder, never writes the real save, and sends no achievements or leaderboard scores.
+const IS_TEST_BUILD = /TEST/i.test(path.basename(process.execPath)) || process.env.DATAFALL_TEST_BUILD === "1";
+// Demo build: the renderer keeps its own save file (save.demo.v3.json, own namespace) in the same folder, as the
+// March demo did, so old demo saves continue and a full-game save is never loaded or overwritten.
+const IS_DEMO_BUILD = /demo/i.test(path.basename(process.execPath)) || process.env.DATAFALL_DEMO_BUILD === "1";
+const FULL_SAVE_FOLDER = IS_TEST_BUILD ? "DataFall V1.03 TEST" : "DataFall";
+const DEMO_SAVE_FILE = "save.demo.v3.json";
+const SAVE_FOLDER_NAME = FULL_SAVE_FOLDER;
+if (IS_TEST_BUILD) {
+  // DATAFALL_TEST_PROFILE_DIR lets automated checks use a throwaway profile instead of the tester's.
+  app.setPath("userData", process.env.DATAFALL_TEST_PROFILE_DIR || path.join(app.getPath("appData"), IS_DEMO_BUILD ? "DataFall Demo V1.03 TEST" : "DataFall V1.03 TEST"));
+}
+
 let serverProcess = null;
 let mainWindow = null;
 const leaderboardIdCache = new Map();
@@ -41,23 +55,6 @@ function getSteamAppId() {
   if (Number.isFinite(parsed) && parsed > 0) return parsed;
 
   return 4291910;
-}
-
-function getSaveFolderName() {
-  const editionFromEnv = String(
-    process.env.GAME_EDITION || process.env.VITE_GAME_EDITION || ""
-  )
-    .trim()
-    .toLowerCase();
-
-  if (editionFromEnv === "demo") return "DataFall Demo";
-
-  const appName = String(app.getName?.() || "")
-    .trim()
-    .toLowerCase();
-  if (appName.includes("demo")) return "DataFall Demo";
-
-  return "DataFall";
 }
 
 function ensureSteamAppIdTxt(appId) {
@@ -101,6 +98,15 @@ function toSafeInt(value, fallback = 0) {
 
 function getLeaderboardsApi() {
   return steamClient?.leaderboards ?? null;
+}
+
+function getCurrentSteamLanguage() {
+  try {
+    const raw = steamClient?.apps?.currentGameLanguage?.() ?? null;
+    return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+  } catch {
+    return null;
+  }
 }
 
 function normalizeSteamId(value) {
@@ -260,6 +266,33 @@ function waitForPort(port, host = "127.0.0.1", timeoutMs = 15000) {
   });
 }
 
+// Preferred port 5000 keeps the renderer origin (and its localStorage) unchanged; fall back to a free port.
+let serverPort = 5000;
+// Free = nothing answers on it (on Windows a 127.0.0.1 bind can succeed next to a 0.0.0.0 listener, so we probe by connecting).
+function isPortFree(port) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    socket.setTimeout(400);
+    socket.once("connect", () => { socket.destroy(); resolve(false); });
+    socket.once("timeout", () => { socket.destroy(); resolve(true); });
+    socket.once("error", () => { socket.destroy(); resolve(true); });
+    socket.connect(port, "127.0.0.1");
+  });
+}
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once("error", reject);
+    srv.listen(0, "127.0.0.1", () => { const p = srv.address().port; srv.close(() => resolve(p)); });
+  });
+}
+async function pickServerPort() {
+  if (await isPortFree(5000)) return 5000;
+  const p = await getFreePort();
+  console.log("[server] port 5000 busy, using", p);
+  return p;
+}
+
 function startServer() {
   const isDev = process.env.NODE_ENV === "development";
   const appRoot = app.getAppPath(); // prod: .../resources/app.asar
@@ -271,7 +304,7 @@ function startServer() {
   const env = {
     ...process.env,
     NODE_ENV: isDev ? "development" : "production",
-    PORT: "5000",
+    PORT: String(serverPort),
     ELECTRON_RUN_AS_NODE: "1",
     SteamAppId: String(getSteamAppId()),
     STEAM_APP_ID: String(getSteamAppId()),
@@ -337,7 +370,7 @@ async function createWindow() {
     height: 720,
     fullscreen: true,
     autoHideMenuBar: true,
-    title: app.getName() || "DataFall",
+    title: "DataFall",
     backgroundColor: "#0f172a",
     show: true,
 
@@ -363,8 +396,8 @@ async function createWindow() {
   }
 
   // Start server and load it
-  await waitForPort(5000);
-  await mainWindow.loadURL("http://127.0.0.1:5000");
+  await waitForPort(serverPort);
+  await mainWindow.loadURL(`http://127.0.0.1:${serverPort}`);
 
   // Force fullscreen after load (Windows likes to argue)
   try {
@@ -388,10 +421,18 @@ function toggleFullscreen() {
   mainWindow.setFullScreen(!mainWindow.isFullScreen());
 }
 
+function setFpsLimit(value) {
+  // Electron's webContents.setFrameRate only affects offscreen rendering,
+  // so standard BrowserWindow presentation should stay on Chromium defaults.
+  // We keep the IPC channel for compatibility with the renderer settings UI.
+  void value;
+}
+
 // New/Preferred
 ipcMain.on("df:set-fullscreen", (_event, value) => setFullscreen(value));
 ipcMain.on("df:toggle-fullscreen", () => toggleFullscreen());
 ipcMain.handle("df:is-fullscreen", () => (mainWindow ? mainWindow.isFullScreen() : false));
+ipcMain.on("df:set-fps-limit", (_event, value) => setFpsLimit(value));
 
 // Legacy/Other code paths (your current steamIntegration.ts uses these)
 ipcMain.on("set-fullscreen", (_event, value) => setFullscreen(value));
@@ -401,23 +442,18 @@ ipcMain.handle("is-fullscreen", () => (mainWindow ? mainWindow.isFullScreen() : 
 // Steam ready probe
 ipcMain.handle("df:is-steam-ready", () => !!steamInitialized);
 ipcMain.handle("is-steam-ready", () => !!steamInitialized);
+ipcMain.handle("df:get-steam-language", () => getCurrentSteamLanguage());
+ipcMain.handle("get-steam-language", () => getCurrentSteamLanguage());
+ipcMain.on("df:get-steam-language-sync", (event) => {
+  event.returnValue = getCurrentSteamLanguage();
+});
+ipcMain.on("get-steam-language-sync", (event) => {
+  event.returnValue = getCurrentSteamLanguage();
+});
 
 // -------------------- Steam Cloud (Auto-Cloud) file I/O --------------------
-// Crash-safe write: write to a temp file, keep the previous good save as .bak,
-// then atomically rename. A crash mid-write can no longer leave an empty/corrupt save.
-function writeSaveAtomic(file, payload) {
-  const tmp = file + ".tmp";
-  const bak = file + ".bak";
-  fs.writeFileSync(tmp, payload, "utf8");
-  try {
-    if (fs.existsSync(file)) {
-      const current = fs.readFileSync(file, "utf8");
-      if (isValidSaveJson(current)) fs.copyFileSync(file, bak);
-    }
-  } catch {}
-  fs.renameSync(tmp, file);
-}
-
+// A save is only kept as .bak, or loaded, when it is non-empty valid JSON, so a crash
+// mid-write (empty/truncated save.json) can no longer replace the good backup.
 function isValidSaveJson(text) {
   if (!text || !text.trim()) return false;
   try {
@@ -428,36 +464,63 @@ function isValidSaveJson(text) {
   }
 }
 
+// Crash-safe write: temp file, keep the previous valid save as .bak, then atomic rename.
+function writeSaveAtomic(file, payload) {
+  const tempFile = `${file}.tmp`;
+  const backupFile = `${file}.bak`;
+  fs.writeFileSync(tempFile, payload, "utf8");
+  try {
+    if (fs.existsSync(file) && isValidSaveJson(fs.readFileSync(file, "utf8"))) {
+      fs.copyFileSync(file, backupFile);
+    }
+  } catch {}
+  fs.renameSync(tempFile, file);
+}
+
+// Returns the first valid save of [file, file.bak], or null.
 function readSaveWithBackup(file) {
-  const candidates = [file, file + ".bak"];
-  for (const f of candidates) {
+  for (const f of [file, `${file}.bak`]) {
     try {
       if (!fs.existsSync(f)) continue;
       const data = fs.readFileSync(f, "utf8");
       if (isValidSaveJson(data)) return { data, from: f };
       console.log("[cloud] corrupt save ignored =>", f);
-    } catch {}
+    } catch (e) {
+      console.log("[cloud] read failed =>", f, e?.message || e);
+    }
   }
   return { data: null, from: null };
 }
-function getAutoCloudSavePath() {
+
+function getAutoCloudSavePath(fileName = "save.json") {
   const base =
     process.env.LOCALAPPDATA ||
     path.join(app.getPath("home"), "AppData", "Local");
 
-  const dir = path.join(base, getSaveFolderName());
-  const file = path.join(dir, "save.json");
+  const dir = path.join(base, SAVE_FOLDER_NAME);
+  const sanitizedFileName =
+    typeof fileName === "string" && /^[a-zA-Z0-9._-]+$/.test(fileName)
+      ? fileName
+      : "save.json";
+  const file = path.join(dir, sanitizedFileName);
   return { dir, file };
 }
 
-ipcMain.handle("df:save-file", async (_event, jsonString) => {
+ipcMain.handle("df:save-file", async (_event, payloadInput) => {
   try {
-    const { dir, file } = getAutoCloudSavePath();
+    const fileName =
+      payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput)
+        ? payloadInput.fileName
+        : undefined;
+    const rawData =
+      payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput) && "data" in payloadInput
+        ? payloadInput.data
+        : payloadInput;
+    const { dir, file } = getAutoCloudSavePath(fileName);
     fs.mkdirSync(dir, { recursive: true });
 
     const payload =
-      typeof jsonString === "string" ? jsonString : JSON.stringify(jsonString ?? null);
-
+      typeof rawData === "string" ? rawData : JSON.stringify(rawData ?? null);
     writeSaveAtomic(file, payload);
 
     console.log("[cloud] save OK =>", file, "| bytes =", Buffer.byteLength(payload, "utf8"));
@@ -468,9 +531,13 @@ ipcMain.handle("df:save-file", async (_event, jsonString) => {
   }
 });
 
-ipcMain.handle("df:load-file", async () => {
+ipcMain.handle("df:load-file", async (_event, payloadInput) => {
   try {
-    const { file } = getAutoCloudSavePath();
+    const fileName =
+      payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput)
+        ? payloadInput.fileName
+        : undefined;
+    const { file } = getAutoCloudSavePath(fileName);
     const { data, from } = readSaveWithBackup(file);
     if (!data) {
       console.log("[cloud] load: no valid save =>", file);
@@ -482,6 +549,23 @@ ipcMain.handle("df:load-file", async () => {
     console.log("[cloud] load failed:", e?.message || e);
     return { ok: false, data: null, reason: e?.message || String(e) };
   }
+});
+
+// Full game with no save yet: read (never write) the demo save so demo progress carries over once.
+ipcMain.handle("df:import-demo-save", async () => {
+  const base = process.env.LOCALAPPDATA || path.join(app.getPath("home"), "AppData", "Local");
+  const { data, from } = readSaveWithBackup(path.join(base, FULL_SAVE_FOLDER, DEMO_SAVE_FILE));
+  if (data) console.log("[cloud] imported demo save (read-only) =>", from);
+  return { ok: true, data };
+});
+
+// TEST build only: read (never write) the real game's save so testing starts from real progress.
+ipcMain.handle("df:import-live-save", async () => {
+  if (!IS_TEST_BUILD) return { ok: false, data: null };
+  const base = process.env.LOCALAPPDATA || path.join(app.getPath("home"), "AppData", "Local");
+  const { data, from } = readSaveWithBackup(path.join(base, "DataFall", "save.json"));
+  console.log("[cloud] test build imported live save (read-only) =>", from);
+  return { ok: true, data };
 });
 
 // -------------------- Steam Overlay --------------------
@@ -508,8 +592,23 @@ ipcMain.on("df:open-overlay", (_event, overlayType) => {
   }
 });
 
+// v1.03 demo end screen: open the full game's store page (Steam overlay, else the Steam client / browser).
+ipcMain.on("df:open-store", (_event, appId) => {
+  const id = Number(appId) || 4291910;
+  try {
+    if (steamInitialized && steamClient && steamClient.overlay) {
+      if (typeof steamClient.overlay.activateToStore === "function") { steamClient.overlay.activateToStore(id, 0); return; }
+      if (typeof steamClient.overlay.activateToWebPage === "function") { steamClient.overlay.activateToWebPage("https://store.steampowered.com/app/" + id + "/"); return; }
+    }
+  } catch (e) {
+    console.log("[steam] store overlay error:", e?.message || e);
+  }
+  try { require("electron").shell.openExternal("steam://store/" + id); } catch {}
+});
+
 // -------------------- Steam Achievements --------------------
 ipcMain.on("df:unlock-achievement", (_event, achievementId) => {
+  if (IS_TEST_BUILD) return;
   console.log("[steam] unlock request:", achievementId);
 
   if (!steamInitialized || !steamClient) {
@@ -585,6 +684,7 @@ ipcMain.on("steam-get-user", (event) => {
 });
 
 ipcMain.on("steam-unlock-achievement", (event, achievementId) => {
+  if (IS_TEST_BUILD) return;
   console.log("[steam] legacy unlock request:", achievementId);
   if (!steamInitialized || !steamClient) {
     event.sender.send("steam-achievement-unlocked", {
@@ -618,14 +718,21 @@ ipcMain.on("steam-open-overlay", (_event, overlayType) => {
   } catch {}
 });
 
-ipcMain.on("steam-cloud-save", async (event, jsonString) => {
+ipcMain.on("steam-cloud-save", async (event, payloadInput) => {
   try {
-    const { dir, file } = getAutoCloudSavePath();
+    const fileName =
+      payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput)
+        ? payloadInput.fileName
+        : undefined;
+    const rawData =
+      payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput) && "data" in payloadInput
+        ? payloadInput.data
+        : payloadInput;
+    const { dir, file } = getAutoCloudSavePath(fileName);
     fs.mkdirSync(dir, { recursive: true });
 
     const payload =
-      typeof jsonString === "string" ? jsonString : JSON.stringify(jsonString ?? null);
-
+      typeof rawData === "string" ? rawData : JSON.stringify(rawData ?? null);
     writeSaveAtomic(file, payload);
 
     console.log("[cloud] legacy save OK =>", file, "| bytes =", Buffer.byteLength(payload, "utf8"));
@@ -639,17 +746,21 @@ ipcMain.on("steam-cloud-save", async (event, jsonString) => {
   }
 });
 
-ipcMain.on("steam-cloud-load", async (event) => {
+ipcMain.on("steam-cloud-load", async (event, payloadInput) => {
   try {
-    const { file } = getAutoCloudSavePath();
-    if (!fs.existsSync(file)) {
-      console.log("[cloud] legacy load: no file =>", file);
+    const fileName =
+      payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput)
+        ? payloadInput.fileName
+        : undefined;
+    const { file } = getAutoCloudSavePath(fileName);
+    const { data, from } = readSaveWithBackup(file);
+    if (!data) {
+      console.log("[cloud] legacy load: no valid save =>", file);
       event.sender.send("steam-cloud-load-result", { success: true, data: null, file });
       return;
     }
-    const data = fs.readFileSync(file, "utf8");
-    console.log("[cloud] legacy load OK =>", file, "| bytes =", Buffer.byteLength(data, "utf8"));
-    event.sender.send("steam-cloud-load-result", { success: true, data, file });
+    console.log("[cloud] legacy load OK =>", from, "| bytes =", Buffer.byteLength(data, "utf8"));
+    event.sender.send("steam-cloud-load-result", { success: true, data, file: from });
   } catch (e) {
     console.log("[cloud] legacy load failed:", e?.message || e);
     event.sender.send("steam-cloud-load-result", {
@@ -661,6 +772,7 @@ ipcMain.on("steam-cloud-load", async (event) => {
 
 // -------------------- Steam Leaderboards (Steamworks Client API) --------------------
 ipcMain.handle("df:leaderboard-set-score", async (_event, payload) => {
+  if (IS_TEST_BUILD) return { ok: false, reason: "test_build" };
   try {
     if (!steamInitialized || !steamClient) {
       return { ok: false, reason: "steam_not_initialized" };
@@ -758,8 +870,24 @@ ipcMain.handle("df:leaderboard-get-entries", async (_event, payload) => {
 });
 
 // -------------------- Lifecycle --------------------
+// v1.04: only one DataFall window. A second launch (e.g. Steam relaunch while alt-tabbed) focuses the running one.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (!mainWindow) return;
+    try {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    } catch {}
+  });
+}
+
 app.whenReady().then(async () => {
+  if (!app.hasSingleInstanceLock()) return;
   initSteam();
+  serverPort = await pickServerPort();
   startServer();
   await createWindow();
 });

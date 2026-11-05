@@ -2,21 +2,42 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Clock, Database, Coins, Bitcoin, Zap } from "lucide-react";
 import type { OfflineProgress } from "@/lib/useGame";
+import { localizeInlineText, useI18n, type Language } from "@/lib/i18n";
 
 interface OfflineProgressModalProps {
   progress: OfflineProgress | null;
   onClose: () => void;
 }
 
-function formatTime(seconds: number): string {
-  if (seconds < 60) return `${seconds} seconds`;
+function formatTime(seconds: number, language: Language): string {
+  if (seconds < 60) {
+    if (language === "tr") return `${seconds} saniye`;
+    if (language === "pt-BR") return `${seconds} segundos`;
+    if (language === "es") return `${seconds} segundos`;
+    if (language === "ru") return `${seconds} сек`;
+    return `${seconds} seconds`;
+  }
   if (seconds < 3600) {
     const mins = Math.floor(seconds / 60);
+    if (language === "tr") return `${mins} dakika`;
+    if (language === "pt-BR") return `${mins} minuto${mins > 1 ? 's' : ''}`;
+    if (language === "es") return `${mins} minuto${mins > 1 ? 's' : ''}`;
+    if (language === "ru") return `${mins} мин`;
     return `${mins} minute${mins > 1 ? 's' : ''}`;
   }
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  if (mins === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+  if (mins === 0) {
+    if (language === "tr") return `${hours} saat`;
+    if (language === "pt-BR") return `${hours} hora${hours > 1 ? 's' : ''}`;
+    if (language === "es") return `${hours} hora${hours > 1 ? 's' : ''}`;
+    if (language === "ru") return `${hours} ч`;
+    return `${hours} hour${hours > 1 ? 's' : ''}`;
+  }
+  if (language === "tr") return `${hours}sa ${mins}dk`;
+  if (language === "pt-BR") return `${hours}h ${mins}min`;
+  if (language === "es") return `${hours}h ${mins}min`;
+  if (language === "ru") return `${hours}ч ${mins}м`;
   return `${hours}h ${mins}m`;
 }
 
@@ -42,11 +63,35 @@ function formatNumber(num: number): string {
 }
 
 export function OfflineProgressModal({ progress, onClose }: OfflineProgressModalProps) {
+  const { language } = useI18n();
   if (!progress) return null;
+  const l = (en: string, tr: string, pt: string, es?: string, ru?: string) => localizeInlineText(language, en, tr, pt, es, ru);
 
   const hasAnyReward = progress.dataEarned > 0 || progress.creditsEarned > 0 || 
                        progress.cryptoEarned > 0;
-  const maxOfflineTime = progress.maxTime ?? 2 * 60 * 60;
+  const maxOfflineTime = progress.maxTime ?? 8 * 60 * 60;
+  const title = l("Welcome Back, Operator", "Tekrar Hos Geldin", "Boas-vindas de volta, Operador", "Bienvenido de nuevo, Operador");
+  const awayText = l(
+    `You were away for ${formatTime(progress.timeAway, language)}`,
+    `${formatTime(progress.timeAway, language)} boyunca uzaktaydin`,
+    `Voce ficou ausente por ${formatTime(progress.timeAway, language)}`,
+    `Estuviste ausente durante ${formatTime(progress.timeAway, language)}`,
+  );
+  const maxOfflineText = l(
+    `(Max ${formatTime(maxOfflineTime, language)} of offline progress)`,
+    `(En fazla ${formatTime(maxOfflineTime, language)} çevrimdışı ilerleme)`,
+    `(Maximo de ${formatTime(maxOfflineTime, language)} de progresso offline)`,
+    `(Maximo ${formatTime(maxOfflineTime, language)} de progreso offline)`,
+  );
+  const rewardsText = l(
+    "Your systems continued mining while you were away:",
+    "Sen yokken sistemlerin kazim yapmaya devam etti:",
+    "Seus sistemas continuaram minerando enquanto voce estava ausente:",
+    "Tus sistemas siguieron minando mientras estabas ausente:",
+  );
+  const continueText = l("Continue Hacking", "Hacking'e Devam Et", "Continuar Hackeando");
+  const dataLabel = l("Data", "Veri", "Dados");
+  const nodesLabel = l("Nodes", "Dizin", "Nodes");
 
   return (
     <AnimatePresence>
@@ -74,21 +119,21 @@ export function OfflineProgressModal({ progress, onClose }: OfflineProgressModal
                 <Zap className="w-12 h-12 mx-auto text-cyan-400" />
               </motion.div>
               <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-magenta-400 bg-clip-text text-transparent">
-                Welcome Back, Operator
+                {title}
               </h2>
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
                 <Clock className="w-4 h-4" />
-                <span>You were away for {formatTime(progress.timeAway)}</span>
+                <span>{awayText}</span>
               </div>
               <p className="text-xs text-muted-foreground/70">
-                (Max {formatTime(maxOfflineTime)} of offline progress)
+                {maxOfflineText}
               </p>
             </div>
 
             {hasAnyReward && (
               <div className="bg-slate-800/50 rounded-lg p-4 space-y-3 border border-slate-700/50">
                 <p className="text-sm text-center text-cyan-300 font-medium">
-                  Your systems continued mining while you were away:
+                  {rewardsText}
                 </p>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -101,7 +146,7 @@ export function OfflineProgressModal({ progress, onClose }: OfflineProgressModal
                     >
                       <Database className="w-5 h-5 text-cyan-400" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Data</p>
+                        <p className="text-xs text-muted-foreground">{dataLabel}</p>
                         <p className="text-sm font-bold text-cyan-400">+{formatNumber(progress.dataEarned)}</p>
                       </div>
                     </motion.div>
@@ -116,7 +161,7 @@ export function OfflineProgressModal({ progress, onClose }: OfflineProgressModal
                     >
                       <Coins className="w-5 h-5 text-amber-400" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Nodes</p>
+                        <p className="text-xs text-muted-foreground">{nodesLabel}</p>
                         <p className="text-sm font-bold text-amber-400">+{formatNumber(progress.creditsEarned)}</p>
                       </div>
                     </motion.div>
@@ -131,7 +176,7 @@ export function OfflineProgressModal({ progress, onClose }: OfflineProgressModal
                     >
                       <Bitcoin className="w-5 h-5 text-orange-400" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Crypto</p>
+                        <p className="text-xs text-muted-foreground">{l('Crypto', 'Kripto', 'Cripto')}</p>
                         <p className="text-sm font-bold text-orange-400">+{formatNumber(progress.cryptoEarned)}</p>
                       </div>
                     </motion.div>
@@ -146,7 +191,7 @@ export function OfflineProgressModal({ progress, onClose }: OfflineProgressModal
               data-testid="button-claim-offline"
             >
               <Zap className="w-4 h-4 mr-2" />
-              Continue Hacking
+              {continueText}
             </Button>
           </div>
         </motion.div>

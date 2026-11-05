@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '@/lib/useGame';
 import type { Achievement, PlayerStats } from '@/lib/useGame';
+import { localizeInlineText, useI18n } from '@/lib/i18n';
 
 interface AchievementsPanelProps {
   achievements: Achievement[];
@@ -171,6 +172,15 @@ export const AchievementsPanel = memo(function AchievementsPanel({
   claimAchievementReward,
   claimAllAchievements,
 }: AchievementsPanelProps) {
+  const { language } = useI18n();
+  const l = (en: string, tr: string, pt: string, es?: string, ru?: string) => localizeInlineText(language, en, tr, pt, es, ru);
+  const categoryLabels: Record<AchievementCategory, string> = {
+    clicking: l('Clicking', 'Tıklama', 'Cliques', 'Clics'),
+    resources: l('Resources', 'Kaynaklar', 'Recursos', 'Recursos'),
+    upgrades: l('Upgrades', 'Yükseltmeler', 'Upgrades', 'Mejoras'),
+    prestige: l('Prestige', 'Prestij', 'Prestigio', 'Prestigio'),
+    special: l('Special', 'Özel', 'Especiais', 'Especiales'),
+  };
   const {
     unlockedCount,
     totalCount,
@@ -258,34 +268,57 @@ export const AchievementsPanel = memo(function AchievementsPanel({
 
   const statCards = [
     {
-      label: 'Clicks',
+      label: l('Clicks', 'Tıklamalar', 'Cliques', 'Clics'),
       value: formatNumber(stats.totalClicks),
       tone: 'text-cyan-100',
       border: 'border-cyan-500/30 bg-cyan-500/10',
       Icon: MousePointerClick,
     },
     {
-      label: 'Crits',
+      label: l('Crits', 'Kritikler', 'Criticos', 'Criticos'),
       value: formatNumber(stats.totalCrits),
       tone: 'text-fuchsia-100',
       border: 'border-fuchsia-500/30 bg-fuchsia-500/10',
       Icon: Zap,
     },
     {
-      label: 'Ascensions',
+      label: l('Ascensions', 'Yükselişler', 'Ascensões', 'Ascensiones'),
       value: formatNumber(stats.totalAscensions),
       tone: 'text-violet-100',
       border: 'border-violet-500/30 bg-violet-500/10',
       Icon: Crown,
     },
     {
-      label: 'Fastest Asc',
+      label: l('Fastest Asc', 'En Hızlı Yüks.', 'Asc. Mais Rápida', 'Asc. Más Rápida'),
       value: formatTime(Math.floor(stats.fastestAscension)),
       tone: 'text-emerald-100',
       border: 'border-emerald-500/30 bg-emerald-500/10',
       Icon: Timer,
     },
   ] as const;
+
+  const completionLabel = l('Completion', 'Tamamlama', 'Conclusão', 'Completado');
+  const unlockedLabel = l('unlocked', 'açıldı', 'desbloqueado', 'desbloqueado');
+  const pendingLabel = l('pending', 'bekliyor', 'pendente', 'pendiente');
+  const nextTargetLabel = l('Next target', 'Sonraki hedef', 'Próximo objetivo', 'Siguiente objetivo');
+  const claimableLabel = l('Claimable', 'Alınabilir', 'Resgatável', 'Reclamable');
+  const claimAllLabel = l('Claim All', 'Hepsini Al', 'Resgatar Tudo', 'Reclamar Todo');
+  const claimedLabel = l('CLAIMED', 'ALINDI', 'RESGATADO', 'RECLAMADO');
+  const achievementMatrixLabel = l('Achievement Matrix', 'Başarım Matrisi', 'Matriz de Conquistas', 'Matriz de Logros');
+  const achievementSubtitle = l(
+    'Track milestones and claim prestige rewards',
+    'Kilometre taşlarını takip et ve prestij ödüllerini topla',
+    'Acompanhe marcos e receba recompensas de prestígio',
+    'Sigue los hitos y reclama recompensas de prestigio',
+  );
+  const unlockedToastTitle = l('Achievement Unlocked!', 'Başarım Açıldı!', 'Conquista Desbloqueada!', 'Logro Desbloqueado!');
+  const claimRewardText = (prestige: number) => l(`Claim +${prestige}P`, `+${prestige}P al`, `Resgatar +${prestige}P`, `Reclamar +${prestige}P`);
+  const claimRewardHint = (prestige: number) => l(
+    `Claim +${prestige}P in Achievements!`,
+    `Başarımlar ekranında +${prestige}P al!`,
+    `Resgate +${prestige}P em Conquistas!`,
+    `Reclama +${prestige}P en Logros!`,
+  );
 
   return (
     <div className="h-full min-h-0 flex flex-col">
@@ -302,12 +335,12 @@ export const AchievementsPanel = memo(function AchievementsPanel({
                 <Trophy className="w-4 h-4 text-amber-300" />
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-200/90 font-semibold">Achievement Matrix</p>
-                <p className="text-[10px] text-muted-foreground">Track milestones and claim prestige rewards</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-cyan-200/90 font-semibold">{achievementMatrixLabel}</p>
+                <p className="text-[10px] text-muted-foreground">{achievementSubtitle}</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-[9px] uppercase tracking-[0.15em] text-cyan-300/70">Completion</p>
+              <p className="text-[9px] uppercase tracking-[0.15em] text-cyan-300/70">{completionLabel}</p>
               <p className="text-sm font-mono text-cyan-100">
                 {unlockedCount}/{totalCount}
               </p>
@@ -316,8 +349,8 @@ export const AchievementsPanel = memo(function AchievementsPanel({
 
           <div className="mb-3">
             <div className="flex items-center justify-between text-[10px] font-mono mb-1">
-              <span className="text-cyan-200/80">{completionPercent.toFixed(1)}% unlocked</span>
-              <span className="text-amber-300/90">+{totalClaimablePrestige}P pending</span>
+              <span className="text-cyan-200/80">{completionPercent.toFixed(1)}% {unlockedLabel}</span>
+              <span className="text-amber-300/90">+{totalClaimablePrestige}P {pendingLabel}</span>
             </div>
             <div className="h-2 rounded-full bg-slate-950/70 border border-cyan-500/20 overflow-hidden">
               <motion.div
@@ -343,7 +376,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
 
           {nextToUnlock && (
             <div className="mt-3 rounded-md border border-indigo-500/25 bg-indigo-500/10 px-2 py-1.5">
-              <p className="text-[9px] uppercase tracking-[0.15em] text-indigo-200/80">Next target</p>
+              <p className="text-[9px] uppercase tracking-[0.15em] text-indigo-200/80">{nextTargetLabel}</p>
               <p className="text-xs text-indigo-100 truncate">{nextToUnlock.name}</p>
               <p className="text-[10px] text-indigo-200/75 truncate">{nextToUnlock.description}</p>
             </div>
@@ -361,7 +394,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
               <div className="flex items-center gap-2">
                 <Gift className="w-3.5 h-3.5 text-amber-300" />
                 <p className="text-[11px] uppercase tracking-[0.16em] text-amber-200 font-semibold">
-                  Claimable ({claimableAchievements.length})
+                  {claimableLabel} ({claimableAchievements.length})
                 </p>
               </div>
               {claimAllAchievements && claimableAchievements.length > 1 && (
@@ -372,7 +405,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
                   data-testid="button-claim-all-achievements"
                 >
                   <Wand2 className="w-3 h-3 mr-1" />
-                  Claim All (+{totalClaimablePrestige}P)
+                  {claimAllLabel} (+{totalClaimablePrestige}P)
                 </Button>
               )}
             </div>
@@ -396,7 +429,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
                           <Gift className="w-3 h-3 text-amber-200 shrink-0" />
                         </div>
                         <p className="text-[10px] text-amber-100/80">{achievement.description}</p>
-                        <span className="text-[10px] font-mono text-amber-200 font-bold">Claim +{achievement.prestigeReward}P</span>
+                        <span className="text-[10px] font-mono text-amber-200 font-bold">{claimRewardText(achievement.prestigeReward)}</span>
                       </div>
                     </div>
                   </button>
@@ -413,6 +446,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
           const style = categoryStyles[category];
           const CategoryIcon = categoryIconMap[category];
           const progress = categoryProgress[category];
+          const styleLabel = categoryLabels[category];
 
           return (
             <section key={category} className={`rounded-xl border ${style.sectionBorder} ${style.sectionBg} p-3`}>
@@ -421,7 +455,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
                   <div className={`p-1.5 rounded-md border ${style.sectionBorder} ${style.iconBg}`}>
                     <CategoryIcon className={`w-3.5 h-3.5 ${style.text}`} />
                   </div>
-                  <p className={`text-[11px] uppercase tracking-[0.16em] font-semibold ${style.text}`}>{style.label}</p>
+                  <p className={`text-[11px] uppercase tracking-[0.16em] font-semibold ${style.text}`}>{styleLabel}</p>
                 </div>
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${style.badge}`}>
                   {progress.unlocked}/{progress.total}
@@ -481,7 +515,7 @@ export const AchievementsPanel = memo(function AchievementsPanel({
                                   : 'border-amber-500/25 bg-amber-500/10 text-amber-300/50'
                               }`}
                             >
-                              {achievement.claimed ? 'CLAIMED ' : '+'}
+                              {achievement.claimed ? `${claimedLabel} ` : '+'}
                               {achievement.prestigeReward}P
                             </span>
                           )}
@@ -524,12 +558,12 @@ export const AchievementsPanel = memo(function AchievementsPanel({
                   <Trophy className="w-6 h-6 text-amber-400" />
                 </div>
                 <div>
-                  <div className="text-xs text-amber-400 uppercase tracking-wider">Achievement Unlocked!</div>
+                  <div className="text-xs text-amber-400 uppercase tracking-wider">{unlockedToastTitle}</div>
                   <div className="text-sm font-semibold text-foreground">{newlyUnlockedAchievement.name}</div>
                   <div className="text-xs text-muted-foreground">{newlyUnlockedAchievement.description}</div>
                   {newlyUnlockedAchievement.prestigeReward > 0 && (
                     <div className="text-xs text-amber-400 font-mono mt-1">
-                      Claim +{newlyUnlockedAchievement.prestigeReward}P in Achievements!
+                      {claimRewardHint(newlyUnlockedAchievement.prestigeReward)}
                     </div>
                   )}
                 </div>

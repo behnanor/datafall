@@ -1,21 +1,17 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  readonly VITE_GAME_EDITION?: 'full' | 'demo';
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
 interface DFBridge {
   openOverlay?: (type?: string) => void;
+  openStore?: (appId?: number) => void;
   unlockAchievement?: (id: string) => void;
   isSteamReady?: () => Promise<boolean>;
+  getSteamLanguage?: () => Promise<string | null>;
+  getSteamLanguageSync?: () => string | null;
 
   setFullscreen?: (value: boolean) => void;
   toggleFullscreen?: () => void;
   isFullscreen?: () => Promise<boolean>;
+  setFpsLimit?: (fps: number) => void;
 }
 
 declare global {

@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, Bot, X, ChevronDown, ChevronUp } from 'lucide-rea
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import type { TutorialPhaseWithObjectives, TutorialState } from '@/lib/useGame';
+import { useI18n } from '@/lib/i18n';
 
 interface TutorialPanelProps {
   currentPhase: TutorialPhaseWithObjectives | null;
@@ -20,6 +21,7 @@ export const TutorialPanel = memo(function TutorialPanel({
   onStart,
   isTutorialComplete,
 }: TutorialPanelProps) {
+  const { t } = useI18n();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const dragRef = useRef<HTMLDivElement>(null);
@@ -50,13 +52,13 @@ export const TutorialPanel = memo(function TutorialPanel({
               </div>
               <div>
                 <p className="text-xs font-bold text-cyan-300 font-display tracking-wider">ARIA</p>
-                <p className="text-[10px] text-muted-foreground">AI Handler</p>
+                <p className="text-[10px] text-muted-foreground">{t('tutorialPanel.aiHandler')}</p>
               </div>
             </div>
           </div>
           <div className="px-4 py-3">
             <p className="text-sm text-foreground/90 leading-relaxed mb-3">
-              Welcome, Operator. I'm ARIA, your AI handler. Ready to begin your training?
+              {t('tutorialPanel.welcome')}
             </p>
             <div className="flex gap-2">
               <Button
@@ -65,7 +67,7 @@ export const TutorialPanel = memo(function TutorialPanel({
                 onClick={onStart}
                 data-testid="button-start-tutorial"
               >
-                Begin Training
+                {t('tutorialPanel.beginTraining')}
               </Button>
               <Button
                 size="sm"
@@ -74,7 +76,7 @@ export const TutorialPanel = memo(function TutorialPanel({
                 onClick={onSkip}
                 data-testid="button-skip-tutorial"
               >
-                Skip
+                {t('tutorialPanel.skip')}
               </Button>
             </div>
           </div>
@@ -86,7 +88,7 @@ export const TutorialPanel = memo(function TutorialPanel({
   if (!currentPhase) return null;
 
   // Backwards/forwards compatibility: tutorial phase fields changed over time.
-  const phaseTitle = (currentPhase as any).name ?? (currentPhase as any).title ?? 'Tutorial';
+  const phaseTitle = (currentPhase as any).name ?? (currentPhase as any).title ?? t('tutorialPanel.defaultTitle');
   const phaseMessage = (currentPhase as any).handlerMessage ?? (currentPhase as any).dialogue ?? (currentPhase as any).description ?? '';
 
   const completedCount = currentPhase.objectives.filter(o => o.completed).length;
@@ -117,7 +119,7 @@ export const TutorialPanel = memo(function TutorialPanel({
             </div>
             <div>
               <p className="text-[10px] font-bold text-cyan-300 font-display tracking-wider">{phaseTitle}</p>
-              <p className="text-[9px] text-muted-foreground">{completedCount}/{totalCount} objectives</p>
+              <p className="text-[9px] text-muted-foreground">{t('tutorialPanel.objectivesCount', { completed: completedCount, total: totalCount })}</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -128,7 +130,7 @@ export const TutorialPanel = memo(function TutorialPanel({
               }}
               className="text-muted-foreground/70 hover:text-foreground transition-colors p-1"
               data-testid="button-toggle-tutorial-collapse"
-              aria-label={isCollapsed ? 'Expand tutorial panel' : 'Collapse tutorial panel'}
+              aria-label={isCollapsed ? t('tutorialPanel.expand') : t('tutorialPanel.collapse')}
             >
               {isCollapsed ? (
                 <ChevronDown className="w-4 h-4 text-muted-foreground" />

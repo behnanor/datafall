@@ -45,7 +45,9 @@ export const INTERNAL_ACHIEVEMENT_IDS: string[] = [
   "checkpoints_1","checkpoints_5","checkpoints_10","checkpoints_25","checkpoints_50","checkpoints_100","checkpoints_200","checkpoints_500","checkpoints_1000",
 
   // ascend (6)
-  "ascend_1","ascend_2","ascend_5","ascend_10","ascend_25","ascend_50",
+  "ascend_1","ascend_2","ascend_5","ascend_10","ascend_15","ascend_25","ascend_50",
+  // v1.03 milestones
+  "automation_first","challenge_no_clicks","challenge_half_crypto","challenge_sprint","challenge_bare_metal","challenge_all","finale_breach","endless_5","endless_10","endless_25",
 
   // prestige spent (9)
   "prestige_spent_10","prestige_spent_50","prestige_spent_100","prestige_spent_250","prestige_spent_500","prestige_spent_1000","prestige_spent_2500","prestige_spent_5000","prestige_spent_10000",

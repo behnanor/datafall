@@ -1,37 +1,95 @@
-import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { useGame, formatNumber, type ResourceType, type LootBoxReward, CHARACTER_SKINS, ROOM_THEMES, CHARACTER_ACCESSORIES, CHARACTER_HEAD_STYLES, CHARACTER_PETS, ASCENSION_PETS, ASCENSION_SKINS, ASCENSION_HEAD_STYLES, ASCENSION_ACCESSORIES, ASCENSION_ROOM_THEMES, CLICK_EFFECTS, LOOT_BOX_SKINS, MACHINE_BOX_SKINS, CRYPTO_RELIC_TREE, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_CAPES, BLACK_MARKET_WINGS, BLACK_MARKET_UPGRADES, BLACK_MARKET_UNLOCK_ASCENSION } from '@/lib/useGame';
+import React, { startTransition, useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
+import { FinaleCredits } from '@/components/game/FinaleCredits';
+import { Celebration, type CelebrationKind } from '@/components/game/Celebration';
+import { shiftThemeColorsForEra } from '@/lib/colorEra';
+import { useGame, formatNumber, getPrestigeGainBreakdown, getEndlessDepth, getFinaleWeaken, IS_TEST_BUILD, type ResourceType, type LootBoxReward, type TutorialReward, type FloatingPickupItem, CHARACTER_SKINS, ROOM_THEMES, CHARACTER_ACCESSORIES, CHARACTER_HEAD_STYLES, CHARACTER_PETS, ASCENSION_PETS, ASCENSION_SKINS, ASCENSION_HEAD_STYLES, ASCENSION_ACCESSORIES, ASCENSION_ROOM_THEMES, CLICK_EFFECTS, LOOT_BOX_SKINS, MACHINE_BOX_SKINS, CRYPTO_RELIC_TREE, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_CAPES, BLACK_MARKET_WINGS, BLACK_MARKET_UPGRADES, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, PARAGON_UPGRADES } from '@/lib/useGame';
+import { ABYSS_VARIANT_HUES } from '@/lib/endless';
+import { DemoEndScreen } from '@/components/game/DemoEndScreen';
+import { DemoPrompts } from '@/components/game/DemoPrompts';
+import { WhatsNewDialog } from '@/components/game/WhatsNewDialog';
+import { WHATS_NEW_VERSION } from '@/lib/useGame';
+import { IS_DEMO_BUILD, DEMO_ASCENSION_LIMIT } from '@/lib/useGame';
+import { getBossVariant, shouldSkipBossFight, ECHO_PRESTIGE_MULTIPLIER, pick6, type BossVariant } from '@/lib/bossVariants';
 import { getSteamLeaderboardEntries, isSteamAvailable, setSteamLeaderboardScore, type SteamLeaderboardEntry } from '@/lib/steamIntegration';
 import { ResourcePanel } from '@/components/game/ResourcePanel';
 import { UpgradePanel } from '@/components/game/UpgradePanel';
 import { MainView } from '@/components/game/MainView';
-import { SettingsModal } from '@/components/game/SettingsModal';
 import { FloatingPickup } from '@/components/game/FloatingPickup';
-import { DebugPanel } from '@/components/game/DebugPanel';
-import { AchievementsPanel } from '@/components/game/AchievementsPanel';
 import { TutorialPanel } from '@/components/game/TutorialPanel';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
+import { CurrencyIcon } from '@/components/game/CurrencyIcon';
+import { toast } from '@/hooks/use-toast';
 
-const CosmeticsPanel = lazy(() => import('@/components/game/CosmeticsPanel').then(m => ({ default: m.CosmeticsPanel })));
 const BossEncounter = lazy(() => import('@/components/game/BossEncounter').then(m => ({ default: m.BossEncounter })));
 const OfflineProgressModal = lazy(() => import('@/components/game/OfflineProgressModal').then(m => ({ default: m.OfflineProgressModal })));
+const SettingsModal = lazy(() => import('@/components/game/SettingsModal').then(m => ({ default: m.SettingsModal })));
+const PrestigeShopDialog = lazy(() => import('@/components/game/GameShopDialogs').then(m => ({ default: m.PrestigeShopDialog })));
+const CryptoRelicShopDialog = lazy(() => import('@/components/game/GameShopDialogs').then(m => ({ default: m.CryptoRelicShopDialog })));
+const BlackMarketDialog = lazy(() => import('@/components/game/GameShopDialogs').then(m => ({ default: m.BlackMarketDialog })));
+const ParagonLabDialog = lazy(() => import('@/components/game/GameShopDialogs').then(m => ({ default: m.ParagonLabDialog })));
+const AchievementsDialog = lazy(() => import('@/components/game/GameOverlayDialogs').then(m => ({ default: m.AchievementsDialog })));
+const StatsDialog = lazy(() => import('@/components/game/GameOverlayDialogs').then(m => ({ default: m.StatsDialog })));
+const LeaderboardsDialog = lazy(() => import('@/components/game/GameOverlayDialogs').then(m => ({ default: m.LeaderboardsDialog })));
+const LootBoxDialog = lazy(() => import('@/components/game/GameOverlayDialogs').then(m => ({ default: m.LootBoxDialog })));
+const CosmeticsMarketDialog = lazy(() => import('@/components/game/GameOverlayDialogs').then(m => ({ default: m.CosmeticsMarketDialog })));
+const AscensionPetUnlockDialog = lazy(() => import('@/components/game/GameOverlayDialogs').then(m => ({ default: m.AscensionPetUnlockDialog })));
+const TutorialRewardDialog = lazy(() => import('@/components/game/GameOverlayDialogs').then(m => ({ default: m.TutorialRewardDialog })));
 import { Button } from '@/components/ui/button';
-import { Crown, Trophy, BarChart3, ChevronLeft, ChevronRight, Sparkles, Cpu } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Crown, Trophy, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ToastAction } from '@/components/ui/toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import { localizeInlineText, useI18n } from '@/lib/i18n';
+import {
+  getBoostLines,
+  getCurrencyLabel,
+  getLootTypeLabel,
+  getParagonEffectLabel,
+  getRarityLabel,
+  getRelicSlotLabel,
+  getTutorialRewardTypeLabel,
+  localizeCatalogEntry,
+} from '@/lib/gameLocale';
 
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+const REDUCE_SCENE_GLOW_STORAGE_KEY = 'datafall-reduce-scene-glow';
+const CLICK_TAB_MINING_HINT_STORAGE_KEY = 'datafall-hint-click-tab-mining';
+const FIRST_ASCENSION_PRESTIGE_HINT_STORAGE_KEY = 'datafall-hint-first-ascension-prestige';
+const DEV_LEADERBOARD_CLEAR_STORAGE_KEY = 'datafall-dev-leaderboard-cleared-v1';
+const MAX_ASCENSION_LEADERBOARD = 'max_ascension';
+const MAX_ASCENSION_DAILY_LEADERBOARD = 'max_ascension_daily';
+// Endless mode (after the finale): depth = ascensions beyond 50.
+const ENDLESS_LEADERBOARD = 'endless_depth';
+const LEADERBOARD_PANEL_LIMIT = 10;
+const LEADERBOARD_MODAL_LIMIT = 500;
+const DISABLE_STEAM_LEADERBOARD_UPLOADS = import.meta.env.VITE_DISABLE_STEAM_LEADERBOARD_UPLOADS === 'true';
+const CLEAR_STEAM_LEADERBOARD_ONCE = import.meta.env.VITE_CLEAR_STEAM_LEADERBOARD_ONCE === 'true';
+
+const getCurrentUtcDateStamp = (): string => {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(now.getUTCDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+};
+
+// Steam leaderboards never reset and have no time filter. The old single 'max_ascension_daily'
+// board therefore kept every player's last upload forever (including 0s sent on launch), so
+// "Today" listed everyone who ever ascended. One board per UTC day fixes that.
+const getDailyLeaderboardName = (utcDateStamp: string = getCurrentUtcDateStamp()): string =>
+  `${MAX_ASCENSION_DAILY_LEADERBOARD}_${utcDateStamp}`;
+
 export default function GamePage() {
-  const MAX_ASCENSION_LEADERBOARD = 'max_ascension';
-  const LEADERBOARD_PANEL_LIMIT = 10;
-  const LEADERBOARD_MODAL_LIMIT = 500;
+  const { t, language } = useI18n();
+  const l = useCallback((en: string, tr: string, pt: string, es?: string, ru?: string) => (
+    localizeInlineText(language, en, tr, pt, es, ru)
+  ), [language]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPrestigeOpen, setIsPrestigeOpen] = useState(false);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [isCosmeticsOpen, setIsCosmeticsOpen] = useState(false);
-  const [isDebugPanelVisible, setIsDebugPanelVisible] = useState(false);
   const [selectedBulkOption, setSelectedBulkOption] = useState<1 | 10 | 100 | 'max'>(1);
   const [leftPanelOpen, setLeftPanelOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -48,29 +106,54 @@ export default function GamePage() {
   const [isLootBoxMinimized, setIsLootBoxMinimized] = useState(false);
   const [isCryptoRelicShopOpen, setIsCryptoRelicShopOpen] = useState(false);
   const [isBlackMarketOpen, setIsBlackMarketOpen] = useState(false);
+  const [isParagonLabOpen, setIsParagonLabOpen] = useState(false);
   const [leaderboardEntries, setLeaderboardEntries] = useState<SteamLeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
   const [friendsLeaderboardEntries, setFriendsLeaderboardEntries] = useState<SteamLeaderboardEntry[]>([]);
   const [friendsLeaderboardLoading, setFriendsLeaderboardLoading] = useState(false);
   const [friendsLeaderboardError, setFriendsLeaderboardError] = useState<string | null>(null);
+  const [dailyLeaderboardEntries, setDailyLeaderboardEntries] = useState<SteamLeaderboardEntry[]>([]);
+  const [dailyLeaderboardLoading, setDailyLeaderboardLoading] = useState(false);
+  const [dailyLeaderboardError, setDailyLeaderboardError] = useState<string | null>(null);
+  const [endlessLeaderboardEntries, setEndlessLeaderboardEntries] = useState<SteamLeaderboardEntry[]>([]);
+  const [endlessLeaderboardLoading, setEndlessLeaderboardLoading] = useState(false);
+  const [endlessLeaderboardError, setEndlessLeaderboardError] = useState<string | null>(null);
+  const [isFinaleEncounter, setIsFinaleEncounter] = useState(false);
+  const [showFinaleCredits, setShowFinaleCredits] = useState(false);
+  const lastSubmittedEndlessRef = React.useRef(-1);
+  const [celebration, setCelebration] = useState<{ kind: CelebrationKind; title?: string; subtitle?: string; key: number } | null>(null);
+  const [dailyFriendsLeaderboardEntries, setDailyFriendsLeaderboardEntries] = useState<SteamLeaderboardEntry[]>([]);
+  const [dailyFriendsLeaderboardLoading, setDailyFriendsLeaderboardLoading] = useState(false);
+  const [dailyFriendsLeaderboardError, setDailyFriendsLeaderboardError] = useState<string | null>(null);
   const [leaderboardMyRank, setLeaderboardMyRank] = useState<number | null>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [leaderboardTab, setLeaderboardTab] = useState<'global' | 'friends'>('global');
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<'today' | 'all_time' | 'endless'>('all_time');
+  const [reduceSceneGlow, setReduceSceneGlow] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem(REDUCE_SCENE_GLOW_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const lastSubmittedAscensionRef = React.useRef<number>(-1);
+  const lastSubmittedDailyAscensionRef = React.useRef<number>(-1);
+  const lastSubmittedDailyDateRef = React.useRef<string>('');
+  const leaderboardDevClearAttemptedRef = React.useRef(false);
   const lootBoxOpeningTimeoutsRef = React.useRef<Array<ReturnType<typeof setTimeout>>>([]);
-  
     const { 
-      resources, upgrades, clickResource, buyUpgrade, sellResource, sellAllResource, playSound, 
+      resources, upgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, 
       lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, 
       addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, 
-      spawnDebugPickup, getTotalCritChance, getInterestRate, getBulkProductionGain, masterVolume, 
+      spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, 
       toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, 
       toggleMusic, skipTrack, elapsedTime, floatingPickups, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, 
-      getPrestigeGain, buyPrestigeUpgrade, onPickupClick, prestigeUpgrades, onCritPickupClick, 
-      achievements, stats, newlyUnlockedAchievement, newlyUnlockedAscensionPet, claimAscensionPetUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, 
-      unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, cosmetics, buyCosmetic, 
-      buyCryptoRelic, buyBlackMarketUpgrade, equipCosmetic, getActiveSkin, getActiveTheme, getActiveAccessory, getActiveCape, getActiveWing, getActiveHeadStyle, 
+      getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, setAbyssVariant, whatsNew, markWhatsNewSeen, claimWelcomeGift, onPickupClick, prestigeUpgrades, onCritPickupClick, removeFloatingPickup,
+      achievements, stats, newlyUnlockedAchievement, newlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, 
+      unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, 
+      buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin, getActiveTheme, getActiveAccessory, getActiveCape, getActiveWing, getActiveHeadStyle, 
       getActivePet, getActiveAscensionPet, getActiveClickEffect, getActiveLootBoxSkin, getActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, 
       clearOfflineProgress, contracts, refreshContracts, updateContractProgress, 
       claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, 
@@ -78,6 +161,35 @@ export default function GamePage() {
       completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, 
       resetGame, setFullscreen, setWindowed 
     } = useGame();
+
+  const currentTutorialPhase = useMemo(() => getCurrentTutorialPhase(), [getCurrentTutorialPhase]);
+  const currentUtcCycleKey = useMemo(() => getCurrentUtcDateStamp(), []);
+  const currentDailyAscensionScore = useMemo(() => (
+    stats.dailyAscensionDate === currentUtcCycleKey ? stats.dailyAscensions : 0
+  ), [currentUtcCycleKey, stats.dailyAscensionDate, stats.dailyAscensions]);
+  const conversionDataCost = useMemo(() => {
+    const nodeConversionPercent = Object.entries(cosmetics.paragonLevels || {}).reduce((total, [upgradeId, rawLevel]) => {
+      const upgrade = PARAGON_UPGRADES.find(item => item.id === upgradeId);
+      if (!upgrade || upgrade.effect.type !== 'node_conversion_pct') return total;
+      const level = Math.max(0, Math.floor(rawLevel || 0));
+      return total + upgrade.effect.value * level;
+    }, 0);
+
+    return Math.max(40, Math.floor(100 * Math.max(0.4, 1 - nodeConversionPercent / 100)));
+  }, [cosmetics.paragonLevels]);
+  const conversionNodeGain = useMemo(() => {
+    const sellBoost = prestigeUpgrades.reduce((total, upgrade) => {
+      if (upgrade.count <= 0 || upgrade.effect.type !== 'sell_boost') return total;
+      return total + upgrade.effect.value * upgrade.count;
+    }, 0);
+
+    return 1 + sellBoost;
+  }, [prestigeUpgrades]);
+  const activeTutorialObjectiveId = useMemo(() => {
+    if (!currentTutorialPhase) return null;
+    const activeObjective = currentTutorialPhase.objectives.find(obj => !obj.completed);
+    return activeObjective?.id ?? null;
+  }, [currentTutorialPhase]);
 
   const handleQuit = async () => {
     await saveGame();
@@ -88,12 +200,19 @@ export default function GamePage() {
     }, 100);
   };
 
-  // Auto-open right panel on 10th click (only if user hasn't closed it)
+  const tutorialRewardTypeLabel = useCallback((reward: TutorialReward | null): string => {
+    if (!reward) return l('Cosmetic', 'Kozmetik', 'Cosmetico');
+    return getTutorialRewardTypeLabel(reward.cosmeticType, language);
+  }, [l, language]);
+
+  // Auto-open right panel when player has enough data to buy/convert (10+)
+  // or when tutorial reaches "buy your first upgrade".
   useEffect(() => {
-    if (stats.totalClicks >= 10 && !userClosedRightPanel) {
+    const shouldOpenForTutorial = activeTutorialObjectiveId === 'buy_first_upgrade';
+    if ((resources.data.amount >= 10 || shouldOpenForTutorial) && !userClosedRightPanel) {
       setRightPanelOpen(true);
     }
-  }, [stats.totalClicks, userClosedRightPanel]);
+  }, [activeTutorialObjectiveId, resources.data.amount, userClosedRightPanel]);
 
   // Auto-open left panel when player reaches 100 total data
   // or buys the first upgrade from the right panel (if not manually closed).
@@ -107,6 +226,83 @@ export default function GamePage() {
     setPickupSpawningPaused(isBossEncounterActive);
   }, [isBossEncounterActive, setPickupSpawningPaused]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(REDUCE_SCENE_GLOW_STORAGE_KEY, String(reduceSceneGlow));
+    } catch {
+      // Preference persistence is optional.
+    }
+  }, [reduceSceneGlow]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!rightPanelOpen || activeUpgradeTab !== 'click_upgrades') return;
+
+    try {
+      if (window.localStorage.getItem(CLICK_TAB_MINING_HINT_STORAGE_KEY) === 'true') return;
+      window.localStorage.setItem(CLICK_TAB_MINING_HINT_STORAGE_KEY, 'true');
+    } catch {
+      // Notification persistence is optional.
+    }
+
+    toast({
+      duration: 9000,
+      title: l(
+        'Mining unlock inside',
+        'Madencilik kilidi burada',
+        'Desbloqueio de mineracao aqui',
+        'Desbloqueo de mineria aqui'
+      ),
+      description: l(
+        'This Click segment contains an upgrade that unlocks the Mining segment. Watch for the mining unlock card here.',
+        'Bu Tiklama segmentinde Madencilik segmentini acan bir yukseltme var. Burada madencilik kilidi kartina dikkat et.',
+        'Este segmento de Clique contem uma melhoria que desbloqueia o segmento de Mineracao. Fique de olho na carta de desbloqueio de mineracao aqui.',
+        'Este segmento de Clic contiene una mejora que desbloquea el segmento de Mineria. Busca aqui la carta que desbloquea mineria.'
+      ),
+    });
+  }, [activeUpgradeTab, l, rightPanelOpen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isBossEncounterActive) return;
+    if (stats.totalAscensions < 1 || resources.prestige.amount <= 0) return;
+
+    try {
+      if (window.localStorage.getItem(FIRST_ASCENSION_PRESTIGE_HINT_STORAGE_KEY) === 'true') return;
+      window.localStorage.setItem(FIRST_ASCENSION_PRESTIGE_HINT_STORAGE_KEY, 'true');
+    } catch {
+      // Notification persistence is optional.
+    }
+
+    toast({
+      duration: 10000,
+      title: l(
+        'Spend your Prestige Points',
+        'Prestij Puanlarini harca',
+        'Gaste seus Pontos de Prestigio',
+        'Gasta tus Puntos de Prestigio'
+      ),
+      description: l(
+        'Your first ascension granted Prestige Points. Open the Prestige shop and spend them for permanent power.',
+        'Ilk yukselisin Prestij Puani verdi. Kalici guc icin Prestij dukkanini acip harca.',
+        'Sua primeira ascensao concedeu Pontos de Prestigio. Abra a loja de Prestigio e gaste-os para ganhar poder permanente.',
+        'Tu primera ascension te dio Puntos de Prestigio. Abre la tienda de Prestigio y gastalos para obtener poder permanente.'
+      ),
+      action: (
+        <ToastAction
+          altText={l('Open Prestige', 'Prestiji Ac', 'Abrir Prestigio', 'Abrir Prestigio')}
+          onClick={() => {
+            setIsPrestigeOpen(true);
+            playSound('prestige_realm');
+          }}
+        >
+          {l('Open', 'Ac', 'Abrir', 'Abrir')}
+        </ToastAction>
+      ),
+    });
+  }, [isBossEncounterActive, l, playSound, resources.prestige.amount, stats.totalAscensions]);
+
   // Handle user closing left panel
   const handleLeftPanelClose = () => {
     setLeftPanelOpen(false);
@@ -119,82 +315,334 @@ export default function GamePage() {
     setUserClosedRightPanel(true);
   };
 
+  const handleSetReduceSceneGlow = useCallback((reduced: boolean) => {
+    setReduceSceneGlow(reduced);
+  }, []);
+
+  const handleOpenSettings = useCallback(() => {
+    setIsSettingsOpen(true);
+  }, []);
+
+  const handleOpenAchievements = useCallback(() => {
+    startTransition(() => setIsAchievementsOpen(true));
+  }, []);
+
+  const handleOpenStats = useCallback(() => {
+    startTransition(() => setIsStatsOpen(true));
+  }, []);
+
+  const handleOpenLeaderboard = useCallback(() => {
+    startTransition(() => setIsLeaderboardOpen(true));
+  }, []);
+
+  const handleOpenCosmetics = useCallback(() => {
+    playSound('open_cosmetics');
+    startTransition(() => setIsCosmeticsOpen(true));
+  }, [playSound]);
+
+  const handleOpenPrestige = useCallback(() => {
+    completeTutorialObjective?.('view_prestige');
+    playSound('prestige_realm');
+    startTransition(() => setIsPrestigeOpen(true));
+  }, [completeTutorialObjective, playSound]);
+
+  const handleOpenCryptoRelicShop = useCallback(() => {
+    playSound('buy_black');
+    startTransition(() => setIsCryptoRelicShopOpen(true));
+  }, [playSound]);
+
+  const handleOpenBlackMarket = useCallback(() => {
+    playSound('buy_black');
+    startTransition(() => setIsBlackMarketOpen(true));
+  }, [playSound]);
+
+  const handleOpenParagonLab = useCallback(() => {
+    playSound('buy_black');
+    startTransition(() => setIsParagonLabOpen(true));
+  }, [playSound]);
+
+  const handleClearAchievementToast = useCallback(() => {
+    setAchievementUnlocked(false);
+  }, []);
+
+  const handleClearPickupToast = useCallback(() => {
+    setPickupCollected(false);
+  }, []);
+
+  const handleClearLastUpgradeInfo = useCallback(() => {
+    setLastUpgradeInfo(null);
+  }, [setLastUpgradeInfo]);
+
+  const skipBossFightRef = React.useRef<() => boolean>(() => false);
+  const [showDemoEnd, setShowDemoEnd] = useState(false);
+  // Demo: once the ascension cap is reached (win or loss), the end screen stays, also after a relaunch.
+  useEffect(() => {
+    if (!IS_DEMO_BUILD || stats.totalAscensions < DEMO_ASCENSION_LIMIT) return;
+    // Right after the ascension, let the ASCENDED celebration finish first; on load show it at once.
+    const delay = performance.now() < 15000 ? 0 : 3500;
+    const id = setTimeout(() => setShowDemoEnd(true), delay);
+    return () => clearTimeout(id);
+  }, [stats.totalAscensions]);
+  const handleStartBossEncounter = useCallback(() => {
+    if (skipBossFightRef.current()) return;
+    setIsBossEncounterActive(true);
+  }, []);
+
+  const celebrate = useCallback((kind: CelebrationKind, title?: string, subtitle?: string) => {
+    setCelebration({ kind, title, subtitle, key: Date.now() });
+    playSound(kind === 'finale' ? 'finale' : kind === 'legendary' ? 'legendary' : kind === 'shop' ? 'shop_unlock' : 'celebrate');
+  }, [playSound]);
+
+  const currentBossVariant: BossVariant = useMemo(() => getBossVariant(stats.totalAscensions), [stats.totalAscensions]);
+  const handleAscendVictory = (variant: BossVariant) => {
+    const reward = ascendVictory(variant.kind === 'echo' ? ECHO_PRESTIGE_MULTIPLIER : 1);
+    if (variant.kind === 'signal') {
+      clearCoreSignal();
+      celebrate('legendary', pick6(language, ['CORE SIGNAL SILENCED', 'ÇEKİRDEK SİNYALİ SUSTURULDU', 'SINAL DO NÚCLEO SILENCIADO', 'SEÑAL DEL NÚCLEO SILENCIADA', 'СИГНАЛ ЯДРА ЗАГЛУШЕН', '核心信号已压制']), pick6(language, ['The final Core loses 15% HP', 'Son Çekirdek %15 can kaybeder', 'O Núcleo final perde 15% de vida', 'El Núcleo final pierde un 15% de vida', 'Финальное Ядро теряет 15% HP', '最终核心生命 -15%']));
+    } else if (variant.kind === 'echo') {
+      celebrate('legendary', pick6(language, ['CORE ECHO SHATTERED', 'ÇEKİRDEK YANKISI KIRILDI', 'ECO DO NÚCLEO DESTRUÍDO', 'ECO DEL NÚCLEO DESTRUIDO', 'ЭХО ЯДРА РАЗБИТО', '核心回响已粉碎']), pick6(language, ['x1.5 prestige', 'x1.5 prestij', 'x1,5 prestígio', 'x1,5 prestigio', 'x1,5 престижа', 'x1.5 声望']));
+    } else {
+      celebrate('ascend', l('ASCENDED', 'YÜKSELDİN', 'ASCENDEU', 'ASCENDISTE'));
+    }
+    setIsBossEncounterActive(false);
+    setActiveUpgradeTab('fabrication');
+    if (reward) {
+      clearLootBoxOpeningSequence();
+      setLootBoxReward(reward);
+      setLootBoxOpened(false);
+      setLootBoxOpeningPhase('idle');
+      setIsLootBoxDialogOpen(true);
+      setIsLootBoxMinimized(false);
+    }
+  };
+  skipBossFightRef.current = () => {
+    // Demo: no ascension past the limit; show the end screen instead.
+    if (IS_DEMO_BUILD && stats.totalAscensions >= DEMO_ASCENSION_LIMIT) { setShowDemoEnd(true); return true; }
+    if (!shouldSkipBossFight(stats.totalAscensions, automation.autoBuy || automation.autoAscend)) return false;
+    handleAscendVictory(currentBossVariant);
+    return true;
+  };
+
+  // Celebrate each new system the moment its ascension requirement is reached (not on load).
+  const celebratedAscensionRef = React.useRef<number | null>(null);
+  useEffect(() => {
+    const previous = celebratedAscensionRef.current;
+    celebratedAscensionRef.current = stats.totalAscensions;
+    // Only a real ascension (+1) celebrates; loading a save jumps from 0 to the saved count.
+    if (previous === null || stats.totalAscensions - previous !== 1) return;
+    const unlocks: Array<[number, string]> = [
+      [5, l('Relic Shop unlocked', 'Relik Dükkanı açıldı', 'Loja de Relíquias liberada', 'Tienda de Reliquias desbloqueada')],
+      [10, l('Black Market unlocked', 'Karaborsa açıldı', 'Mercado Negro liberado', 'Mercado Negro desbloqueado')],
+      [15, l('Automation unlocked', 'Otomasyon açıldı', 'Automação liberada', 'Automatización desbloqueada')],
+      [20, l('Paragon Lab unlocked', 'Paragon Lab açıldı', 'Paragon Lab liberado', 'Paragon Lab desbloqueado')],
+      [30, l('Challenges unlocked', 'Meydan okumalar açıldı', 'Desafios liberados', 'Desafíos desbloqueados')],
+      [40, l('Overclock tier unlocked', 'Overclock seviyesi açıldı', 'Nível Overclock liberado', 'Nivel Overclock desbloqueado')],
+      [50, l('The Core awaits', 'Çekirdek seni bekliyor', 'O Núcleo te espera', 'El Núcleo te espera')],
+    ];
+    const reached = unlocks.filter(([level]) => previous < level && stats.totalAscensions >= level).pop();
+    if (reached) celebrate('shop', reached[1]);
+  }, [stats.totalAscensions, celebrate, l]);
+
+  // Test builds only: Ctrl+Shift+F9 toggles a popup-free room view for screenshots.
+  useEffect(() => {
+    if (!IS_TEST_BUILD) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'F9') {
+        document.body.dataset.devRoomView = document.body.dataset.devRoomView === '1' ? '0' : '1';
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (!isSteamAvailable() || DISABLE_STEAM_LEADERBOARD_UPLOADS || !finale.completed) return;
+    const depth = getEndlessDepth(stats.totalAscensions);
+    if (depth === lastSubmittedEndlessRef.current) return;
+    lastSubmittedEndlessRef.current = depth;
+    void setSteamLeaderboardScore(ENDLESS_LEADERBOARD, depth, { keepBest: true });
+  }, [finale.completed, stats.totalAscensions]);
+
   const refreshLeaderboard = useCallback(async (
     mode: 'global' | 'friends' = 'global',
+    period: 'today' | 'all_time' | 'endless' = 'all_time',
     limit: number = LEADERBOARD_PANEL_LIMIT
   ) => {
-    const setEntries = mode === 'global' ? setLeaderboardEntries : setFriendsLeaderboardEntries;
-    const setLoading = mode === 'global' ? setLeaderboardLoading : setFriendsLeaderboardLoading;
-    const setError = mode === 'global' ? setLeaderboardError : setFriendsLeaderboardError;
+    const isToday = period === 'today';
+    const isEndless = period === 'endless';
+    const boardName = isToday ? getDailyLeaderboardName() : isEndless ? ENDLESS_LEADERBOARD : MAX_ASCENSION_LEADERBOARD;
+
+    const setEntries =
+      isEndless ? setEndlessLeaderboardEntries :
+      mode === 'global'
+        ? (isToday ? setDailyLeaderboardEntries : setLeaderboardEntries)
+        : (isToday ? setDailyFriendsLeaderboardEntries : setFriendsLeaderboardEntries);
+    const setLoading =
+      isEndless ? setEndlessLeaderboardLoading :
+      mode === 'global'
+        ? (isToday ? setDailyLeaderboardLoading : setLeaderboardLoading)
+        : (isToday ? setDailyFriendsLeaderboardLoading : setFriendsLeaderboardLoading);
+    const setError =
+      isEndless ? setEndlessLeaderboardError :
+      mode === 'global'
+        ? (isToday ? setDailyLeaderboardError : setLeaderboardError)
+        : (isToday ? setDailyFriendsLeaderboardError : setFriendsLeaderboardError);
 
     if (!isSteamAvailable()) {
       setEntries([]);
-      setError('Steam not connected');
+      setError(l('Steam not connected', 'Steam bagli degil', 'Steam não conectado', 'Steam no conectado'));
       return;
     }
 
     setLoading(true);
     setError(null);
     try {
-      const result = await getSteamLeaderboardEntries(MAX_ASCENSION_LEADERBOARD, { limit, mode });
+      const result = await getSteamLeaderboardEntries(boardName, { limit, mode });
       if (!result.ok) {
         setEntries([]);
-        setError(result.reason || `Failed to load ${mode} leaderboard`);
+        setError(
+          result.reason
+            || l(
+              `Failed to load ${mode} ${period} leaderboard`,
+              `${mode === 'friends' ? 'Arkadas' : 'Genel'} ${period === 'today' ? 'gunluk' : 'tum zamanlar'} liderlik tablosu yuklenemedi`,
+              `Falha ao carregar o placar ${mode} ${period}`,
+            )
+        );
       } else {
         setEntries(result.entries);
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [l]);
+
+  const handleRefreshLeaderboardPanel = useCallback(() => {
+    void refreshLeaderboard('global', 'all_time', LEADERBOARD_PANEL_LIMIT);
+  }, [refreshLeaderboard]);
+
+  const handleRefreshContracts = useCallback(() => {
+    refreshContracts();
+  }, [refreshContracts]);
 
   useEffect(() => {
-    void refreshLeaderboard('global', LEADERBOARD_PANEL_LIMIT);
+    void refreshLeaderboard('global', 'all_time', LEADERBOARD_PANEL_LIMIT);
     const intervalId = setInterval(() => {
-      void refreshLeaderboard('global', LEADERBOARD_PANEL_LIMIT);
+      void refreshLeaderboard('global', 'all_time', LEADERBOARD_PANEL_LIMIT);
     }, 45000);
     return () => clearInterval(intervalId);
   }, [refreshLeaderboard]);
 
   useEffect(() => {
     if (!isLeaderboardOpen) return;
-    void refreshLeaderboard(leaderboardTab, LEADERBOARD_MODAL_LIMIT);
-  }, [isLeaderboardOpen, leaderboardTab, refreshLeaderboard]);
+    void refreshLeaderboard(leaderboardTab, leaderboardPeriod, LEADERBOARD_MODAL_LIMIT);
+  }, [isLeaderboardOpen, leaderboardTab, leaderboardPeriod, refreshLeaderboard]);
 
   useEffect(() => {
-    if (stats.totalAscensions <= 0) return;
     if (!isSteamAvailable()) return;
-    if (stats.totalAscensions <= lastSubmittedAscensionRef.current) return;
+    if (!DISABLE_STEAM_LEADERBOARD_UPLOADS || !CLEAR_STEAM_LEADERBOARD_ONCE) return;
+    if (leaderboardDevClearAttemptedRef.current) return;
 
-    const scoreToSubmit = stats.totalAscensions;
-    lastSubmittedAscensionRef.current = scoreToSubmit;
+    leaderboardDevClearAttemptedRef.current = true;
 
-    void (async () => {
-      const result = await setSteamLeaderboardScore(MAX_ASCENSION_LEADERBOARD, scoreToSubmit, { keepBest: true });
-      if (!result.ok) {
-        lastSubmittedAscensionRef.current = scoreToSubmit - 1;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage.getItem(DEV_LEADERBOARD_CLEAR_STORAGE_KEY) === 'true') {
         return;
       }
-      if (typeof result.globalRankNew === 'number' && result.globalRankNew > 0) {
-        setLeaderboardMyRank(result.globalRankNew);
+    } catch {
+      // Local-only marker is optional.
+    }
+
+    void (async () => {
+      const [allTimeResult, dailyResult] = await Promise.all([
+        setSteamLeaderboardScore(MAX_ASCENSION_LEADERBOARD, 0, { keepBest: false }),
+        setSteamLeaderboardScore(getDailyLeaderboardName(), 0, { keepBest: false }),
+      ]);
+
+      if (allTimeResult.ok && dailyResult.ok) {
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(DEV_LEADERBOARD_CLEAR_STORAGE_KEY, 'true');
+          }
+        } catch {
+          // Local-only marker is optional.
+        }
+
+        setLeaderboardMyRank(null);
+        await Promise.all([
+          refreshLeaderboard('global', 'all_time', LEADERBOARD_PANEL_LIMIT),
+          refreshLeaderboard('global', 'today', LEADERBOARD_PANEL_LIMIT),
+        ]);
+      } else {
+        leaderboardDevClearAttemptedRef.current = false;
       }
-      await refreshLeaderboard('global', LEADERBOARD_PANEL_LIMIT);
+    })();
+  }, [refreshLeaderboard]);
+
+  useEffect(() => {
+    if (!isSteamAvailable()) return;
+    if (DISABLE_STEAM_LEADERBOARD_UPLOADS) return;
+
+    const now = new Date();
+    const currentDailyDate = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}`;
+    const allTimeScore = stats.totalAscensions;
+    const dailyScore = stats.dailyAscensionDate === currentDailyDate ? stats.dailyAscensions : 0;
+
+    const shouldSubmitAllTime = allTimeScore !== lastSubmittedAscensionRef.current;
+    // Only players who actually ascended today belong on today's board (no 0 entries).
+    const shouldSubmitDaily =
+      dailyScore > 0 &&
+      (
+        dailyScore !== lastSubmittedDailyAscensionRef.current ||
+        currentDailyDate !== lastSubmittedDailyDateRef.current
+      );
+
+    if (!shouldSubmitAllTime && !shouldSubmitDaily) return;
+
+    if (shouldSubmitAllTime) {
+      lastSubmittedAscensionRef.current = allTimeScore;
+    }
+    if (shouldSubmitDaily) {
+      lastSubmittedDailyAscensionRef.current = dailyScore;
+      lastSubmittedDailyDateRef.current = currentDailyDate;
+    }
+
+    void (async () => {
+      const submissions: Array<Promise<any>> = [
+        shouldSubmitAllTime
+          ? setSteamLeaderboardScore(MAX_ASCENSION_LEADERBOARD, allTimeScore, { keepBest: true }) // best ever; Reset Data must not erase it
+          : Promise.resolve({ ok: true, skipped: true }),
+        shouldSubmitDaily
+          ? setSteamLeaderboardScore(getDailyLeaderboardName(currentDailyDate), dailyScore, { keepBest: false })
+          : Promise.resolve({ ok: true, skipped: true }),
+      ];
+      const [allTimeResult, dailyResult] = await Promise.all(submissions);
+
+      if (!allTimeResult.ok && !dailyResult.ok) {
+        if (shouldSubmitAllTime) {
+          lastSubmittedAscensionRef.current = allTimeScore - 1;
+        }
+        if (shouldSubmitDaily) {
+          lastSubmittedDailyAscensionRef.current = -1;
+          lastSubmittedDailyDateRef.current = '';
+        }
+        return;
+      }
+      if (shouldSubmitAllTime && !allTimeResult.ok) {
+        lastSubmittedAscensionRef.current = allTimeScore - 1;
+      }
+      if (shouldSubmitDaily && !dailyResult.ok) {
+        lastSubmittedDailyAscensionRef.current = -1;
+        lastSubmittedDailyDateRef.current = '';
+      }
+      if (typeof allTimeResult.globalRankNew === 'number' && allTimeResult.globalRankNew > 0) {
+        setLeaderboardMyRank(allTimeResult.globalRankNew);
+      }
+      await Promise.all([
+        refreshLeaderboard('global', 'all_time', LEADERBOARD_PANEL_LIMIT),
+        refreshLeaderboard('global', 'today', LEADERBOARD_PANEL_LIMIT),
+      ]);
     })();
   }, [refreshLeaderboard, stats.totalAscensions]);
-
-  /* Keyboard shortcut to toggle debug panel (Ctrl+Shift+D) - DISABLED FOR PRODUCTION
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-        e.preventDefault();
-        setIsDebugPanelVisible(prev => !prev);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-  */
 
   const ownedSkinsSet = useMemo(() => new Set([...cosmetics.ownedSkins, ...cosmetics.ownedAscensionSkins]), [cosmetics.ownedSkins, cosmetics.ownedAscensionSkins]);
   const ownedThemesSet = useMemo(() => new Set([...cosmetics.ownedThemes, ...cosmetics.ownedAscensionThemes]), [cosmetics.ownedThemes, cosmetics.ownedAscensionThemes]);
@@ -219,20 +667,272 @@ export default function GamePage() {
   const equippedLootBoxSkin = getActiveLootBoxSkin();
   const equippedMachineBoxSkin = getActiveMachineBoxSkin();
   const activeLootBoxColors = equippedLootBoxSkin.colors;
+  const isBlackMarketUnlockedByUpgrade = useMemo(
+    () => (upgrades.find(u => u.id === 'unlock_black_market')?.count ?? 0) > 0,
+    [upgrades]
+  );
+  const resourceAchievementCount = useMemo(() => ({
+    unlocked: achievements.filter(a => a.unlocked).length,
+    total: achievements.filter(a => !a.hidden || a.unlocked).length,
+  }), [achievements]);
+  const mainViewThemeColors = useMemo(
+    // Room era: the theme is re-tinted every 10 ascensions.
+    () => ({ ...shiftThemeColorsForEra(equippedTheme.colors, stats.totalAscensions), orbitalPlanet: equippedTheme.orbitalPlanet }),
+    [equippedTheme, stats.totalAscensions]
+  );
+  const mainViewSkinPalette = useMemo(
+    () => ({
+      ...equippedSkin.palette,
+      paletteMode: equippedSkin.paletteMode,
+      gradientColors: equippedSkin.gradientColors,
+      animationSpeed: equippedSkin.animationSpeed,
+    }),
+    [equippedSkin]
+  );
+  const mainViewMachineBoxSkin = useMemo(
+    () => ({
+      id: equippedMachineBoxSkin.id,
+      colors: equippedMachineBoxSkin.colors,
+    }),
+    [equippedMachineBoxSkin]
+  );
   const isCryptoRelicShopUnlocked = stats.totalAscensions >= CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION;
   const isBlackMarketUnlocked = stats.totalAscensions >= BLACK_MARKET_UNLOCK_ASCENSION;
+  const isParagonLabUnlocked = stats.totalAscensions >= PARAGON_LAB_UNLOCK_ASCENSION;
   const adjacencyFormationBonus = getAdjacencyFormationBonus();
+  const localizedCharacterSkins = useMemo(() => CHARACTER_SKINS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedRoomThemes = useMemo(() => ROOM_THEMES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedCharacterAccessories = useMemo(() => CHARACTER_ACCESSORIES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedCharacterHeadStyles = useMemo(() => CHARACTER_HEAD_STYLES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedCharacterPets = useMemo(() => CHARACTER_PETS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedAscensionPets = useMemo(() => ASCENSION_PETS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedAscensionSkins = useMemo(() => ASCENSION_SKINS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedAscensionHeadStyles = useMemo(() => ASCENSION_HEAD_STYLES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedAscensionAccessories = useMemo(() => ASCENSION_ACCESSORIES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedAscensionRoomThemes = useMemo(() => ASCENSION_ROOM_THEMES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedClickEffects = useMemo(() => CLICK_EFFECTS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedLootBoxSkins = useMemo(() => LOOT_BOX_SKINS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedMachineBoxSkins = useMemo(() => MACHINE_BOX_SKINS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedCryptoRelicTree = useMemo(() => CRYPTO_RELIC_TREE.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedBlackMarketCapes = useMemo(() => BLACK_MARKET_CAPES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedBlackMarketWings = useMemo(() => BLACK_MARKET_WINGS.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedBlackMarketUpgrades = useMemo(() => BLACK_MARKET_UPGRADES.map(item => localizeCatalogEntry(item, language)), [language]);
+  const localizedParagonUpgrades = useMemo(() => PARAGON_UPGRADES.map(item => localizeCatalogEntry(item, language)), [language]);
 
-  const marketSkins = useMemo(() => CHARACTER_SKINS.filter(item => !item.isRelicShopOnly), []);
-  const marketAccessories = useMemo(() => CHARACTER_ACCESSORIES.filter(item => !item.isRelicShopOnly), []);
-  const marketHeadStyles = useMemo(() => CHARACTER_HEAD_STYLES.filter(item => !item.isRelicShopOnly), []);
+  const tutorialRewardSkinPreview = useMemo(() => {
+    if (!newlyUnlockedTutorialReward) return null;
+    if (newlyUnlockedTutorialReward.cosmeticType !== 'skin') return null;
+    return localizedCharacterSkins.find(item => item.id === newlyUnlockedTutorialReward.itemId) || null;
+  }, [localizedCharacterSkins, newlyUnlockedTutorialReward]);
 
-  const relicSlotLabel: Record<'skin' | 'headstyle' | 'accessory' | 'wing', string> = {
-    skin: 'Body Relic',
-    headstyle: 'Head Relic',
-    accessory: 'Accessory Relic',
-    wing: 'Wing Relic',
-  };
+  const localizedTutorialRewardInfo = useMemo(() => {
+    if (!newlyUnlockedTutorialReward) return null;
+    const id = newlyUnlockedTutorialReward.itemId;
+    if (newlyUnlockedTutorialReward.cosmeticType === 'skin') return localizedCharacterSkins.find(item => item.id === id) || localizedAscensionSkins.find(item => item.id === id) || null;
+    if (newlyUnlockedTutorialReward.cosmeticType === 'theme') return localizedRoomThemes.find(item => item.id === id) || localizedAscensionRoomThemes.find(item => item.id === id) || null;
+    if (newlyUnlockedTutorialReward.cosmeticType === 'accessory') return localizedCharacterAccessories.find(item => item.id === id) || localizedAscensionAccessories.find(item => item.id === id) || null;
+    if (newlyUnlockedTutorialReward.cosmeticType === 'headstyle') return localizedCharacterHeadStyles.find(item => item.id === id) || localizedAscensionHeadStyles.find(item => item.id === id) || null;
+    return localizedCharacterPets.find(item => item.id === id) || localizedAscensionPets.find(item => item.id === id) || null;
+  }, [
+    localizedAscensionAccessories,
+    localizedAscensionHeadStyles,
+    localizedAscensionPets,
+    localizedAscensionRoomThemes,
+    localizedAscensionSkins,
+    localizedCharacterAccessories,
+    localizedCharacterHeadStyles,
+    localizedCharacterPets,
+    localizedCharacterSkins,
+    localizedRoomThemes,
+    newlyUnlockedTutorialReward,
+  ]);
+
+  const ascensionPetBoostLines = useMemo(() => (
+    newlyUnlockedAscensionPet ? getBoostLines(newlyUnlockedAscensionPet.boost, language) : []
+  ), [language, newlyUnlockedAscensionPet]);
+
+  const tutorialRewardPreview = useMemo(() => {
+    if (!tutorialRewardSkinPreview) return null;
+
+    return (
+      <div className="h-[120px] flex items-center justify-center overflow-hidden rounded bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.14),rgba(2,6,23,0.9)_70%)]">
+        <div style={{ transform: 'scale(3.4)' }}>
+          <CSSCharacter
+            reaction="idle"
+            facingRight={true}
+            skinPalette={{
+              ...tutorialRewardSkinPreview.palette,
+              paletteMode: tutorialRewardSkinPreview.paletteMode,
+              gradientColors: tutorialRewardSkinPreview.gradientColors,
+              animationSpeed: tutorialRewardSkinPreview.animationSpeed,
+            }}
+            accessoryId="none"
+            headStyleId="default"
+          />
+        </div>
+      </div>
+    );
+  }, [tutorialRewardSkinPreview]);
+
+  const marketSkins = useMemo(() => localizedCharacterSkins.filter(item => !item.isRelicShopOnly), [localizedCharacterSkins]);
+  const marketAccessories = useMemo(() => localizedCharacterAccessories.filter(item => !item.isRelicShopOnly), [localizedCharacterAccessories]);
+  const marketHeadStyles = useMemo(() => localizedCharacterHeadStyles.filter(item => !item.isRelicShopOnly), [localizedCharacterHeadStyles]);
+  const paragonEliteSkins = useMemo(
+    () => localizedAscensionSkins.filter(item => item.id.startsWith('paragon_')),
+    [localizedAscensionSkins]
+  );
+  const paragonEliteHeadStyles = useMemo(
+    () => localizedAscensionHeadStyles.filter(item => item.id.startsWith('paragon_')),
+    [localizedAscensionHeadStyles]
+  );
+  const paragonEliteAccessories = useMemo(
+    () => localizedAscensionAccessories.filter(item => item.id.startsWith('paragon_')),
+    [localizedAscensionAccessories]
+  );
+  const paragonEliteThemes = useMemo(
+    () => localizedAscensionRoomThemes.filter(item => item.id.startsWith('paragon_')),
+    [localizedAscensionRoomThemes]
+  );
+  const paragonPreviewPalette = useMemo(
+    () => localizedCharacterSkins.find(item => item.id === 'cyan_pulse')?.palette ?? localizedCharacterSkins[0].palette,
+    [localizedCharacterSkins]
+  );
+  const paragonEliteOffers = useMemo(() => {
+    const skinOffers = paragonEliteSkins.map(item => ({
+      id: item.id,
+      slot: 'skin' as const,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      rarity: item.rarity,
+      boost: item.boost,
+      skinPalette: item.palette,
+    }));
+    const headOffers = paragonEliteHeadStyles.map(item => ({
+      id: item.id,
+      slot: 'headstyle' as const,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      rarity: item.rarity,
+      boost: item.boost,
+    }));
+    const accessoryOffers = paragonEliteAccessories.map(item => ({
+      id: item.id,
+      slot: 'accessory' as const,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      rarity: item.rarity,
+      boost: item.boost,
+    }));
+    const themeOffers = paragonEliteThemes.map(item => ({
+      id: item.id,
+      slot: 'theme' as const,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      rarity: item.rarity,
+      boost: item.boost,
+      themeColors: item.colors,
+    }));
+    return [...skinOffers, ...headOffers, ...accessoryOffers, ...themeOffers].sort((a, b) => a.price - b.price);
+  }, [paragonEliteAccessories, paragonEliteHeadStyles, paragonEliteSkins, paragonEliteThemes]);
+
+  const renderParagonOfferPreview = useCallback((offer: (typeof paragonEliteOffers)[number]) => {
+    if (offer.id === 'paragon_apex_core') {
+      return (
+        <div className="relative mx-auto h-16 w-14">
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 h-4 w-6 rounded-t-[10px] border border-cyan-300/80 bg-slate-950 shadow-[0_0_14px_rgba(34,211,238,0.45)]" />
+          <div className="absolute left-1/2 top-4 -translate-x-1/2 h-9 w-8 rounded-md border border-cyan-300 bg-[linear-gradient(180deg,#10263d_0%,#1d4ed8_50%,#0f172a_100%)] shadow-[0_0_18px_rgba(34,211,238,0.3)]">
+            <div className="absolute inset-x-1.5 top-1.5 h-5 rounded-sm border border-fuchsia-300/70 bg-[radial-gradient(circle_at_50%_32%,rgba(244,114,182,0.92),rgba(34,211,238,0.18)_72%)]" />
+            <div className="absolute inset-x-2 bottom-1.5 h-1 rounded-full bg-cyan-300/80" />
+          </div>
+          <div className="absolute left-1 top-7 h-7 w-2 rounded-full border border-cyan-400/80 bg-cyan-300/10" />
+          <div className="absolute right-1 top-7 h-7 w-2 rounded-full border border-cyan-400/80 bg-cyan-300/10" />
+        </div>
+      );
+    }
+
+    if (offer.id === 'paragon_quantum_crown') {
+      return (
+        <svg viewBox="0 0 40 34" className="mx-auto h-16 w-14">
+          <path d="M7 28 V11 L14 16 L20 4 L26 16 L33 11 V28 Z" fill="#0b1220" stroke="#22d3ee" strokeWidth="1.8" />
+          <path d="M10 25 H30" stroke="#7dd3fc" strokeWidth="1.8" />
+          <path d="M13 10 V5 M27 10 V5 M20 4 V1.8" stroke="#a78bfa" strokeWidth="1.7" strokeLinecap="round" />
+          <circle cx="13" cy="4.6" r="1.8" fill="#22d3ee" />
+          <circle cx="20" cy="1.8" r="1.8" fill="#f472b6" />
+          <circle cx="27" cy="4.6" r="1.8" fill="#22d3ee" />
+          <rect x="14" y="15" width="12" height="6" rx="1.8" fill="#1d4ed8" opacity="0.88" />
+        </svg>
+      );
+    }
+
+    if (offer.id === 'paragon_void_diadem') {
+      return (
+        <svg viewBox="0 0 40 26" className="mx-auto h-14 w-14">
+          <path d="M7 20 Q20 5 33 20" fill="none" stroke="#22d3ee" strokeWidth="2.2" strokeLinecap="round" />
+          <path d="M11 20 Q20 12 29 20" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" opacity="0.92" />
+          <rect x="16.2" y="9" width="7.6" height="7.6" rx="2.4" fill="#0f172a" stroke="#7dd3fc" strokeWidth="1.4" />
+          <circle cx="12.4" cy="18.3" r="1.9" fill="#22d3ee" />
+          <circle cx="27.6" cy="18.3" r="1.9" fill="#22d3ee" />
+          <circle cx="20" cy="12.8" r="1.9" fill="#f472b6" />
+        </svg>
+      );
+    }
+
+    if (offer.id === 'paragon_singularity_vault' && offer.slot === 'theme' && offer.themeColors) {
+      return (
+        <>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(circle at 22% 28%, rgba(34,211,238,0.28), transparent 40%), radial-gradient(circle at 74% 26%, rgba(167,139,250,0.22), transparent 42%), linear-gradient(180deg, #050816 0%, #111827 100%)',
+            }}
+          />
+          <div className="absolute right-2 top-2 h-4 w-4 rounded-full border border-cyan-100/70 bg-slate-950 shadow-[0_0_10px_rgba(167,139,250,0.45)]" />
+          <div className="absolute inset-x-2 bottom-2 h-7 [transform:perspective(180px)_rotateX(62deg)] rounded-sm border border-cyan-400/25 bg-[linear-gradient(180deg,rgba(34,211,238,0.12),rgba(76,29,149,0.28))]" />
+          <div className="absolute inset-x-4 bottom-4 h-[1px] bg-cyan-200/70" />
+          <div className="absolute left-2 bottom-1 text-[8px] font-mono uppercase tracking-[0.16em] text-cyan-100/90">VAULT</div>
+        </>
+      );
+    }
+
+    if (offer.slot === 'theme' && offer.themeColors) {
+      return (
+        <>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(circle at 25% 26%, ${offer.themeColors.nebula1}, transparent 52%), radial-gradient(circle at 72% 63%, ${offer.themeColors.nebula2}, transparent 56%), ${offer.themeColors.background}`,
+            }}
+          />
+          <div
+            className="absolute inset-0 opacity-55"
+            style={{
+              backgroundImage:
+                `linear-gradient(to right, ${offer.themeColors.gridBorder} 1px, transparent 1px), linear-gradient(to bottom, ${offer.themeColors.gridBorder} 1px, transparent 1px)`,
+              backgroundSize: '14px 14px',
+              transform: 'perspective(260px) rotateX(58deg) translateY(18px)',
+              transformOrigin: 'center bottom',
+            }}
+          />
+        </>
+      );
+    }
+
+    return (
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-[1.58]">
+        <CSSCharacter
+          skinPalette={offer.slot === 'skin' && offer.skinPalette ? offer.skinPalette : paragonPreviewPalette}
+          accessoryId={offer.slot === 'accessory' ? offer.id : 'none'}
+          headStyleId={offer.slot === 'headstyle' ? offer.id : 'default'}
+          capeId="none"
+          wingId="none"
+        />
+      </div>
+    );
+  }, [paragonEliteOffers, paragonPreviewPalette]);
 
   const isRelicOwned = useCallback((slot: 'skin' | 'headstyle' | 'accessory' | 'wing', cosmeticId: string) => {
     if (slot === 'skin') return ownedSkinsSet.has(cosmeticId);
@@ -247,6 +947,20 @@ export default function GamePage() {
     if (slot === 'wing') return cosmetics.activeWingId === cosmeticId;
     return cosmetics.activeAccessoryId === cosmeticId;
   }, [cosmetics.activeAccessoryId, cosmetics.activeHeadStyleId, cosmetics.activeSkinId, cosmetics.activeWingId]);
+
+  const isParagonOfferOwned = useCallback((slot: 'skin' | 'headstyle' | 'accessory' | 'theme', cosmeticId: string) => {
+    if (slot === 'skin') return ownedSkinsSet.has(cosmeticId);
+    if (slot === 'headstyle') return ownedHeadStylesSet.has(cosmeticId);
+    if (slot === 'theme') return ownedThemesSet.has(cosmeticId);
+    return ownedAccessoriesSet.has(cosmeticId);
+  }, [ownedAccessoriesSet, ownedHeadStylesSet, ownedSkinsSet, ownedThemesSet]);
+
+  const isParagonOfferEquipped = useCallback((slot: 'skin' | 'headstyle' | 'accessory' | 'theme', cosmeticId: string) => {
+    if (slot === 'skin') return cosmetics.activeSkinId === cosmeticId;
+    if (slot === 'headstyle') return cosmetics.activeHeadStyleId === cosmeticId;
+    if (slot === 'theme') return cosmetics.activeThemeId === cosmeticId;
+    return cosmetics.activeAccessoryId === cosmeticId;
+  }, [cosmetics.activeAccessoryId, cosmetics.activeHeadStyleId, cosmetics.activeSkinId, cosmetics.activeThemeId]);
 
   const getRelicNodeLevel = useCallback((node: (typeof CRYPTO_RELIC_TREE)[number]) => {
     const savedLevel = cosmetics.cryptoRelicLevels?.[node.id];
@@ -265,30 +979,26 @@ export default function GamePage() {
     clickBoost?: number;
     critBoost?: number;
     cryptoBoost?: number;
-    interestBoost?: number;
   }, multiplier: number) => {
     const scaled = {
       productionBoost: (boost.productionBoost || 0) * multiplier,
       clickBoost: (boost.clickBoost || 0) * multiplier,
       critBoost: (boost.critBoost || 0) * multiplier,
       cryptoBoost: (boost.cryptoBoost || 0) * multiplier,
-      interestBoost: (boost.interestBoost || 0) * multiplier,
     };
-
-    const lines: string[] = [];
-    if (scaled.productionBoost) lines.push(`+${formatRelicBoostValue(scaled.productionBoost)}% Production`);
-    if (scaled.clickBoost) lines.push(`+${formatRelicBoostValue(scaled.clickBoost)}% Click`);
-    if (scaled.critBoost) lines.push(`+${formatRelicBoostValue(scaled.critBoost)}% Crit`);
-    if (scaled.cryptoBoost) lines.push(`+${formatRelicBoostValue(scaled.cryptoBoost)}% Crypto`);
-    if (scaled.interestBoost) lines.push(`+${formatRelicBoostValue(scaled.interestBoost)}% Interest`);
-    return lines;
-  }, [formatRelicBoostValue]);
+    return getBoostLines({
+      productionBoost: Number(formatRelicBoostValue(scaled.productionBoost)),
+      clickBoost: Number(formatRelicBoostValue(scaled.clickBoost)),
+      critBoost: Number(formatRelicBoostValue(scaled.critBoost)),
+      cryptoBoost: Number(formatRelicBoostValue(scaled.cryptoBoost)),
+    }, language);
+  }, [formatRelicBoostValue, language]);
 
   const canBuyRelicNode = useCallback((node: (typeof CRYPTO_RELIC_TREE)[number]) => {
     if (!isCryptoRelicShopUnlocked) return false;
     const currentLevel = getRelicNodeLevel(node);
     if (currentLevel >= stats.totalAscensions) return false;
-    const nextCost = getCryptoRelicUpgradeCost(node, currentLevel);
+    const nextCost = getCryptoRelicUpgradeCost(node, currentLevel, stats.totalAscensions);
     if (resources.crypto.amount < nextCost) return false;
     if (node.requires.length === 0) return true;
     return node.requires.every(reqId => {
@@ -298,13 +1008,36 @@ export default function GamePage() {
     });
   }, [getRelicNodeLevel, isCryptoRelicShopUnlocked, resources.crypto.amount, stats.totalAscensions]);
 
-  const machineBoxSkinsForShop = useMemo(() => MACHINE_BOX_SKINS, []);
+  const machineBoxSkinsForShop = useMemo(() => localizedMachineBoxSkins, [localizedMachineBoxSkins]);
 
   const totalClickUpgradeLevels = useMemo(() => (
     upgrades
       .filter(u => u.category === 'click_upgrades')
       .reduce((sum, u) => sum + (u.count || 0), 0)
   ), [upgrades]);
+  const totalParagonLevels = useMemo(
+    () => PARAGON_UPGRADES.reduce((sum, upgrade) => sum + getParagonUpgradeLevel(upgrade.id), 0),
+    [getParagonUpgradeLevel, cosmetics.paragonLevels]
+  );
+  const totalParagonLevelCap = useMemo(
+    () => PARAGON_UPGRADES.reduce((sum, upgrade) => sum + upgrade.maxLevel, 0),
+    []
+  );
+  const paragonCompletionPercent = useMemo(
+    () => (totalParagonLevelCap > 0 ? (totalParagonLevels / totalParagonLevelCap) * 100 : 0),
+    [totalParagonLevelCap, totalParagonLevels]
+  );
+  const nextParagonUpgradeCost = useMemo(() => {
+    const pendingCosts = PARAGON_UPGRADES
+      .map(upgrade => {
+        const currentLevel = getParagonUpgradeLevel(upgrade.id);
+        if (currentLevel >= upgrade.maxLevel || stats.totalAscensions < (upgrade.requiredAscensions ?? 0)) return null;
+        return Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, currentLevel));
+      })
+      .filter((cost): cost is number => cost !== null);
+    if (pendingCosts.length === 0) return null;
+    return Math.min(...pendingCosts);
+  }, [getParagonUpgradeLevel, cosmetics.paragonLevels, stats.totalAscensions]);
 
   const cursorGlowTier = useMemo(() => {
     if (totalClickUpgradeLevels >= 120) return 5;
@@ -363,50 +1096,65 @@ export default function GamePage() {
   }, []);
 
   const formatPrestigeEffect = useCallback((upgrade: (typeof prestigeUpgrades)[number], level: number): string => {
-    if (level <= 0) return 'No bonus yet';
+    if (level <= 0) return t('prestigePanel.noBonus');
 
     const totalValue = upgrade.effect.value * level;
     switch (upgrade.effect.type) {
       case 'click_boost':
-        return `+${(totalValue * 100).toFixed(0)}% click power`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.clickPower')}`;
       case 'production_boost':
-        return `+${(totalValue * 100).toFixed(0)}% production`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.production')}`;
       case 'crit_chance_boost':
-        return `+${(totalValue * 100).toFixed(1)}% crit chance`;
+        return `+${(totalValue * 100).toFixed(1)}% ${t('prestigePanel.critChance')}`;
       case 'crit_mult_boost':
-        return `+${(totalValue * 100).toFixed(0)}% crit damage`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.critDamage')}`;
       case 'luck_boost':
-        return `+${(totalValue * 100).toFixed(1)}% pickup chance`;
+        return `+${(totalValue * 100).toFixed(1)}% ${t('prestigePanel.pickupChance')}`;
       case 'pickup_value':
-        return `+${(totalValue * 100).toFixed(0)}% pickup value`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.pickupValue')}`;
+      case 'pickup_spawn_rate':
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.pickupSpawnRate')}`;
+      case 'time_warp_chance':
+        return `+${(totalValue * 100).toFixed(1)}% ${t('prestigePanel.timeWarpChance')}`;
+      case 'time_warp_seconds': {
+        const totalMinutes = Math.floor(totalValue / 60);
+        if (totalMinutes >= 60) {
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          return minutes === 0
+            ? `${hours}h ${t('prestigePanel.timeWarpOutput')}`
+            : `${hours}h ${minutes}m ${t('prestigePanel.timeWarpOutput')}`;
+        }
+        return `${totalMinutes}m ${t('prestigePanel.timeWarpOutput')}`;
+      }
+      case 'time_warp_cooldown':
+        return `-${Math.floor(totalValue)}s ${t('prestigePanel.timeWarpCooldown')}`;
       case 'prestige_mult':
-        return `+${(totalValue * 100).toFixed(0)}% prestige gain`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.prestigeGain')}`;
       case 'offline_boost':
-        return `+${(totalValue * 100).toFixed(0)}% offline earnings`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.offlineEarnings')}`;
       case 'offline_time': {
         const totalMinutes = Math.round(totalValue / 60);
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
         return minutes === 0
-          ? `+${hours}h max offline time`
-          : `+${hours}h ${minutes}m max offline time`;
+          ? `+${hours}h ${t('prestigePanel.maxOfflineTime')}`
+          : `+${hours}h ${minutes}m ${t('prestigePanel.maxOfflineTime')}`;
       }
       case 'crypto_boost':
-        return `+${(totalValue * 100).toFixed(0)}% crypto production`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.cryptoProduction')}`;
       case 'sell_boost':
-        return `+${(totalValue * 100).toFixed(0)}% data conversion`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.dataConversion')}`;
       case 'starting_bonus':
-        return `+${formatNumber(Math.floor(totalValue))} starting data`;
-      case 'interest_boost':
-        return `+${(totalValue * 100).toFixed(1)}% max interest`;
+        return `+${formatNumber(Math.floor(totalValue / 60))} min ${t('prestigePanel.startingData')}`;
       case 'cost_reduction':
-        return `-${(totalValue * 100).toFixed(0)}% upgrade cost`;
+        return `-${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.upgradeCost')}`;
       case 'checkpoint_speed':
-        return `+${(totalValue * 100).toFixed(0)}% checkpoint speed`;
+        return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.checkpointSpeed')}`;
       default:
         return upgrade.description;
     }
-  }, []);
+  }, [t]);
 
   const prestigeShopSummary = useMemo(() => {
     const totalLevels = prestigeUpgrades.reduce((sum, upgrade) => sum + upgrade.count, 0);
@@ -419,17 +1167,6 @@ export default function GamePage() {
 
     return { totalLevels, maxedUpgrades, affordableUpgrades };
   }, [prestigeUpgrades, resources.prestige.amount]);
-
-  const lootTypeLabel: Record<'skin' | 'theme' | 'accessory' | 'headstyle' | 'pet' | 'clickeffect' | 'boxskin' | 'machineboxskin', string> = {
-    skin: 'Character Skin',
-    theme: 'Room Theme',
-    accessory: 'Accessory',
-    headstyle: 'Head Style',
-    pet: 'Pet',
-    clickeffect: 'Click Effect',
-    boxskin: 'Loot Box Skin',
-    machineboxskin: 'Miner Skin',
-  };
 
   const lootEquipTypeMap: Record<
     'skin' | 'theme' | 'accessory' | 'headstyle' | 'pet' | 'clickeffect' | 'boxskin' | 'machineboxskin',
@@ -458,25 +1195,12 @@ export default function GamePage() {
     clickBoost?: number;
     critBoost?: number;
     cryptoBoost?: number;
-    interestBoost?: number;
     luckBoost?: number;
   };
 
-  const formatLootBoostValue = useCallback((value: number) => {
-    return Number.isInteger(value) ? `${value}` : value.toFixed(1);
-  }, []);
-
   const getLootBoostLines = useCallback((boost?: LootBoostInfo) => {
-    if (!boost) return [] as string[];
-    const lines: string[] = [];
-    if (boost.productionBoost) lines.push(`+${formatLootBoostValue(boost.productionBoost)}% Production`);
-    if (boost.clickBoost) lines.push(`+${formatLootBoostValue(boost.clickBoost)}% Click Power`);
-    if (boost.critBoost) lines.push(`+${formatLootBoostValue(boost.critBoost)}% Crit Chance`);
-    if (boost.cryptoBoost) lines.push(`+${formatLootBoostValue(boost.cryptoBoost)}% Crypto Rate`);
-    if (boost.interestBoost) lines.push(`+${formatLootBoostValue(boost.interestBoost)}% Max Interest`);
-    if (boost.luckBoost) lines.push(`+${formatLootBoostValue(boost.luckBoost)}% Loot Luck`);
-    return lines;
-  }, [formatLootBoostValue]);
+    return getBoostLines(boost, language);
+  }, [language]);
 
   const getLootRevealSound = useCallback((rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary') => {
     if (rarity === 'legendary') return 'loot_reveal_legendary';
@@ -509,6 +1233,9 @@ export default function GamePage() {
     const burstId = setTimeout(() => {
       setLootBoxOpeningPhase('burst');
       playSound(revealSound);
+      if (lootBoxReward.kind === 'cosmetic' && lootBoxReward.rarity === 'legendary') {
+        celebrate('legendary', l('LEGENDARY!', 'EFSANEVİ!', 'LENDÁRIO!', '¡LEGENDARIO!'), lootBoxReward.itemName);
+      }
     }, 980);
 
     const revealId = setTimeout(() => {
@@ -526,11 +1253,39 @@ export default function GamePage() {
     setIsLootBoxMinimized(false);
   }, [lootBoxReward]);
 
+  const handleLootBoxDialogOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      setIsLootBoxDialogOpen(true);
+      setIsLootBoxMinimized(false);
+      return;
+    }
+
+    clearLootBoxOpeningSequence();
+    setLootBoxOpeningPhase('idle');
+    setIsLootBoxDialogOpen(false);
+    if (lootBoxReward) setIsLootBoxMinimized(true);
+  }, [clearLootBoxOpeningSequence, lootBoxReward]);
+
+  const handleCloseLootBoxReward = useCallback(() => {
+    clearLootBoxOpeningSequence();
+    setLootBoxReward(null);
+    setLootBoxOpened(false);
+    setLootBoxOpeningPhase('idle');
+    setIsLootBoxDialogOpen(false);
+    setIsLootBoxMinimized(false);
+  }, [clearLootBoxOpeningSequence]);
+
   const handleEquipLootReward = useCallback(() => {
     if (!lootBoxReward || lootBoxReward.kind !== 'cosmetic') return false;
     const equipType = lootEquipTypeMap[lootBoxReward.cosmeticType];
     return equipCosmetic(equipType, lootBoxReward.itemId);
   }, [equipCosmetic, lootBoxReward, lootEquipTypeMap]);
+
+  const handleOpenTutorialRewardCosmetics = useCallback(() => {
+    claimTutorialRewardUnlock();
+    playSound('open_cosmetics');
+    setIsCosmeticsOpen(true);
+  }, [claimTutorialRewardUnlock, playSound]);
 
   const isLootRewardEquipped = useMemo(() => {
     if (!lootBoxReward || lootBoxReward.kind !== 'cosmetic') return false;
@@ -569,7 +1324,7 @@ export default function GamePage() {
   const lootRewardDetails = useMemo(() => {
     if (!lootBoxReward || lootBoxReward.kind !== 'cosmetic') return null;
 
-    const defaultSkinPalette = CHARACTER_SKINS[0]?.palette;
+    const defaultSkinPalette = localizedCharacterSkins[0]?.palette;
     const characterPreviewWrap = (child: React.ReactNode) => (
       <div className="relative flex h-[132px] items-center justify-center overflow-hidden rounded-md border border-cyan-500/35 bg-slate-950/70">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(56,189,248,0.18),rgba(15,23,42,0.04)_70%)]" />
@@ -578,9 +1333,10 @@ export default function GamePage() {
     );
 
     if (lootBoxReward.cosmeticType === 'skin') {
-      const skin = CHARACTER_SKINS.find(s => s.id === lootBoxReward.itemId) || ASCENSION_SKINS.find(s => s.id === lootBoxReward.itemId);
+      const skin = localizedCharacterSkins.find(s => s.id === lootBoxReward.itemId) || localizedAscensionSkins.find(s => s.id === lootBoxReward.itemId);
       if (!skin || !defaultSkinPalette) return null;
       return {
+        name: skin.name,
         description: skin.description,
         boostLines: getLootBoostLines(skin.boost),
         preview: characterPreviewWrap(
@@ -592,9 +1348,10 @@ export default function GamePage() {
     }
 
     if (lootBoxReward.cosmeticType === 'accessory') {
-      const accessory = CHARACTER_ACCESSORIES.find(a => a.id === lootBoxReward.itemId) || ASCENSION_ACCESSORIES.find(a => a.id === lootBoxReward.itemId);
+      const accessory = localizedCharacterAccessories.find(a => a.id === lootBoxReward.itemId) || localizedAscensionAccessories.find(a => a.id === lootBoxReward.itemId);
       if (!accessory || !defaultSkinPalette) return null;
       return {
+        name: accessory.name,
         description: accessory.description,
         boostLines: getLootBoostLines(accessory.boost),
         preview: characterPreviewWrap(
@@ -606,9 +1363,10 @@ export default function GamePage() {
     }
 
     if (lootBoxReward.cosmeticType === 'headstyle') {
-      const head = CHARACTER_HEAD_STYLES.find(h => h.id === lootBoxReward.itemId) || ASCENSION_HEAD_STYLES.find(h => h.id === lootBoxReward.itemId);
+      const head = localizedCharacterHeadStyles.find(h => h.id === lootBoxReward.itemId) || localizedAscensionHeadStyles.find(h => h.id === lootBoxReward.itemId);
       if (!head || !defaultSkinPalette) return null;
       return {
+        name: head.name,
         description: head.description,
         boostLines: getLootBoostLines(head.boost),
         preview: characterPreviewWrap(
@@ -620,9 +1378,10 @@ export default function GamePage() {
     }
 
     if (lootBoxReward.cosmeticType === 'theme') {
-      const theme = ROOM_THEMES.find(t => t.id === lootBoxReward.itemId) || ASCENSION_ROOM_THEMES.find(t => t.id === lootBoxReward.itemId);
+      const theme = localizedRoomThemes.find(t => t.id === lootBoxReward.itemId) || localizedAscensionRoomThemes.find(t => t.id === lootBoxReward.itemId);
       if (!theme) return null;
       return {
+        name: theme.name,
         description: theme.description,
         boostLines: getLootBoostLines(theme.boost),
         preview: (
@@ -647,9 +1406,10 @@ export default function GamePage() {
     }
 
     if (lootBoxReward.cosmeticType === 'pet') {
-      const pet = CHARACTER_PETS.find(p => p.id === lootBoxReward.itemId) || ASCENSION_PETS.find(p => p.id === lootBoxReward.itemId);
+      const pet = localizedCharacterPets.find(p => p.id === lootBoxReward.itemId) || localizedAscensionPets.find(p => p.id === lootBoxReward.itemId);
       if (!pet) return null;
       return {
+        name: pet.name,
         description: pet.description,
         boostLines: getLootBoostLines(pet.boost),
         preview: (
@@ -668,9 +1428,10 @@ export default function GamePage() {
     }
 
     if (lootBoxReward.cosmeticType === 'boxskin') {
-      const boxSkin = LOOT_BOX_SKINS.find(skin => skin.id === lootBoxReward.itemId);
+      const boxSkin = localizedLootBoxSkins.find(skin => skin.id === lootBoxReward.itemId);
       if (!boxSkin) return null;
       return {
+        name: boxSkin.name,
         description: boxSkin.description,
         boostLines: getLootBoostLines({ luckBoost: boxSkin.luckBonus }),
         preview: (
@@ -712,9 +1473,10 @@ export default function GamePage() {
     }
 
     if (lootBoxReward.cosmeticType === 'machineboxskin') {
-      const machineSkin = MACHINE_BOX_SKINS.find(skin => skin.id === lootBoxReward.itemId);
+      const machineSkin = localizedMachineBoxSkins.find(skin => skin.id === lootBoxReward.itemId);
       if (!machineSkin) return null;
       return {
+        name: machineSkin.name,
         description: machineSkin.description,
         boostLines: getLootBoostLines({ luckBoost: machineSkin.luckBonus }),
         preview: (
@@ -742,9 +1504,10 @@ export default function GamePage() {
       };
     }
 
-    const effect = CLICK_EFFECTS.find(e => e.id === lootBoxReward.itemId);
+    const effect = localizedClickEffects.find(e => e.id === lootBoxReward.itemId);
     if (!effect) return null;
     return {
+      name: effect.name,
       description: effect.description,
       boostLines: getLootBoostLines(effect.boost),
       preview: (
@@ -764,16 +1527,118 @@ export default function GamePage() {
         </div>
       ),
     };
-  }, [getLootBoostLines, lootBoxReward]);
+  }, [
+    getLootBoostLines,
+    localizedAscensionAccessories,
+    localizedAscensionHeadStyles,
+    localizedAscensionPets,
+    localizedAscensionRoomThemes,
+    localizedAscensionSkins,
+    localizedCharacterAccessories,
+    localizedCharacterHeadStyles,
+    localizedCharacterPets,
+    localizedCharacterSkins,
+    localizedClickEffects,
+    localizedLootBoxSkins,
+    localizedMachineBoxSkins,
+    localizedRoomThemes,
+    lootBoxReward,
+  ]);
+
+  const cosmeticsPanelProps = useMemo(() => ({
+    data: resources.data.amount,
+    credits: resources.credits.amount,
+    crypto: resources.crypto.amount,
+    ascension: resources.prestige.amount,
+    totalAscensions: stats.totalAscensions,
+    skins: marketSkins,
+    themes: localizedRoomThemes,
+    accessories: marketAccessories,
+    headStyles: marketHeadStyles,
+    pets: localizedCharacterPets,
+    clickEffects: localizedClickEffects,
+    boxSkins: localizedLootBoxSkins,
+    ascensionPets: localizedAscensionPets,
+    ascensionSkins: localizedAscensionSkins,
+    ascensionHeadStyles: localizedAscensionHeadStyles,
+    ascensionAccessories: localizedAscensionAccessories,
+    ascensionThemes: localizedAscensionRoomThemes,
+    ownedSkins: ownedSkinsSet,
+    ownedThemes: ownedThemesSet,
+    ownedAccessories: ownedAccessoriesSet,
+    ownedHeadStyles: ownedHeadStylesSet,
+    ownedPets: ownedPetsSet,
+    ownedClickEffects: ownedClickEffectsSet,
+    ownedBoxSkins: ownedLootBoxSkinsSet,
+    ownedAscensionPets: ownedAscensionPetsSet,
+    activeSkin: cosmetics.activeSkinId,
+    activeTheme: cosmetics.activeThemeId,
+    activeAccessory: cosmetics.activeAccessoryId,
+    activeHeadStyle: cosmetics.activeHeadStyleId,
+    activePet: cosmetics.activePetId,
+    activeClickEffect: cosmetics.activeClickEffectId,
+    activeBoxSkin: cosmetics.activeLootBoxSkinId,
+    activeAscensionPet: cosmetics.activeAscensionPetId,
+    onBuySkin: (skinId: string) => buyCosmetic('skin', skinId),
+    onBuyTheme: (themeId: string) => buyCosmetic('theme', themeId),
+    onBuyAccessory: (accessoryId: string) => buyCosmetic('accessory', accessoryId),
+    onBuyHeadStyle: (headStyleId: string) => buyCosmetic('headstyle', headStyleId),
+    onBuyPet: (petId: string) => buyCosmetic('pet', petId),
+    onEquipSkin: (skinId: string) => equipCosmetic('skin', skinId),
+    onEquipTheme: (themeId: string) => equipCosmetic('theme', themeId),
+    onEquipAccessory: (accessoryId: string) => equipCosmetic('accessory', accessoryId),
+    onEquipHeadStyle: (headStyleId: string) => equipCosmetic('headstyle', headStyleId),
+    onEquipPet: (petId: string) => equipCosmetic('pet', petId),
+    onEquipClickEffect: (effectId: string) => equipCosmetic('clickeffect', effectId),
+    onEquipBoxSkin: (skinId: string) => equipCosmetic('lootboxskin', skinId),
+    onEquipAscensionPet: (petId: string) => equipCosmetic('prestigepet', petId),
+    activeBoosts: getPetBoosts(),
+  }), [
+    getPetBoosts,
+    resources.data.amount,
+    resources.credits.amount,
+    resources.crypto.amount,
+    resources.prestige.amount,
+    stats.totalAscensions,
+    marketSkins,
+    localizedRoomThemes,
+    marketAccessories,
+    marketHeadStyles,
+    localizedCharacterPets,
+    localizedClickEffects,
+    localizedLootBoxSkins,
+    localizedAscensionPets,
+    localizedAscensionSkins,
+    localizedAscensionHeadStyles,
+    localizedAscensionAccessories,
+    localizedAscensionRoomThemes,
+    ownedSkinsSet,
+    ownedThemesSet,
+    ownedAccessoriesSet,
+    ownedHeadStylesSet,
+    ownedPetsSet,
+    ownedClickEffectsSet,
+    ownedLootBoxSkinsSet,
+    ownedAscensionPetsSet,
+    cosmetics.activeSkinId,
+    cosmetics.activeThemeId,
+    cosmetics.activeAccessoryId,
+    cosmetics.activeHeadStyleId,
+    cosmetics.activePetId,
+    cosmetics.activeClickEffectId,
+    cosmetics.activeLootBoxSkinId,
+    cosmetics.activeAscensionPetId,
+    buyCosmetic,
+    equipCosmetic,
+  ]);
 
   // Compute current tutorial highlight hint based on active objectives
   const tutorialHighlight = useMemo(() => {
     if (tutorial.skipped || isTutorialComplete) return null;
-    const currentPhase = getCurrentTutorialPhase();
-    if (!currentPhase) return null;
+    if (!currentTutorialPhase) return null;
     
     // Find first incomplete objective
-    const activeObjective = currentPhase.objectives.find(obj => !obj.completed);
+    const activeObjective = currentTutorialPhase.objectives.find(obj => !obj.completed);
     if (!activeObjective) return null;
     
     // Map objectives to UI element hints
@@ -786,6 +1651,8 @@ export default function GamePage() {
       'convert_data': 'sell_button',
       'view_prestige': 'prestige_button',
       'open_cosmetics': 'cosmetics_button',
+      'open_mining_tab': 'crypto_tab',
+      'earn_crypto': 'crypto_display',
       'open_ascend': 'ascend_button',
     };
     
@@ -793,7 +1660,7 @@ export default function GamePage() {
     if (hint) return hint;
 
     // Fallbacks: our tutorial objectives/ids can evolve; keep highlights working by matching phase/objective text.
-    const phaseLabel = String((currentPhase as any).title || (currentPhase as any).name || (currentPhase as any).id || '').toLowerCase();
+    const phaseLabel = String((currentTutorialPhase as any).title || (currentTutorialPhase as any).name || (currentTutorialPhase as any).id || '').toLowerCase();
     const objLabel = String((activeObjective as any).title || (activeObjective as any).text || (activeObjective as any).description || '').toLowerCase();
 
     if (phaseLabel.includes('conversion') || objLabel.includes('convert') || objLabel.includes('credit') || objLabel.includes('node')) return 'sell_button';
@@ -801,10 +1668,12 @@ export default function GamePage() {
     if (objLabel.includes('zoom')) return 'camera_zoom';
     if (objLabel.includes('middle mouse') || objLabel.includes('drag') || objLabel.includes('camera')) return 'camera_pan';
     if (phaseLabel.includes('cosmetic') || objLabel.includes('cosmetic')) return 'cosmetics_button';
+    if (phaseLabel.includes('mining') || objLabel.includes('mining')) return 'crypto_tab';
+    if (objLabel.includes('crypto')) return 'crypto_display';
     if (phaseLabel.includes('ascension') || objLabel.includes('ascend')) return 'ascend_button';
 
     return null;
-  }, [tutorial, isTutorialComplete, getCurrentTutorialPhase]);
+  }, [tutorial, isTutorialComplete, currentTutorialPhase]);
 
   // Find the first affordable upgrade for bulk buying
   const getAffordableUpgrade = (quantity: number) => {
@@ -855,23 +1724,44 @@ export default function GamePage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handlePickupClick = (pickup: any) => {
+  const handlePickupClick = useCallback((pickup: FloatingPickupItem) => {
     onPickupClick(pickup);
     setPickupCollected(true);
-  };
+  }, [onPickupClick]);
 
-  const handleCritPickupClick = () => {
+  const handleCritPickupClick = useCallback(() => {
     setPickupCollected(true);
-  };
+  }, []);
+
+  const handleFloatingCritPickupCollect = useCallback((pickup: FloatingPickupItem) => {
+    handleCritPickupClick();
+    onCritPickupClick(pickup);
+    removeFloatingPickup(pickup.id);
+  }, [handleCritPickupClick, onCritPickupClick, removeFloatingPickup]);
+
+  const handleFloatingPickupMiss = useCallback((pickupId: string) => {
+    removeFloatingPickup(pickupId);
+  }, [removeFloatingPickup]);
 
   // Wrapped clickResource to track tutorial
   const handleCoreClick = useCallback((resource: ResourceType, meta?: { timestamp?: number; source?: 'manual' | 'autoclick' }) => {
+    if (!tutorial.started && !tutorial.skipped && !isTutorialComplete) {
+      startTutorial();
+    }
     const result = clickResource(resource, undefined, undefined, meta);
     if (!tutorial.skipped && !isTutorialComplete) {
       completeTutorialObjective('click_core');
     }
     return result;
-  }, [clickResource, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
+  }, [clickResource, tutorial.started, tutorial.skipped, isTutorialComplete, startTutorial, completeTutorialObjective]);
+
+  const handleCoreAutoClickBurst = useCallback((
+    resource: ResourceType,
+    count: number,
+    meta?: { timestamp?: number; source?: 'manual' | 'autoclick'; intervalMs?: number }
+  ) => {
+    return clickResourceBurst(resource, count, meta);
+  }, [clickResourceBurst]);
 
   const handleCoreRightClick = useCallback(() => {
     if (!tutorial.skipped && !isTutorialComplete) {
@@ -949,6 +1839,19 @@ export default function GamePage() {
     }
   }, [isCosmeticsOpen, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
 
+  // Track mining segment and crypto gain for tutorial
+  useEffect(() => {
+    if (activeUpgradeTab === 'crypto_mining' && !tutorial.skipped && !isTutorialComplete) {
+      completeTutorialObjective('open_mining_tab');
+    }
+  }, [activeUpgradeTab, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
+
+  useEffect(() => {
+    if (stats.totalCryptoMined > 0 && !tutorial.skipped && !isTutorialComplete) {
+      completeTutorialObjective('earn_crypto');
+    }
+  }, [stats.totalCryptoMined, tutorial.skipped, isTutorialComplete, completeTutorialObjective]);
+
   // Esc toggles the settings modal (open/close).
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -961,7 +1864,7 @@ export default function GamePage() {
       }
 
       // If another modal is open, let that modal handle Esc instead.
-      if (!isSettingsOpen && (isPrestigeOpen || isAchievementsOpen || isStatsOpen || isCosmeticsOpen || isCryptoRelicShopOpen || isBlackMarketOpen || isBossEncounterActive)) {
+      if (!isSettingsOpen && (isPrestigeOpen || isAchievementsOpen || isStatsOpen || isCosmeticsOpen || isCryptoRelicShopOpen || isBlackMarketOpen || isParagonLabOpen || isBossEncounterActive)) {
         return;
       }
 
@@ -971,1147 +1874,278 @@ export default function GamePage() {
 
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isSettingsOpen, isPrestigeOpen, isAchievementsOpen, isStatsOpen, isCosmeticsOpen, isCryptoRelicShopOpen, isBlackMarketOpen, isBossEncounterActive]);
+  }, [isSettingsOpen, isPrestigeOpen, isAchievementsOpen, isStatsOpen, isCosmeticsOpen, isCryptoRelicShopOpen, isBlackMarketOpen, isParagonLabOpen, isBossEncounterActive]);
 
   return (
     <div className={`h-screen w-screen bg-background flex overflow-hidden text-foreground selection:bg-primary/30 relative cyberpunk-cursor cyberpunk-cursor--glow-${cursorGlowTier}`}>
 
 
       {/* Settings Modal */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        masterVolume={masterVolume}
-        onMasterVolumeToggle={toggleMasterVolume}
-        musicVolume={musicVolume}
-        onMusicVolumeChange={setMusicVolume}
-        sfxVolume={sfxVolume}
-        onSfxVolumeChange={setSfxVolume}
-        isMusicPlaying={isMusicPlaying}
-        onToggleMusic={toggleMusic}
-        onSkipTrack={skipTrack}
-        onQuit={handleQuit}
-        tutorialComplete={isTutorialComplete}
-        tutorialSkipped={tutorial.skipped}
-        onSkipTutorial={skipTutorial}
-        onResetTutorial={resetTutorial}
-        onSetFullscreen={setFullscreen}
-        onSetWindowed={setWindowed}
-      />
+      <Suspense fallback={null}>
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          masterVolume={masterVolume}
+          onMasterVolumeToggle={toggleMasterVolume}
+          musicVolume={musicVolume}
+          onMusicVolumeChange={setMusicVolume}
+          sfxVolume={sfxVolume}
+          onSfxVolumeChange={setSfxVolume}
+          isMusicPlaying={isMusicPlaying}
+          onToggleMusic={toggleMusic}
+          onSkipTrack={skipTrack}
+          onQuit={handleQuit}
+          tutorialComplete={isTutorialComplete}
+          tutorialSkipped={tutorial.skipped}
+          onSkipTutorial={skipTutorial}
+          onResetTutorial={resetTutorial}
+          onSetFullscreen={setFullscreen}
+          onSetWindowed={setWindowed}
+          reduceSceneGlow={reduceSceneGlow}
+          onSetReduceSceneGlow={handleSetReduceSceneGlow}
+          onResetGame={resetGame}
+        />
+      </Suspense>
 
       {/* Prestige Shop Modal - Controlled by ResourcePanel */}
-      <Dialog open={isPrestigeOpen} onOpenChange={setIsPrestigeOpen}>
-        <DialogContent className="max-w-2xl bg-card/95 border-cyan-500/30 z-[50]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-cyan-400">
-              <Crown className="w-5 h-5" /> Prestige Realm
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded p-3 sticky top-0 z-10 backdrop-blur-sm">
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-cyan-300/70">Balance</p>
-                  <p className="text-sm font-bold text-cyan-100">{Math.floor(resources.prestige.amount)}P</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-cyan-300/70">Affordable</p>
-                  <p className="text-sm font-bold text-emerald-300">{prestigeShopSummary.affordableUpgrades}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-cyan-300/70">Maxed</p>
-                  <p className="text-sm font-bold text-amber-300">{prestigeShopSummary.maxedUpgrades}/{prestigeUpgrades.length}</p>
-                </div>
-              </div>
-              <p className="text-[11px] text-cyan-200/80 mt-2">
-                Total purchased levels: <span className="font-semibold text-cyan-100">{prestigeShopSummary.totalLevels}</span>
-              </p>
-            </div>
-            {prestigeUpgrades.map(upgrade => {
-              const currentCost = Math.floor(upgrade.cost * Math.pow(upgrade.costMultiplier, upgrade.count));
-              const isMaxed = upgrade.count >= upgrade.maxLevel;
-              const canAfford = !isMaxed && resources.prestige.amount >= currentCost;
-              return (
-                <motion.div
-                  key={upgrade.id}
-                  whileHover={!isMaxed ? { scale: 1.01 } : undefined}
-                  className={`border rounded-lg p-3 transition-all ${
-                    isMaxed 
-                      ? 'border-emerald-500/40 bg-emerald-500/10 cursor-default' 
-                      : canAfford 
-                        ? 'border-yellow-500/40 bg-yellow-500/5 hover:bg-yellow-500/10 cursor-pointer' 
-                        : 'border-muted/30 bg-muted/5 opacity-60 cursor-not-allowed'
-                  }`}
-                  onClick={() => canAfford && buyPrestigeUpgrade(upgrade.id)}
-                  data-testid={`prestige-upgrade-${upgrade.id}`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className={`font-bold ${isMaxed ? 'text-emerald-400' : 'text-yellow-400'}`}>{upgrade.name}</p>
-                        {isMaxed && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">MAXED</span>}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{upgrade.description}</p>
-                      <p className="text-[11px] text-cyan-200/80 mt-1">
-                        Current: <span className="font-medium text-cyan-100">{formatPrestigeEffect(upgrade, upgrade.count)}</span>
-                      </p>
-                      {!isMaxed && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Next: {formatPrestigeEffect(upgrade, upgrade.count + 1)}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 bg-muted/20 rounded-full h-1.5 overflow-hidden">
-                          <div 
-                            className={`h-full transition-all ${isMaxed ? 'bg-emerald-500' : 'bg-yellow-500'}`}
-                            style={{ width: `${(upgrade.count / upgrade.maxLevel) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-mono text-muted-foreground">
-                          {upgrade.count}/{upgrade.maxLevel}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right ml-4">
-                      {isMaxed ? (
-                        <p className="font-mono text-sm text-emerald-400">Complete</p>
-                      ) : (
-                        <p className={`font-mono font-bold text-sm ${canAfford ? 'text-yellow-300' : 'text-muted-foreground'}`}>
-                          {currentCost}p
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Crypto Relic Shop Modal */}
-      <Dialog open={isCryptoRelicShopOpen} onOpenChange={setIsCryptoRelicShopOpen}>
-        <DialogContent className="max-w-3xl bg-card/95 border-red-500/30 z-[52]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-red-300">
-              <Cpu className="w-5 h-5" /> Crypto Relic Forge
-            </DialogTitle>
-          </DialogHeader>
-          {!isCryptoRelicShopUnlocked ? (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-center text-sm text-red-200">
-              Unlocks at <span className="font-semibold">Ascension {CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}</span>.
-              <div className="mt-1 text-xs text-red-200/80">
-                Current progress: {stats.totalAscensions}/{CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="rounded-md border border-red-500/25 bg-red-500/5 p-3 text-xs text-red-100/85">
-                Spend Crypto to unlock relic nodes in order, then keep upgrading them. Relic level scales linearly and each node can be upgraded up to your current Ascension level.
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {CRYPTO_RELIC_TREE.map((node, index) => {
-                  const level = getRelicNodeLevel(node);
-                  const unlocked = level > 0;
-                  const equipped = unlocked && isRelicEquipped(node.slot, node.cosmeticId);
-                  const canBuy = canBuyRelicNode(node);
-                  const ascensionCap = Math.max(0, stats.totalAscensions);
-                  const isCapped = level >= ascensionCap;
-                  const nextCost = getCryptoRelicUpgradeCost(node, level);
-                  const missingRequirements = node.requires.filter(reqId => {
-                    const req = CRYPTO_RELIC_TREE.find(r => r.id === reqId);
-                    if (!req) return true;
-                    return getRelicNodeLevel(req) <= 0;
-                  });
-                  const perLevelLines = relicBoostLines(node.perLevelBoost, 1);
-                  const totalLines = relicBoostLines(node.perLevelBoost, level);
-                  const nextLevelLines = relicBoostLines(node.perLevelBoost, level + 1);
-
-                  return (
-                    <div key={node.id} className="relative">
-                      {index > 0 && <div className="absolute -top-3 left-1/2 h-3 w-px -translate-x-1/2 bg-red-400/40" />}
-                      <motion.div
-                        whileHover={{ scale: 1.01 }}
-                        className={`rounded-lg border p-3 ${
-                          unlocked ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-red-500/35 bg-red-500/5'
-                        }`}
-                      >
-                        <div className="grid grid-cols-[96px_minmax(0,1fr)_140px] gap-3 items-center">
-                          <div className="rounded-md border border-red-400/25 bg-slate-950/70 py-2">
-                            {renderRelicGlyph(node.id)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-red-100">{node.name}</p>
-                            <p className="text-xs text-red-100/70">{node.description}</p>
-                            <p className="mt-1 text-[11px] text-cyan-200/80">{relicSlotLabel[node.slot]}</p>
-                            <div className="mt-1 text-[11px] text-slate-300">
-                              Level {level}/{ascensionCap}
-                            </div>
-                            <div className="mt-1 text-[11px] text-slate-300">
-                              Per Level: {perLevelLines.length ? perLevelLines.join(' | ') : 'No stat bonus'}
-                            </div>
-                            <div className="mt-1 text-[11px] text-emerald-200/90">
-                              Total: {totalLines.length ? totalLines.join(' | ') : 'No active bonus'}
-                            </div>
-                            {missingRequirements.length > 0 && (
-                              <p className="mt-1 text-[11px] text-amber-300">Locked by previous relic node.</p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            {unlocked ? (
-                              <>
-                                <div className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">
-                                  Lv. {level} / {ascensionCap}
-                                </div>
-                                {isCapped ? (
-                                  <div className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-center text-xs text-amber-200">
-                                    Ascension Cap
-                                  </div>
-                                ) : (
-                                  <Button
-                                    onClick={() => buyCryptoRelic(node.id)}
-                                    disabled={!canBuy}
-                                    className="w-full h-8 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"
-                                  >
-                                    Upgrade Lv.{level + 1}
-                                  </Button>
-                                )}
-                                {!isCapped && (
-                                  <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-center text-[10px] text-red-200/90">
-                                    {formatNumber(nextCost)} Crypto
-                                  </div>
-                                )}
-                                {equipped ? (
-                                  <div className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">
-                                    Equipped
-                                  </div>
-                                ) : (
-                                  <Button
-                                    onClick={() => equipCosmetic(node.slot, node.cosmeticId)}
-                                    className="w-full h-8 bg-cyan-600 hover:bg-cyan-500 text-xs"
-                                  >
-                                    Equip Visual
-                                  </Button>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-center text-xs text-red-200">
-                                  {formatNumber(nextCost)} Crypto
-                                </div>
-                                <Button
-                                  onClick={() => buyCryptoRelic(node.id)}
-                                  disabled={!canBuy}
-                                  className="w-full h-8 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"
-                                >
-                                  Unlock Lv.1
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {unlocked && !isCapped && (
-                          <div className="mt-2 rounded border border-cyan-500/25 bg-cyan-500/5 px-2 py-1 text-[10px] text-cyan-200/85">
-                            Next total at Lv.{level + 1}: {nextLevelLines.length ? nextLevelLines.join(' | ') : 'No stat change'}
-                          </div>
-                        )}
-                      </motion.div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="pt-2">
-                <div className="mb-2 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-cyan-300" />
-                  <p className="text-sm font-semibold text-cyan-200">Mine Skins</p>
-                  <span className="rounded border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200/80">Crypto Shop + Loot Box</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {machineBoxSkinsForShop.map((skin) => {
-                    const owned = ownedMachineBoxSkinsSet.has(skin.id);
-                    const equipped = cosmetics.activeMachineBoxSkinId === skin.id;
-                    const canBuy = canBuyMachineBoxSkin(skin.id, skin.price);
-                    return (
-                      <motion.div
-                        key={skin.id}
-                        whileHover={{ scale: 1.01 }}
-                        className={`rounded-lg border p-3 ${
-                          equipped
-                            ? 'border-cyan-400/60 bg-cyan-500/10'
-                            : owned
-                              ? 'border-emerald-500/40 bg-emerald-500/10'
-                              : 'border-slate-500/35 bg-slate-900/50'
-                        }`}
-                      >
-                        <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3">
-                          <div className="relative h-20 rounded-md border border-cyan-500/30 bg-slate-950/70 [perspective:700px]">
-                            <div className="absolute left-1/2 top-1/2 h-12 w-16 -translate-x-1/2 -translate-y-1/2 [transform-style:preserve-3d]">
-                              <div
-                                className="absolute inset-0 rounded border [transform:translateZ(8px)]"
-                                style={{
-                                  borderColor: skin.colors.primary,
-                                  background: `linear-gradient(180deg, ${skin.colors.primary}22 0%, ${skin.colors.secondary}66 65%, rgba(2,6,23,0.95) 100%)`,
-                                  boxShadow: `0 0 10px ${skin.colors.glow}`,
-                                }}
-                              />
-                              <div className="absolute left-0.5 top-1 h-9 w-2.5 rounded border [transform:rotateY(-62deg)_translateZ(2px)]" style={{ borderColor: skin.colors.primary, background: `${skin.colors.primary}77` }} />
-                              <div className="absolute right-0.5 top-1 h-9 w-2.5 rounded border [transform:rotateY(62deg)_translateZ(2px)]" style={{ borderColor: skin.colors.primary, background: `${skin.colors.secondary}77` }} />
-                              <div className="absolute left-1/2 top-0.5 h-3.5 w-12 -translate-x-1/2 rounded border [transform:rotateX(65deg)_translateZ(9px)]" style={{ borderColor: skin.colors.primary, background: `${skin.colors.secondary}66` }} />
-                            </div>
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-cyan-100 truncate">{skin.name}</p>
-                            <p className="text-[11px] text-slate-300/85">{skin.description}</p>
-                            <p className="mt-1 text-[10px] text-slate-400 uppercase tracking-wide">{skin.rarity}</p>
-                            <p className="text-[10px] text-emerald-300/90 uppercase tracking-wide">+{skin.luckBonus}% luck</p>
-                            <div className="mt-2">
-                              {owned ? (
-                                equipped ? (
-                                  <div className="rounded border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">
-                                    Equipped
-                                  </div>
-                                ) : (
-                                  <Button
-                                    onClick={() => equipCosmetic('machineboxskin', skin.id)}
-                                    className="h-8 w-full bg-cyan-600 hover:bg-cyan-500 text-xs"
-                                  >
-                                    Equip
-                                  </Button>
-                                )
-                              ) : (
-                                <Button
-                                  onClick={() => buyCosmetic('machineboxskin', skin.id)}
-                                  disabled={!canBuy}
-                                  className="h-8 w-full bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"
-                                >
-                                  Buy {formatNumber(skin.price)} Crypto
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isBlackMarketOpen} onOpenChange={setIsBlackMarketOpen}>
-        <DialogContent className="max-w-5xl h-[84vh] bg-card/95 border-rose-500/35 z-[53]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-rose-300">
-              <Sparkles className="w-5 h-5" /> Black Market Spaceship
-            </DialogTitle>
-          </DialogHeader>
-          {!isBlackMarketUnlocked ? (
-            <div className="rounded-lg border border-rose-500/35 bg-rose-500/10 p-4 text-sm text-rose-200">
-              Unlocks at Ascension {BLACK_MARKET_UNLOCK_ASCENSION}. Current progress: {stats.totalAscensions}/{BLACK_MARKET_UNLOCK_ASCENSION}
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-2">
-              <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-100/90">
-                Exclusive modules: equip Capes and Wings from separate slots. One-time upgrades here permanently unlock advanced mechanics.
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-cyan-200">Capes Slot</p>
-                  <span className="text-[11px] text-cyan-200/80">Equipped: {equippedCape.name}</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {BLACK_MARKET_CAPES.map(cape => {
-                    const owned = ownedCapesSet.has(cape.id);
-                    const equipped = cosmetics.activeCapeId === cape.id;
-                    const canAfford = cape.currency === 'ascension'
-                      ? resources.prestige.amount >= cape.price
-                      : cape.currency === 'crypto'
-                        ? resources.crypto.amount >= cape.price
-                        : resources.credits.amount >= cape.price;
-                    const boostLines = getLootBoostLines(cape.boost);
-                    return (
-                      <div key={cape.id} className={`rounded-lg border p-3 ${
-                        equipped ? 'border-cyan-400/60 bg-cyan-500/10' : owned ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-slate-600/40 bg-slate-900/55'
-                      }`}>
-                        <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3">
-                          <div className="relative h-20 rounded border border-cyan-500/30 bg-slate-950/70">
-                            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-[1.65]">
-                              <CSSCharacter skinPalette={equippedSkin.palette} accessoryId="none" headStyleId="default" capeId={cape.id} wingId="none" />
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-cyan-100">{cape.name}</p>
-                            <p className="text-[11px] text-slate-300/85">{cape.description}</p>
-                            <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">{cape.rarity}</p>
-                            {boostLines.length > 0 && (
-                              <p className="text-[10px] text-emerald-300/90">{boostLines.join(' | ')}</p>
-                            )}
-                            <div className="mt-2">
-                              {owned ? (
-                                equipped ? (
-                                  <div className="rounded border border-cyan-500/45 bg-cyan-500/10 px-2 py-1 text-center text-xs text-cyan-200">Equipped</div>
-                                ) : (
-                                  <Button onClick={() => equipCosmetic('cape', cape.id)} className="h-8 w-full bg-cyan-600 hover:bg-cyan-500 text-xs">Equip</Button>
-                                )
-                              ) : (
-                                <Button
-                                  onClick={() => buyCosmetic('cape', cape.id)}
-                                  disabled={!canAfford}
-                                  className="h-8 w-full bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"
-                                >
-                                  Buy {formatNumber(cape.price)}{cape.currency === 'ascension' ? 'P' : ` ${cape.currency}`}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-fuchsia-200">Wings Slot</p>
-                  <span className="text-[11px] text-fuchsia-200/80">Equipped: {equippedWing.name}</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {BLACK_MARKET_WINGS.map(wing => {
-                    const owned = ownedWingsSet.has(wing.id);
-                    const equipped = cosmetics.activeWingId === wing.id;
-                    const canAfford = wing.currency === 'ascension'
-                      ? resources.prestige.amount >= wing.price
-                      : wing.currency === 'crypto'
-                        ? resources.crypto.amount >= wing.price
-                        : resources.credits.amount >= wing.price;
-                    const boostLines = getLootBoostLines(wing.boost);
-                    return (
-                      <div key={wing.id} className={`rounded-lg border p-3 ${
-                        equipped ? 'border-fuchsia-400/60 bg-fuchsia-500/10' : owned ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-slate-600/40 bg-slate-900/55'
-                      }`}>
-                        <div className="grid grid-cols-[88px_minmax(0,1fr)] gap-3">
-                          <div className="relative h-20 rounded border border-fuchsia-500/30 bg-slate-950/70">
-                            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 scale-[1.65]">
-                              <CSSCharacter skinPalette={equippedSkin.palette} accessoryId="none" headStyleId="default" capeId="none" wingId={wing.id} />
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-fuchsia-100">{wing.name}</p>
-                            <p className="text-[11px] text-slate-300/85">{wing.description}</p>
-                            <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">{wing.rarity}</p>
-                            {boostLines.length > 0 && (
-                              <p className="text-[10px] text-emerald-300/90">{boostLines.join(' | ')}</p>
-                            )}
-                            <div className="mt-2">
-                              {owned ? (
-                                equipped ? (
-                                  <div className="rounded border border-fuchsia-500/45 bg-fuchsia-500/10 px-2 py-1 text-center text-xs text-fuchsia-200">Equipped</div>
-                                ) : (
-                                  <Button onClick={() => equipCosmetic('wing', wing.id)} className="h-8 w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-xs">Equip</Button>
-                                )
-                              ) : (
-                                <Button
-                                  onClick={() => buyCosmetic('wing', wing.id)}
-                                  disabled={!canAfford}
-                                  className="h-8 w-full bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"
-                                >
-                                  Buy {formatNumber(wing.price)}{wing.currency === 'ascension' ? 'P' : ` ${wing.currency}`}
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-amber-200">One-Time Black Market Upgrades</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {BLACK_MARKET_UPGRADES.map(upgrade => {
-                    const purchased = upgrade.id === 'click_overflow'
-                      ? cosmetics.blackMarketClickOverflowPurchased
-                      : cosmetics.blackMarketAdjacencyPurchased;
-                    const canAfford = resources.prestige.amount >= upgrade.cost;
-                    return (
-                      <div key={upgrade.id} className={`rounded-lg border p-3 ${
-                        purchased ? 'border-emerald-500/45 bg-emerald-500/10' : 'border-amber-500/35 bg-amber-500/10'
-                      }`}>
-                        <p className="text-sm font-semibold text-amber-100">{upgrade.name}</p>
-                        <p className="mt-1 text-[11px] text-slate-300/85">{upgrade.description}</p>
-                        {upgrade.id === 'adjacency_matrix' && (
-                          <div className="mt-1 space-y-1 text-[10px] text-cyan-200/85">
-                            <p>
-                              Miners detected: {adjacencyFormationBonus.machineCount} | Adjacent pairs: {adjacencyFormationBonus.adjacentPairs}
-                            </p>
-                            <p className="text-cyan-100/90">
-                              Layout guide:
-                              Horizontal 3 miners = Click, Vertical 3 miners = Production, 2x2 block = Crypto.
-                            </p>
-                            <p>
-                              Horizontal sets: {adjacencyFormationBonus.clickChains} | {adjacencyFormationBonus.active ? '+' : 'Potential +'}
-                              {(
-                                adjacencyFormationBonus.active
-                                  ? adjacencyFormationBonus.clickBoostPercent
-                                  : adjacencyFormationBonus.potentialClickBoostPercent
-                              ).toFixed(1)}
-                              % click
-                            </p>
-                            <p>
-                              Vertical sets: {adjacencyFormationBonus.productionChains} | {adjacencyFormationBonus.active ? '+' : 'Potential +'}
-                              {(
-                                adjacencyFormationBonus.active
-                                  ? adjacencyFormationBonus.productionBoostPercent
-                                  : adjacencyFormationBonus.potentialProductionBoostPercent
-                              ).toFixed(1)}
-                              % production
-                            </p>
-                            <p>
-                              2x2 clusters: {adjacencyFormationBonus.cryptoClusters} | {adjacencyFormationBonus.active ? '+' : 'Potential +'}
-                              {(
-                                adjacencyFormationBonus.active
-                                  ? adjacencyFormationBonus.cryptoBoostPercent
-                                  : adjacencyFormationBonus.potentialCryptoBoostPercent
-                              ).toFixed(1)}
-                              % crypto
-                            </p>
-                            <p>
-                              Luck bonus: {adjacencyFormationBonus.active ? '+' : 'Potential +'}
-                              {(
-                                adjacencyFormationBonus.active
-                                  ? adjacencyFormationBonus.luckBoostPercent
-                                  : adjacencyFormationBonus.potentialLuckBoostPercent
-                              ).toFixed(1)}
-                              %
-                            </p>
-                          </div>
-                        )}
-                        {upgrade.id === 'click_overflow' && (
-                          <p className="mt-1 text-[10px] text-cyan-200/85">
-                            Current crit chance: {(getTotalCritChance() * 100).toFixed(1)}%
-                          </p>
-                        )}
-                        <div className="mt-2">
-                          {purchased ? (
-                            <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">Purchased</div>
-                          ) : (
-                            <Button
-                              onClick={() => buyBlackMarketUpgrade(upgrade.id)}
-                              disabled={!canAfford}
-                              className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"
-                            >
-                              Buy {formatNumber(upgrade.cost)}P
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Achievements Modal */}
-      <Dialog open={isAchievementsOpen} onOpenChange={setIsAchievementsOpen}>
-        <DialogContent className="max-w-2xl h-[80vh] bg-card/95 border-amber-500/30 z-[50]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-amber-400">
-              <Trophy className="w-5 h-5" /> Achievements
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 overflow-hidden -mx-6 -mb-6 px-6 pb-6">
-            <AchievementsPanel 
-              achievements={achievements} 
-              stats={stats} 
-              newlyUnlockedAchievement={null}
-              claimAchievementReward={claimAchievementReward}
-              claimAllAchievements={claimAllAchievements}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Stats Modal */}
-      <Dialog open={isStatsOpen} onOpenChange={setIsStatsOpen}>
-        <DialogContent className="max-w-md bg-card/95 border-fuchsia-500/30 z-[50]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-fuchsia-400">
-              <BarChart3 className="w-5 h-5" /> Player Stats
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-cyan-500/10 border border-cyan-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Total Clicks</div>
-                <div className="text-lg font-mono text-cyan-400">{formatNumber(stats.totalClicks)}</div>
-              </div>
-              <div className="bg-fuchsia-500/10 border border-fuchsia-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Critical Hits</div>
-                <div className="text-lg font-mono text-fuchsia-400">{formatNumber(stats.totalCrits)}</div>
-              </div>
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Data</div>
-                <div className="text-lg font-mono text-amber-400">{formatNumber(Math.floor(stats.totalDataCollected))}</div>
-              </div>
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Nodes</div>
-                <div className="text-lg font-mono text-yellow-400">{formatNumber(Math.floor(stats.totalCreditsEarned))}</div>
-              </div>
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Ascensions</div>
-                <div className="text-lg font-mono text-purple-400">{stats.totalAscensions}</div>
-              </div>
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Upgrades Bought</div>
-                <div className="text-lg font-mono text-emerald-400">{stats.totalUpgradesPurchased}</div>
-              </div>
-              <div className="bg-orange-500/10 border border-orange-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Pickups Collected</div>
-                <div className="text-lg font-mono text-orange-400">{stats.pickupsCollected}</div>
-              </div>
-              <div className="bg-indigo-500/10 border border-indigo-500/30 rounded p-3">
-                <div className="text-[10px] text-muted-foreground uppercase">Prestige Spent</div>
-                <div className="text-lg font-mono text-indigo-400">{formatNumber(Math.floor(stats.totalPrestigeSpent))}</div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Leaderboards Modal */}
-      <Dialog open={isLeaderboardOpen} onOpenChange={setIsLeaderboardOpen}>
-        <DialogContent className="max-w-2xl h-[80vh] bg-card/95 border-amber-500/30 z-[55] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-amber-300">
-              <Crown className="w-5 h-5" /> Leaderboards
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setLeaderboardTab('global')}
-              className={`h-8 px-3 text-xs ${
-                leaderboardTab === 'global'
-                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-200'
-                  : 'bg-slate-900/70 border-slate-700 text-slate-300'
-              }`}
-              data-testid="button-leaderboard-tab-global"
-            >
-              Global
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setLeaderboardTab('friends')}
-              className={`h-8 px-3 text-xs ${
-                leaderboardTab === 'friends'
-                  ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200'
-                  : 'bg-slate-900/70 border-slate-700 text-slate-300'
-              }`}
-              data-testid="button-leaderboard-tab-friends"
-            >
-              Friends
-            </Button>
-            <div className="ml-auto">
-              <Button
-                type="button"
-                onClick={() => { void refreshLeaderboard(leaderboardTab, LEADERBOARD_MODAL_LIMIT); }}
-                className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-500"
-                data-testid="button-leaderboard-refresh-modal"
-              >
-                Refresh
-              </Button>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-slate-400">
-            {leaderboardTab === 'global'
-              ? `Global rankings (top ${LEADERBOARD_MODAL_LIMIT})`
-              : `Friends rankings (top ${LEADERBOARD_MODAL_LIMIT})`}
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto space-y-2 pr-1">
-            {(leaderboardTab === 'global' ? leaderboardLoading : friendsLeaderboardLoading) ? (
-              <div className="rounded border border-slate-700/50 bg-slate-900/70 p-3 text-sm text-slate-300">
-                Loading leaderboard...
-              </div>
-            ) : (leaderboardTab === 'global' ? leaderboardError : friendsLeaderboardError) ? (
-              <div className="rounded border border-red-500/35 bg-red-500/10 p-3 text-sm text-red-300">
-                {leaderboardTab === 'global' ? leaderboardError : friendsLeaderboardError}
-              </div>
-            ) : (leaderboardTab === 'global' ? leaderboardEntries : friendsLeaderboardEntries).length === 0 ? (
-              <div className="rounded border border-slate-700/50 bg-slate-900/70 p-3 text-sm text-slate-400">
-                No entries yet.
-              </div>
-            ) : (
-              (leaderboardTab === 'global' ? leaderboardEntries : friendsLeaderboardEntries).map((entry) => (
-                <div
-                  key={`${leaderboardTab}-${entry.rank}-${entry.steamId}`}
-                  className="flex items-center justify-between rounded border border-amber-500/20 bg-slate-950/70 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-mono text-amber-200">#{entry.rank}</p>
-                    <p className="truncate text-xs text-slate-300">{entry.personaName}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400">Ascension</p>
-                    <p className="text-sm font-mono text-cyan-300">{entry.score}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Loot Box Modal */}
-      <Dialog
-        open={lootBoxReward !== null && isLootBoxDialogOpen}
-        onOpenChange={(open) => {
-          if (open) {
-            setIsLootBoxDialogOpen(true);
-            setIsLootBoxMinimized(false);
-            return;
-          }
-          clearLootBoxOpeningSequence();
-          setLootBoxOpeningPhase('idle');
-          setIsLootBoxDialogOpen(false);
-          if (lootBoxReward) setIsLootBoxMinimized(true);
-        }}
-      >
-        <DialogContent className="max-w-md bg-card/95 border-amber-500/30 z-[55]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-amber-400">
-              <Sparkles className="w-5 h-5" /> Ascension Loot Box
-            </DialogTitle>
-          </DialogHeader>
-
-          {lootBoxReward && (
-            <div className="space-y-4">
-              {!lootBoxOpened ? (
-                <div className="space-y-4 text-center">
-                  <motion.div
-                    className="relative mx-auto h-44 w-52 [perspective:1200px]"
-                    animate={
-                      isLootBoxCharging
-                        ? { y: [0, -10, 0], scale: [1, 1.03, 1] }
-                        : isLootBoxBursting
-                          ? { y: [0, -16, 2, 0], scale: [1, 1.12, 0.95, 1] }
-                          : { y: [0, -6, 0] }
-                    }
-                    transition={
-                      isLootBoxCharging
-                        ? { duration: 0.52, repeat: Infinity, ease: 'easeInOut' }
-                        : isLootBoxBursting
-                          ? { duration: 0.5, ease: 'easeOut' }
-                          : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }
-                    }
-                  >
-                    <motion.div
-                      className="absolute left-1/2 top-20 h-32 w-40 -translate-x-1/2 -translate-y-1/2 [transform-style:preserve-3d]"
-                      animate={
-                        isLootBoxCharging
-                          ? { rotateY: [0, 14, -14, 0], rotateX: [0, -5, 2, 0], scale: [1, 1.04, 1] }
-                          : isLootBoxBursting
-                            ? { rotateY: [0, 30, -24, 0], rotateX: [0, -9, 4, 0], scale: [1, 1.15, 0.94, 1] }
-                            : { rotateY: [0, 6, -6, 0], rotateX: [0, -2, 0] }
-                      }
-                      transition={
-                        isLootBoxCharging
-                          ? { duration: 0.42, repeat: Infinity, ease: 'easeInOut' }
-                          : isLootBoxBursting
-                            ? { duration: 0.46, ease: 'easeOut' }
-                            : { duration: 3, repeat: Infinity, ease: 'easeInOut' }
-                      }
-                    >
-                      <div
-                        className="absolute inset-0 rounded-xl border [transform:translateZ(16px)]"
-                        style={{
-                          borderColor: activeLootBoxColors.accent,
-                          background: `linear-gradient(180deg, ${activeLootBoxColors.bodyFrom} 0%, ${activeLootBoxColors.bodyVia} 55%, ${activeLootBoxColors.bodyTo} 100%)`,
-                          boxShadow: isLootBoxOpening
-                            ? `0 16px 36px rgba(15,23,42,0.75), 0 0 52px ${activeLootBoxColors.glow}`
-                            : `0 14px 30px rgba(15,23,42,0.7), 0 0 35px ${activeLootBoxColors.glow}`,
-                        }}
-                      />
-                      <div
-                        className="absolute left-1 top-2 h-24 w-8 rounded-lg border [transform:rotateY(-68deg)_translateZ(6px)]"
-                        style={{
-                          borderColor: activeLootBoxColors.accent,
-                          background: activeLootBoxColors.sideLeft,
-                        }}
-                      />
-                      <div
-                        className="absolute right-1 top-2 h-24 w-8 rounded-lg border [transform:rotateY(68deg)_translateZ(6px)]"
-                        style={{
-                          borderColor: activeLootBoxColors.accent,
-                          background: activeLootBoxColors.sideRight,
-                        }}
-                      />
-                      <div
-                        className="absolute left-1/2 top-1 h-12 w-36 -translate-x-1/2 rounded-xl border [transform:rotateX(68deg)_translateZ(18px)]"
-                        style={{
-                          borderColor: activeLootBoxColors.accent,
-                          background: `linear-gradient(180deg, ${activeLootBoxColors.topFrom} 0%, ${activeLootBoxColors.topTo} 100%)`,
-                        }}
-                      />
-                      <div className="absolute left-1/2 top-16 h-16 w-[4px] -translate-x-1/2 rounded-full [transform:translateZ(18px)]" style={{ background: activeLootBoxColors.core, boxShadow: `0 0 10px ${activeLootBoxColors.glow}` }} />
-                      <div className="absolute left-[24%] top-[56%] h-14 w-[3px] rounded-full [transform:translateZ(18px)]" style={{ background: activeLootBoxColors.core, boxShadow: `0 0 8px ${activeLootBoxColors.glow}` }} />
-                      <div className="absolute right-[24%] top-[56%] h-14 w-[3px] rounded-full [transform:translateZ(18px)]" style={{ background: activeLootBoxColors.accent, boxShadow: `0 0 8px ${activeLootBoxColors.glow}` }} />
-                    </motion.div>
-                    <motion.div
-                      className="absolute left-1/2 top-32 h-5 w-40 -translate-x-1/2 rounded-full blur-xl"
-                      style={{ background: activeLootBoxColors.glow }}
-                      animate={
-                        isLootBoxCharging
-                          ? { opacity: [0.45, 0.95, 0.45], scaleX: [0.95, 1.22, 0.95] }
-                          : isLootBoxBursting
-                            ? { opacity: [0.55, 1, 0], scaleX: [1, 1.6, 2], scaleY: [1, 1.4, 2] }
-                            : { opacity: [0.35, 0.75, 0.35], scaleX: [0.9, 1.06, 0.9] }
-                      }
-                      transition={
-                        isLootBoxCharging
-                          ? { duration: 0.6, repeat: Infinity, ease: 'easeInOut' }
-                          : isLootBoxBursting
-                            ? { duration: 0.45, ease: 'easeOut' }
-                            : { duration: 1.9, repeat: Infinity, ease: 'easeInOut' }
-                      }
-                    />
-                    <motion.div
-                      className="absolute left-1/2 top-[56px] -translate-x-1/2"
-                      animate={
-                        isLootBoxCharging
-                          ? { y: [0, -5, 0], opacity: [0.85, 1, 0.85], scale: [1, 1.08, 1] }
-                          : isLootBoxBursting
-                            ? { y: [0, -10, -2], opacity: [1, 1, 0], scale: [1, 1.35, 0.8] }
-                            : { y: [0, -3, 0], opacity: [0.7, 1, 0.7] }
-                      }
-                      transition={
-                        isLootBoxCharging
-                          ? { duration: 0.52, repeat: Infinity, ease: 'easeInOut' }
-                          : isLootBoxBursting
-                            ? { duration: 0.42, ease: 'easeOut' }
-                            : { duration: 1.8, repeat: Infinity }
-                      }
-                    >
-                      <Sparkles className="h-8 w-8 drop-shadow-[0_0_10px_rgba(251,191,36,0.85)]" style={{ color: activeLootBoxColors.core }} />
-                    </motion.div>
-                    <AnimatePresence>
-                      {isLootBoxOpening && (
-                        <motion.div
-                          className="absolute inset-0 pointer-events-none"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                        >
-                          <motion.div
-                            className="absolute left-1/2 top-[52%] h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border"
-                            style={{ borderColor: activeLootBoxColors.accent }}
-                            initial={{ opacity: 0.35, scale: 0.65 }}
-                            animate={{ opacity: [0.35, 0], scale: [0.65, 1.65] }}
-                            transition={{ duration: 0.55, repeat: isLootBoxCharging ? Infinity : 0, ease: 'easeOut' }}
-                          />
-                          <motion.div
-                            className="absolute left-1/2 top-[52%] h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                            style={{ background: `radial-gradient(circle, ${activeLootBoxColors.glow} 0%, transparent 70%)` }}
-                            initial={{ opacity: 0.15, scale: 0.7 }}
-                            animate={{ opacity: isLootBoxBursting ? [0.2, 0.95, 0] : [0.2, 0.55, 0.2], scale: isLootBoxBursting ? [0.8, 1.6, 2.1] : [0.8, 1.15, 0.8] }}
-                            transition={{ duration: isLootBoxBursting ? 0.45 : 0.65, repeat: isLootBoxCharging ? Infinity : 0, ease: 'easeOut' }}
-                          />
-                          {isLootBoxBursting && (
-                            <motion.div
-                              className="absolute inset-0 rounded-xl bg-white"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: [0, 0.55, 0] }}
-                              transition={{ duration: 0.28, ease: 'easeOut' }}
-                            />
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                  <p className="text-sm text-slate-300">
-                    {isLootBoxCharging
-                      ? 'Decrypting lock sequence...'
-                      : isLootBoxBursting
-                        ? 'Jackpot breach confirmed!'
-                        : 'Boss dropped a loot box. Open it to claim your reward.'}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    Click Effects and Loot-Box crate skins are exclusive. Mine Skins can drop here too, and can also be bought in Crypto Shop.
-                  </p>
-                  <Button
-                    onClick={handleOpenLootBox}
-                    disabled={isLootBoxOpening}
-                    className="w-full bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-80 disabled:cursor-wait"
-                  >
-                    {isLootBoxCharging ? 'Charging Loot Box...' : isLootBoxBursting ? 'Revealing Reward...' : 'Open Loot Box'}
-                  </Button>
-                </div>
-              ) : lootBoxReward.kind === 'cosmetic' ? (
-                <div className="space-y-3">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4"
-                  >
-                    <p className="text-center text-xs uppercase tracking-wider text-cyan-300/80">Unlocked Cosmetic</p>
-                    <div className="mt-3 grid grid-cols-[140px_minmax(0,1fr)] gap-3 items-start">
-                      <div>{lootRewardDetails?.preview}</div>
-                      <div className="text-left">
-                        <p className="text-lg font-bold text-cyan-200">{lootBoxReward.itemName}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${lootRarityClass[lootBoxReward.rarity]}`}>
-                            {lootBoxReward.rarity.toUpperCase()}
-                          </span>
-                          <span className="text-[11px] text-slate-300">{lootTypeLabel[lootBoxReward.cosmeticType]}</span>
-                          {lootBoxReward.isAscensionItem && (
-                            <span className="rounded border border-fuchsia-400/45 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-300">
-                              Ascension Catalog
-                            </span>
-                          )}
-                        </div>
-                        {lootRewardDetails?.description && (
-                          <p className="mt-2 text-xs text-slate-300">{lootRewardDetails.description}</p>
-                        )}
-                        <div className="mt-3 space-y-1 rounded border border-cyan-500/20 bg-slate-950/55 p-2">
-                          <p className="text-[10px] uppercase tracking-wide text-cyan-300/75">Stats</p>
-                          {lootRewardDetails?.boostLines.length ? (
-                            lootRewardDetails.boostLines.map((line, idx) => (
-                              <p key={`${line}-${idx}`} className="text-xs text-emerald-300">{line}</p>
-                            ))
-                          ) : (
-                            <p className="text-xs text-slate-400">No direct stat boost.</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                  <p className="text-xs text-slate-400 text-center">
-                    Added to your Cosmetics Market inventory. Duplicate drops are blocked.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={handleEquipLootReward}
-                      disabled={isLootRewardEquipped}
-                      className="border-cyan-500/50 text-cyan-200 hover:bg-cyan-500/15 disabled:opacity-80"
-                    >
-                      {isLootRewardEquipped ? 'Equipped' : 'Equip Now'}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        clearLootBoxOpeningSequence();
-                        setLootBoxReward(null);
-                        setLootBoxOpened(false);
-                        setLootBoxOpeningPhase('idle');
-                        setIsLootBoxDialogOpen(false);
-                        setIsLootBoxMinimized(false);
-                      }}
-                      className="w-full"
-                    >
-                      Continue Run
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 text-center">
-                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-                    <p className="text-xs uppercase tracking-wider text-emerald-300/90">Loot Pool Exhausted</p>
-                    <p className="mt-1 text-sm text-emerald-200">
-                      No cosmetic items left to drop.
-                    </p>
-                    <p className="mt-2 text-base font-bold text-emerald-300">
-                      +{lootBoxReward.data} Data | +{lootBoxReward.credits} Nodes | +{lootBoxReward.crypto} Crypto
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => {
-                      clearLootBoxOpeningSequence();
-                      setLootBoxReward(null);
-                      setLootBoxOpened(false);
-                      setLootBoxOpeningPhase('idle');
-                      setIsLootBoxDialogOpen(false);
-                      setIsLootBoxMinimized(false);
-                    }}
-                    className="w-full"
-                  >
-                    Continue Run
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {lootBoxReward && !isLootBoxDialogOpen && isLootBoxMinimized && (
-        <motion.button
-          type="button"
-          onClick={reopenLootBoxDialog}
-          initial={{ opacity: 0, scale: 0.8, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.8, y: 12 }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.96 }}
-          className={`fixed bottom-4 z-[70] h-12 w-12 rounded-full border backdrop-blur-sm shadow-[0_0_20px_rgba(251,191,36,0.35)] ${
-            rightPanelOpen
-              ? (leftPanelOpen ? 'left-[336px]' : 'left-4')
-              : 'right-4'
-          } bg-amber-500/20 border-amber-400/60 text-amber-200`}
-          title="Loot box ready - click to reopen"
-          data-testid="lootbox-reopen-bubble"
-        >
-          <Sparkles className="mx-auto h-5 w-5" />
-          <span className="absolute -right-1 -top-1 rounded-full border border-amber-300/70 bg-amber-500 px-1 text-[10px] font-bold leading-4 text-slate-950">
-            1
-          </span>
-        </motion.button>
+      {isPrestigeOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <PrestigeShopDialog
+            open={isPrestigeOpen}
+            onOpenChange={setIsPrestigeOpen}
+            t={t}
+            prestigeAmount={resources.prestige.amount}
+            prestigeUpgrades={prestigeUpgrades}
+            prestigeShopSummary={prestigeShopSummary}
+            formatPrestigeEffect={formatPrestigeEffect}
+            buyPrestigeUpgrade={buyPrestigeUpgrade}
+            buyPrestigeUpgradeMax={buyPrestigeUpgradeMax}
+          />
+        </Suspense>
       )}
 
+      {/* Crypto Relic Shop Modal */}
+      {isCryptoRelicShopOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <CryptoRelicShopDialog
+            open={isCryptoRelicShopOpen}
+            onOpenChange={setIsCryptoRelicShopOpen}
+            l={l}
+            language={language}
+            totalAscensions={stats.totalAscensions}
+            activeMachineBoxSkinId={cosmetics.activeMachineBoxSkinId}
+            localizedCryptoRelicTree={localizedCryptoRelicTree}
+            machineBoxSkinsForShop={machineBoxSkinsForShop}
+            ownedMachineBoxSkinsSet={ownedMachineBoxSkinsSet}
+            isCryptoRelicShopUnlocked={isCryptoRelicShopUnlocked}
+            getRelicNodeLevel={getRelicNodeLevel}
+            isRelicEquipped={isRelicEquipped}
+            canBuyRelicNode={canBuyRelicNode}
+            relicBoostLines={relicBoostLines}
+            renderRelicGlyph={renderRelicGlyph}
+            canBuyMachineBoxSkin={canBuyMachineBoxSkin}
+            buyCryptoRelic={buyCryptoRelic}
+            buyCosmetic={buyCosmetic}
+            equipCosmetic={equipCosmetic}
+          />
+        </Suspense>
+      )}
+
+      {isBlackMarketOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <BlackMarketDialog
+            open={isBlackMarketOpen}
+            onOpenChange={setIsBlackMarketOpen}
+            l={l}
+            language={language}
+            totalAscensions={stats.totalAscensions}
+            resources={{
+              prestige: resources.prestige.amount,
+              credits: resources.credits.amount,
+              crypto: resources.crypto.amount,
+            }}
+            cosmetics={{
+              activeCapeId: cosmetics.activeCapeId,
+              activeWingId: cosmetics.activeWingId,
+              blackMarketClickOverflowPurchased: cosmetics.blackMarketClickOverflowPurchased,
+              blackMarketAdjacencyPurchased: cosmetics.blackMarketAdjacencyPurchased,
+            }}
+            equippedCapeName={equippedCape.name}
+            equippedWingName={equippedWing.name}
+            equippedSkinPalette={equippedSkin.palette}
+            localizedBlackMarketCapes={localizedBlackMarketCapes}
+            localizedBlackMarketWings={localizedBlackMarketWings}
+            localizedBlackMarketUpgrades={localizedBlackMarketUpgrades}
+            ownedCapesSet={ownedCapesSet}
+            ownedWingsSet={ownedWingsSet}
+            adjacencyFormationBonus={adjacencyFormationBonus}
+            getTotalCritChance={getTotalCritChance}
+            buyBlackMarketUpgrade={buyBlackMarketUpgrade}
+            buyCosmetic={buyCosmetic}
+            equipCosmetic={equipCosmetic}
+          />
+        </Suspense>
+      )}
+
+      {isParagonLabOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <ParagonLabDialog
+            open={isParagonLabOpen}
+            onOpenChange={setIsParagonLabOpen}
+            l={l}
+            language={language}
+            totalAscensions={stats.totalAscensions}
+            prestigeAmount={resources.prestige.amount}
+            localizedParagonUpgrades={localizedParagonUpgrades}
+            totalParagonLevels={totalParagonLevels}
+            totalParagonLevelCap={totalParagonLevelCap}
+            paragonCompletionPercent={paragonCompletionPercent}
+            nextParagonUpgradeCost={nextParagonUpgradeCost}
+            getParagonUpgradeLevel={getParagonUpgradeLevel}
+            buyParagonUpgrade={buyParagonUpgrade}
+            paragonEliteOffers={paragonEliteOffers}
+            isParagonOfferOwned={isParagonOfferOwned}
+            isParagonOfferEquipped={isParagonOfferEquipped}
+            renderParagonOfferPreview={renderParagonOfferPreview}
+            buyCosmetic={buyCosmetic}
+            equipCosmetic={equipCosmetic}
+          />
+        </Suspense>
+      )}
+      {/* Achievements Modal */}
+      {isAchievementsOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <AchievementsDialog
+            open={isAchievementsOpen}
+            onOpenChange={setIsAchievementsOpen}
+            l={l}
+            achievements={achievements}
+            stats={stats}
+            claimAchievementReward={claimAchievementReward}
+            claimAllAchievements={claimAllAchievements}
+          />
+        </Suspense>
+      )}
+
+      {/* Stats Modal */}
+      {isStatsOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <StatsDialog
+            open={isStatsOpen}
+            onOpenChange={setIsStatsOpen}
+            l={l}
+            stats={stats}
+            formatNumber={formatNumber}
+          />
+        </Suspense>
+      )}
+      {celebration && (
+        <Celebration
+          key={celebration.key}
+          kind={celebration.kind}
+          title={celebration.title}
+          subtitle={celebration.subtitle}
+          reduced={reduceSceneGlow}
+          onDone={() => setCelebration(null)}
+        />
+      )}
+      {IS_DEMO_BUILD && !showDemoEnd && <DemoPrompts language={language} cryptoMiningUnlocked={(upgrades.find(u => u.id === 'unlock_crypto_mining')?.count ?? 0) > 0} />}
+      {!IS_DEMO_BUILD && whatsNew.seenVersion !== WHATS_NEW_VERSION && !isBossEncounterActive && (
+        <WhatsNewDialog language={language} ascensions={stats.totalAscensions} giftClaimed={whatsNew.giftClaimed}
+          onClaimGift={() => {
+            const reward = claimWelcomeGift();
+            markWhatsNewSeen();
+            if (reward) {
+              clearLootBoxOpeningSequence();
+              setLootBoxReward(reward);
+              setLootBoxOpened(false);
+              setLootBoxOpeningPhase('idle');
+              setIsLootBoxDialogOpen(true);
+              setIsLootBoxMinimized(false);
+            }
+          }}
+          onClose={markWhatsNewSeen} />
+      )}
+      {showDemoEnd && !isBossEncounterActive && <DemoEndScreen language={language} ascensions={stats.totalAscensions} onQuit={() => { void saveGame(); setTimeout(() => window.close(), 300); }} />}
+      {showFinaleCredits && (
+        <FinaleCredits totalAscensions={stats.totalAscensions} onContinue={() => setShowFinaleCredits(false)} />
+      )}
+      {/* Leaderboards Modal */}
+      {isLeaderboardOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <LeaderboardsDialog
+            open={isLeaderboardOpen}
+            onOpenChange={setIsLeaderboardOpen}
+            l={l}
+            leaderboardTab={leaderboardTab}
+            leaderboardPeriod={leaderboardPeriod}
+            onLeaderboardTabChange={setLeaderboardTab}
+            onLeaderboardPeriodChange={setLeaderboardPeriod}
+            onRefresh={() => { void refreshLeaderboard(leaderboardTab, leaderboardPeriod, LEADERBOARD_MODAL_LIMIT); }}
+            currentUtcCycleKey={currentUtcCycleKey}
+            currentDailyAscensionScore={currentDailyAscensionScore}
+            leaderboardEntries={leaderboardEntries}
+            leaderboardLoading={leaderboardLoading}
+            leaderboardError={leaderboardError}
+            friendsLeaderboardEntries={friendsLeaderboardEntries}
+            friendsLeaderboardLoading={friendsLeaderboardLoading}
+            friendsLeaderboardError={friendsLeaderboardError}
+            dailyLeaderboardEntries={dailyLeaderboardEntries}
+            endlessLeaderboardEntries={endlessLeaderboardEntries}
+            endlessLeaderboardLoading={endlessLeaderboardLoading}
+            endlessLeaderboardError={endlessLeaderboardError}
+            endlessUnlocked={finale.completed}
+            dailyLeaderboardLoading={dailyLeaderboardLoading}
+            dailyLeaderboardError={dailyLeaderboardError}
+            dailyFriendsLeaderboardEntries={dailyFriendsLeaderboardEntries}
+            dailyFriendsLeaderboardLoading={dailyFriendsLeaderboardLoading}
+            dailyFriendsLeaderboardError={dailyFriendsLeaderboardError}
+            limit={LEADERBOARD_MODAL_LIMIT}
+          />
+        </Suspense>
+      )}
+      {/* Loot Box Modal */}
+      <Suspense fallback={null}>
+        <LootBoxDialog
+          open={lootBoxReward !== null && isLootBoxDialogOpen}
+          onOpenChange={handleLootBoxDialogOpenChange}
+          l={l}
+          language={language}
+          lootBoxReward={lootBoxReward}
+          lootBoxOpened={lootBoxOpened}
+          isLootBoxOpening={isLootBoxOpening}
+          isLootBoxCharging={isLootBoxCharging}
+          isLootBoxBursting={isLootBoxBursting}
+          activeLootBoxColors={activeLootBoxColors}
+          lootRewardDetails={lootRewardDetails}
+          lootRarityClass={lootRarityClass}
+          onOpenLootBox={handleOpenLootBox}
+          onEquipLootReward={handleEquipLootReward}
+          isLootRewardEquipped={isLootRewardEquipped}
+          onContinueRun={handleCloseLootBoxReward}
+          showMinimizedBubble={Boolean(lootBoxReward && !isLootBoxDialogOpen && isLootBoxMinimized)}
+          onReopen={reopenLootBoxDialog}
+          leftPanelOpen={leftPanelOpen}
+          rightPanelOpen={rightPanelOpen}
+        />
+      </Suspense>
       {/* Cosmetics Market Modal */}
-      <Dialog open={isCosmeticsOpen} onOpenChange={setIsCosmeticsOpen}>
-        <DialogContent className="w-[95vw] max-w-6xl h-[84vh] grid-rows-[auto_minmax(0,1fr)] content-start bg-card/95 border-purple-500/30 z-[50]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-purple-400">
-              <Sparkles className="w-5 h-5" /> Cosmetics Market
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-hidden -mx-6 -mb-6 px-6 pb-6">
-            <div className="h-full min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-4">
-              <div className="min-h-0 overflow-hidden">
-                <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground">Loading...</div>}>
-                  <CosmeticsPanel
-                    activeBoosts={getPetBoosts()}
-                    data={resources.data.amount}
-                    credits={resources.credits.amount}
-                    crypto={resources.crypto.amount}
-                    ascension={resources.prestige.amount}
-                    totalAscensions={stats.totalAscensions}
-                    skins={marketSkins}
-                    themes={ROOM_THEMES}
-                    accessories={marketAccessories}
-                    headStyles={marketHeadStyles}
-                    pets={CHARACTER_PETS}
-                    clickEffects={CLICK_EFFECTS}
-                    boxSkins={LOOT_BOX_SKINS}
-                    ascensionPets={ASCENSION_PETS}
-                    ascensionSkins={ASCENSION_SKINS}
-                    ascensionHeadStyles={ASCENSION_HEAD_STYLES}
-                    ascensionAccessories={ASCENSION_ACCESSORIES}
-                    ascensionThemes={ASCENSION_ROOM_THEMES}
-                    ownedSkins={ownedSkinsSet}
-                    ownedThemes={ownedThemesSet}
-                    ownedAccessories={ownedAccessoriesSet}
-                    ownedHeadStyles={ownedHeadStylesSet}
-                    ownedPets={ownedPetsSet}
-                    ownedClickEffects={ownedClickEffectsSet}
-                    ownedBoxSkins={ownedLootBoxSkinsSet}
-                    ownedAscensionPets={ownedAscensionPetsSet}
-                    activeSkin={cosmetics.activeSkinId}
-                    activeTheme={cosmetics.activeThemeId}
-                    activeAccessory={cosmetics.activeAccessoryId}
-                    activeHeadStyle={cosmetics.activeHeadStyleId}
-                    activePet={cosmetics.activePetId}
-                    activeClickEffect={cosmetics.activeClickEffectId}
-                    activeBoxSkin={cosmetics.activeLootBoxSkinId}
-                    activeAscensionPet={cosmetics.activeAscensionPetId}
-                    onBuySkin={(skinId) => buyCosmetic('skin', skinId)}
-                    onBuyTheme={(themeId) => buyCosmetic('theme', themeId)}
-                    onBuyAccessory={(accessoryId) => buyCosmetic('accessory', accessoryId)}
-                    onBuyHeadStyle={(headStyleId) => buyCosmetic('headstyle', headStyleId)}
-                    onBuyPet={(petId) => buyCosmetic('pet', petId)}
-                    onEquipSkin={(skinId) => equipCosmetic('skin', skinId)}
-                    onEquipTheme={(themeId) => equipCosmetic('theme', themeId)}
-                    onEquipAccessory={(accessoryId) => equipCosmetic('accessory', accessoryId)}
-                    onEquipHeadStyle={(headStyleId) => equipCosmetic('headstyle', headStyleId)}
-                    onEquipPet={(petId) => equipCosmetic('pet', petId)}
-                    onEquipClickEffect={(effectId) => equipCosmetic('clickeffect', effectId)}
-                    onEquipBoxSkin={(skinId) => equipCosmetic('lootboxskin', skinId)}
-                    onEquipAscensionPet={(petId) => equipCosmetic('prestigepet', petId)}
-                  />
-                </Suspense>
-              </div>
-
-              <div className="hidden lg:flex min-h-0 flex-col rounded-xl border border-cyan-500/30 bg-slate-950/60 p-3 shadow-[0_0_24px_rgba(6,182,212,0.12)]">
-                <div className="mb-3">
-                  <p className="text-xs uppercase tracking-[0.18em] text-cyan-300/80">Live Character Preview</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Updates instantly as you equip cosmetics.</p>
-                </div>
-
-                <div className="relative flex-1 min-h-[420px] overflow-hidden rounded-lg border border-cyan-500/25 bg-slate-950/80">
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background:
-                        'radial-gradient(ellipse at center, rgba(34,211,238,0.14) 0%, rgba(2,6,23,0.85) 58%, rgba(2,6,23,0.98) 100%)',
-                    }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-                    <div style={{ transform: 'scale(6.2)', transformOrigin: 'center center' }}>
-                      <motion.div
-                        animate={{ y: [0, -6, 0] }}
-                        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <CSSCharacter
-                          reaction="idle"
-                          facingRight={true}
-                          skinPalette={{
-                            ...equippedSkin.palette,
-                            paletteMode: equippedSkin.paletteMode,
-                            gradientColors: equippedSkin.gradientColors,
-                            animationSpeed: equippedSkin.animationSpeed,
-                          }}
-                          accessoryId={equippedAccessory.id}
-                          headStyleId={equippedHeadStyle.id}
-                        />
-                      </motion.div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Theme</p>
-                    <p className="text-xs text-cyan-200 truncate">{equippedTheme.name}</p>
-                  </div>
-                  <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Skin</p>
-                    <p className="text-xs text-cyan-200 truncate">{equippedSkin.name}</p>
-                  </div>
-                  <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Head</p>
-                    <p className="text-xs text-cyan-200 truncate">{equippedHeadStyle.name}</p>
-                  </div>
-                  <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Accessory</p>
-                    <p className="text-xs text-cyan-200 truncate">{equippedAccessory.name}</p>
-                  </div>
-                  <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1 col-span-2">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500">Click Effect</p>
-                    <p className="text-xs text-cyan-200 truncate">
-                      {equippedClickEffect ? equippedClickEffect.name : 'None'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      {isCosmeticsOpen && (
+        <Suspense fallback={<div className="fixed inset-0 z-[60]" />}>
+          <CosmeticsMarketDialog
+            open={isCosmeticsOpen}
+            onOpenChange={setIsCosmeticsOpen}
+            l={l}
+            loadingLabel={l('Loading...', 'Yukleniyor...', 'Carregando...', 'Cargando...')}
+            panelProps={cosmeticsPanelProps}
+            equippedTheme={equippedTheme}
+            equippedSkin={equippedSkin}
+            equippedAccessory={equippedAccessory}
+            equippedHeadStyle={equippedHeadStyle}
+            equippedClickEffect={equippedClickEffect}
+          />
+        </Suspense>
+      )}
       {/* Floating Pickups */}
       {!isBossEncounterActive && (
         <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
@@ -2119,9 +2153,9 @@ export default function GamePage() {
             <FloatingPickup
               key={pickup.id}
               pickup={pickup}
-              onRemove={(id) => { handlePickupClick(pickup); }}
-              onCritClick={() => { handleCritPickupClick(); onCritPickupClick(); }}
-              playSound={playSound}
+              onCollect={handlePickupClick}
+              onCritCollect={handleFloatingCritPickupCollect}
+              onMiss={handleFloatingPickupMiss}
             />
           ))}
         </div>
@@ -2137,43 +2171,54 @@ export default function GamePage() {
         <div className="w-80 h-full">
           <ResourcePanel 
             resources={resources}
+            prestigeBreakdown={getPrestigeGainBreakdown(resources.crypto.amount, stats.totalAscensions, prestigeUpgrades)}
+            floaterPaceMultiplier={upgradePaceDelayMultiplier}
+            automation={automation}
+            onSetAutomation={setAutomation}
+            challenges={challenges}
+            onStartChallenge={startChallenge}
+            finaleCompleted={finale.completed}
+            finaleWeaken={getFinaleWeaken(finale)}
+            abyssVariant={finale.abyssVariant}
+            onSetAbyssVariant={setAbyssVariant}
+            onStartFinale={() => { setIsFinaleEncounter(true); setIsBossEncounterActive(true); }}
+            onAbandonChallenge={abandonChallenge}
             upgrades={upgrades}
             onSell={handleSellResource} 
             onSellAll={handleSellAllResource} 
-            totalCritChance={getTotalCritChance()} 
-            interestRate={getInterestRate()} 
-            blackMarketUnlocked={(upgrades.find(u => u.id === 'unlock_black_market')?.count ?? 0) > 0} 
-            onSettingsClick={() => setIsSettingsOpen(true)} 
-            onAchievementsClick={() => setIsAchievementsOpen(true)}
-            onStatsClick={() => setIsStatsOpen(true)}
-            onCosmeticsClick={() => setIsCosmeticsOpen(true)}
-            achievementCount={{ 
-              unlocked: achievements.filter(a => a.unlocked).length, 
-              total: achievements.filter(a => !a.hidden || a.unlocked).length 
-            }}
+            conversionDataCost={conversionDataCost}
+            conversionNodeGain={conversionNodeGain}
+            totalCritChance={getTotalCritChance()}  
+            blackMarketUnlocked={isBlackMarketUnlockedByUpgrade} 
+            onSettingsClick={handleOpenSettings} 
+            onAchievementsClick={handleOpenAchievements}
+            onStatsClick={handleOpenStats}
+            onCosmeticsClick={handleOpenCosmetics}
+            achievementCount={resourceAchievementCount}
             unclaimedAchievements={unclaimedAchievements}
             elapsedTime={elapsedTime} 
             prestigeAmount={resources.prestige.amount}
-            onStartBossEncounter={() => setIsBossEncounterActive(true)}
+            onStartBossEncounter={handleStartBossEncounter}
             getPrestigeGain={getPrestigeGain}
             ascensionLevel={stats.totalAscensions}
-            onOpenPrestige={() => {
-              completeTutorialObjective?.('view_prestige');
-              setIsPrestigeOpen(true);
-              playSound('prestige_realm');
-            }}
+            onOpenPrestige={handleOpenPrestige}
             onAscendTutorialStep={handleAscendTutorialStep}
-            onCryptoRelicsClick={() => setIsCryptoRelicShopOpen(true)}
+            onCryptoRelicsClick={handleOpenCryptoRelicShop}
             cryptoRelicShopUnlocked={isCryptoRelicShopUnlocked}
             cryptoRelicUnlockRequirement={CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION}
+            onOpenBlackMarket={handleOpenBlackMarket}
+            blackMarketUnlockRequirement={BLACK_MARKET_UNLOCK_ASCENSION}
+            onOpenParagonLab={handleOpenParagonLab}
+            paragonLabUnlocked={isParagonLabUnlocked}
+            paragonLabUnlockRequirement={PARAGON_LAB_UNLOCK_ASCENSION}
             tutorialHighlight={tutorialHighlight}
             playSound={playSound}
             leaderboardEntries={leaderboardEntries}
             leaderboardLoading={leaderboardLoading}
             leaderboardError={leaderboardError}
             leaderboardMyRank={leaderboardMyRank}
-            onRefreshLeaderboard={() => { void refreshLeaderboard('global', LEADERBOARD_PANEL_LIMIT); }}
-            onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+            onRefreshLeaderboard={handleRefreshLeaderboardPanel}
+            onOpenLeaderboard={handleOpenLeaderboard}
           />
         </div>
       </motion.div>
@@ -2203,24 +2248,33 @@ export default function GamePage() {
 
       {isBossEncounterActive ? (
         <div className="flex-1 relative">
-          <Suspense fallback={<div className="flex items-center justify-center h-full text-cyan-400 font-mono">Loading Boss...</div>}>
+          <Suspense fallback={<div className="flex items-center justify-center h-full text-cyan-400 font-mono">{l('Loading Boss...', 'Boss Yükleniyor...', 'Carregando Chefe...', 'Cargando Jefe...')}</div>}>
           <BossEncounter
             isOpen={true}
-            onClose={() => setIsBossEncounterActive(false)}
+            onClose={() => { setIsBossEncounterActive(false); setIsFinaleEncounter(false); }}
+            isFinale={isFinaleEncounter}
+            critChance={getTotalCritChance()}
+            finaleWeaken={getFinaleWeaken(finale)}
+            variant={isFinaleEncounter ? undefined : currentBossVariant}
             onVictory={() => {
-              const reward = ascendVictory();
-              setIsBossEncounterActive(false);
-              setActiveUpgradeTab('fabrication');
-              if (reward) {
-                clearLootBoxOpeningSequence();
-                setLootBoxReward(reward);
-                setLootBoxOpened(false);
-                setLootBoxOpeningPhase('idle');
-                setIsLootBoxDialogOpen(true);
-                setIsLootBoxMinimized(false);
+              if (isFinaleEncounter) {
+                completeFinale();
+                setIsFinaleEncounter(false);
+                setIsBossEncounterActive(false);
+                celebrate('finale', l('THE CORE IS BREACHED', 'ÇEKİRDEK KIRILDI', 'O NÚCLEO FOI INVADIDO', 'EL NÚCLEO HA CAÍDO'));
+                setTimeout(() => setShowFinaleCredits(true), 4800);
+                return;
               }
+              handleAscendVictory(currentBossVariant);
             }}
             onDefeat={() => {
+              if (isFinaleEncounter) {
+                // Losing the finale costs nothing; each loss weakens the Core by 10% for the next try (max -50%).
+                recordFinaleDefeat();
+                setIsFinaleEncounter(false);
+                setIsBossEncounterActive(false);
+                return;
+              }
               ascendDefeat();
               setIsBossEncounterActive(false);
               setActiveUpgradeTab('fabrication');
@@ -2234,33 +2288,38 @@ export default function GamePage() {
           </Suspense>
         </div>
       ) : (
-        <MainView 
+        <MainView
           onClick={handleCoreClick}
+          onAutoClickBurst={handleCoreAutoClickBurst}
           onRightClick={handleCoreRightClick}
           onTutorialCameraZoom={handleTutorialCameraZoom}
           onTutorialCameraPan={handleTutorialCameraPan}
           onAddDebugData={addDebugData}
           onAddDebugCredits={addDebugCredits}
           onAddDebugCrypto={addDebugCrypto}
+          onAddDebugPrestige={addDebugPrestige}
           onAddDebugAscensionCount={addDebugAscensionCount}
+          onSpawnDebugPickup={spawnDebugPickup}
+          onSpawnAllDebugPickups={spawnAllDebugPickups}
+          onForceDebugTimeWarp={forceDebugTimeWarp}
           lastUpgradeInfo={lastUpgradeInfo}
-          onClearUpgrade={() => setLastUpgradeInfo(null)}
+          onClearUpgrade={handleClearLastUpgradeInfo}
           dataPerSecond={resources.data.perSecond}
           upgrades={upgrades}
           totalData={resources.data.amount}
           totalCredits={resources.credits.amount}
           onAchievementUnlocked={achievementUnlocked}
           onPickupCollected={pickupCollected}
-          onClearAchievement={() => setAchievementUnlocked(false)}
-          onClearPickup={() => setPickupCollected(false)}
+          onClearAchievement={handleClearAchievementToast}
+          onClearPickup={handleClearPickupToast}
           autoClickBoostEndTime={autoClickBoostEndTime}
-          themeColors={{ ...equippedTheme.colors, orbitalPlanet: equippedTheme.orbitalPlanet }}
-          skinPalette={{ 
-            ...equippedSkin.palette, 
-            paletteMode: equippedSkin.paletteMode, 
-            gradientColors: equippedSkin.gradientColors,
-            animationSpeed: equippedSkin.animationSpeed
-          }}
+          critBoostEndTime={critBoostEndTime}
+          activeTimeWarpMiniGame={activeTimeWarpMiniGame}
+          timeWarpFeedback={timeWarpFeedback}
+          onClearTimeWarpFeedback={clearTimeWarpFeedback}
+          onTimeWarpMiniGameClick={onTimeWarpMiniGameClick}
+          themeColors={mainViewThemeColors}
+          skinPalette={mainViewSkinPalette}
           activeAccessoryId={equippedAccessory.id}
           activeCapeId={equippedCape.id}
           activeWingId={equippedWing.id}
@@ -2268,20 +2327,20 @@ export default function GamePage() {
           activePetId={equippedPet.id}
           activeAscensionPetId={equippedAscensionPet.id}
           activeClickEffectId={equippedClickEffect?.id || 'none'}
-          activeMachineBoxSkin={{
-            id: equippedMachineBoxSkin.id,
-            colors: equippedMachineBoxSkin.colors,
-          }}
+          abyssHue={finale.completed && finale.abyssVariant > 0 ? ABYSS_VARIANT_HUES[finale.abyssVariant - 1] : null}
+          activeMachineBoxSkin={mainViewMachineBoxSkin}
           ascensionLevel={stats.totalAscensions}
           machinePositions={roomLayout.machinePositions}
           onUpdatePosition={updateMachinePosition}
           onRemovePosition={removeMachinePosition}
           tutorialHighlight={tutorialHighlight}
           showBlackMarketShip={isBlackMarketUnlocked}
-          onOpenBlackMarket={() => {
-            playSound('buy_black');
-            setIsBlackMarketOpen(true);
-          }}
+          reduceSceneGlow={reduceSceneGlow}
+          onOpenBlackMarket={handleOpenBlackMarket}
+          showCryptoRelicShip={isCryptoRelicShopUnlocked}
+          onOpenCryptoRelicShop={handleOpenCryptoRelicShop}
+          showParagonShip={isParagonLabUnlocked}
+          onOpenParagonShop={handleOpenParagonLab}
         />
       )}
 
@@ -2327,7 +2386,7 @@ export default function GamePage() {
             onBulkOptionChange={setSelectedBulkOption}
             contracts={contracts}
             onClaimContractReward={handleClaimContract}
-            onRefreshContracts={() => refreshContracts()}
+            onRefreshContracts={handleRefreshContracts}
             totalCritChance={getTotalCritChance()}
             ascensionLevel={stats.totalAscensions}
             tutorialHighlight={tutorialHighlight}
@@ -2337,24 +2396,9 @@ export default function GamePage() {
         </div>
       </motion.div>
 
-      {/* Debug Panel - For Development */}
-      {isDebugPanelVisible && (
-        <DebugPanel
-          onAddData={addDebugData}
-          onAddCredits={addDebugCredits}
-          onAddCrypto={addDebugCrypto}
-          onAddPrestige={addDebugPrestige}
-          onAddAscensionCount={addDebugAscensionCount}
-          onSetTime={setDebugTime}
-          onReset={resetGame}
-          onSpawnPickup={spawnDebugPickup}
-          onHide={() => setIsDebugPanelVisible(false)}
-        />
-      )}
-
       {/* Tutorial Panel */}
       <TutorialPanel
-        currentPhase={getCurrentTutorialPhase()}
+        currentPhase={currentTutorialPhase}
         tutorial={tutorial}
         onSkip={skipTutorial}
         onStart={startTutorial}
@@ -2370,76 +2414,38 @@ export default function GamePage() {
       </Suspense>
 
       {/* Ascension Pet Unlock Modal */}
-      <Dialog
-        open={!!newlyUnlockedAscensionPet}
-        onOpenChange={(open) => {
-          if (!open) claimAscensionPetUnlock();
-        }}
-      >
-        <DialogContent className="max-w-md bg-card/95 border-purple-500/40 z-[120]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-display text-purple-300">
-              <Sparkles className="w-5 h-5" /> Ascension Pet Unlocked
-            </DialogTitle>
-          </DialogHeader>
-          {newlyUnlockedAscensionPet && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center shrink-0">
-                    <Cpu className="w-5 h-5 text-purple-300" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-purple-100">{newlyUnlockedAscensionPet.name}</p>
-                    <p className="text-xs text-muted-foreground">{newlyUnlockedAscensionPet.description}</p>
-                    <p className="text-[11px] text-purple-200/80 mt-1">
-                      Unlock Requirement: {newlyUnlockedAscensionPet.ascensionRequirement ?? 0} ascensions
-                    </p>
-                  </div>
-                </div>
-              </div>
+      <Suspense fallback={null}>
+        <AscensionPetUnlockDialog
+          open={!!newlyUnlockedAscensionPet}
+          onOpenChange={(open: boolean) => {
+            if (!open) claimAscensionPetUnlock();
+          }}
+          l={l}
+          pet={newlyUnlockedAscensionPet}
+          boostLines={ascensionPetBoostLines}
+          onClaim={claimAscensionPetUnlock}
+          onEquip={equipAscensionPetUnlock}
+        />
+      </Suspense>
 
-              <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 space-y-1.5">
-                <p className="text-[10px] uppercase tracking-widest text-cyan-300/80">Boosts</p>
-                {newlyUnlockedAscensionPet.boost.productionBoost ? (
-                  <p className="text-xs text-cyan-100">+{newlyUnlockedAscensionPet.boost.productionBoost}% Production</p>
-                ) : null}
-                {newlyUnlockedAscensionPet.boost.clickBoost ? (
-                  <p className="text-xs text-cyan-100">+{newlyUnlockedAscensionPet.boost.clickBoost}% Click</p>
-                ) : null}
-                {newlyUnlockedAscensionPet.boost.critBoost ? (
-                  <p className="text-xs text-cyan-100">+{newlyUnlockedAscensionPet.boost.critBoost}% Crit</p>
-                ) : null}
-                {newlyUnlockedAscensionPet.boost.cryptoBoost ? (
-                  <p className="text-xs text-cyan-100">+{newlyUnlockedAscensionPet.boost.cryptoBoost}% Crypto</p>
-                ) : null}
-                {newlyUnlockedAscensionPet.boost.interestBoost ? (
-                  <p className="text-xs text-cyan-100">+{newlyUnlockedAscensionPet.boost.interestBoost}% Interest</p>
-                ) : null}
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={claimAscensionPetUnlock}
-                  className="border-border/70"
-                  data-testid="button-claim-ascension-pet"
-                >
-                  Claim
-                </Button>
-                <Button
-                  onClick={equipAscensionPetUnlock}
-                  className="bg-purple-600/80 hover:bg-purple-600 text-white"
-                  data-testid="button-equip-ascension-pet"
-                >
-                  Equip
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
+      {/* Tutorial Completion Reward Modal */}
+      <Suspense fallback={null}>
+        <TutorialRewardDialog
+          open={!!newlyUnlockedTutorialReward}
+          onOpenChange={(open: boolean) => {
+            if (!open) claimTutorialRewardUnlock();
+          }}
+          l={l}
+          language={language}
+          reward={newlyUnlockedTutorialReward}
+          preview={tutorialRewardPreview}
+          rewardTypeLabel={newlyUnlockedTutorialReward ? tutorialRewardTypeLabel(newlyUnlockedTutorialReward) : ''}
+          localizedInfo={localizedTutorialRewardInfo}
+          formatNumber={formatNumber}
+          onOpenCosmetics={handleOpenTutorialRewardCosmetics}
+          onContinue={claimTutorialRewardUnlock}
+        />
+      </Suspense>
       {/* Achievement Unlock Toast */}
       <AnimatePresence>
         {newlyUnlockedAchievement && (
@@ -2454,7 +2460,7 @@ export default function GamePage() {
                 <Trophy className="w-5 h-5 text-amber-400" />
               </div>
               <div>
-                <p className="text-xs text-amber-300 uppercase tracking-wider">Achievement Unlocked!</p>
+                <p className="text-xs text-amber-300 uppercase tracking-wider">{l('Achievement Unlocked!', 'Başarım Açıldı!', 'Conquista Desbloqueada!', 'Logro Desbloqueado!')}</p>
                 <p className="font-bold text-amber-100">{newlyUnlockedAchievement.name}</p>
                 <p className="text-xs text-muted-foreground">{newlyUnlockedAchievement.description}</p>
               </div>
@@ -2466,3 +2472,8 @@ export default function GamePage() {
     </div>
   );
 }
+
+
+
+
+

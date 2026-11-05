@@ -1,0 +1,241 @@
+<!doctype html>
+<html><body style="background:#000">
+<script>
+const fs = require('fs');
+const path = require('path');
+const { ipcRenderer } = require('electron');
+const OUT = new URLSearchParams(location.search).get('out');
+const ART = 'C:/Users/kNu/Desktop/GAMEDEV/DataFall/achievements/ach_unlocked/';
+const S = 512; // draw size; exported at 256
+
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const hsla = (h, s, l, a) => `hsla(${h},${s}%,${l}%,${a})`;
+
+function background(ctx, hue, seed) {
+  const r = rng(seed);
+  const g = ctx.createRadialGradient(S / 2, S * 0.45, 10, S / 2, S / 2, S * 0.75);
+  g.addColorStop(0, hsla(hue, 60, 16, 1)); g.addColorStop(0.55, hsla(hue, 50, 7, 1)); g.addColorStop(1, '#030409');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+  // falling binary
+  ctx.font = '13px Consolas, monospace'; ctx.textAlign = 'center';
+  for (let c = 0; c < 26; c++) {
+    const x = 10 + r() * (S - 20), len = 4 + Math.floor(r() * 12), y0 = r() * S * 0.4;
+    for (let i = 0; i < len; i++) {
+      ctx.fillStyle = hsla(hue, 80, 60, 0.05 + 0.18 * (1 - i / len) * r());
+      ctx.fillText(r() < 0.5 ? '0' : '1', x, y0 + i * 14);
+    }
+  }
+  // circuit traces from the edges
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let t = 0; t < 22; t++) {
+    const side = Math.floor(r() * 4);
+    let x = side === 0 ? 0 : side === 1 ? S : r() * S, y = side === 2 ? 0 : side === 3 ? S : r() * S;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    for (let k = 0; k < 3; k++) {
+      const d = 30 + r() * 90;
+      if ((k + side) % 2 === 0) x += (x < S / 2 ? 1 : -1) * d; else y += (y < S / 2 ? 1 : -1) * d;
+      if (r() < 0.5) { const dd = 20 + r() * 30; x += (x < S / 2 ? dd : -dd); y += (y < S / 2 ? dd : -dd); }
+      ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = hsla(hue, 90, 60, 0.22); ctx.lineWidth = 2; ctx.shadowColor = hsla(hue, 90, 60, 0.8); ctx.shadowBlur = 8; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.strokeStyle = hsla(hue, 90, 70, 0.45); ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+  // perspective floor grid
+  const hy = S * 0.7;
+  ctx.strokeStyle = hsla(hue, 90, 60, 0.18); ctx.lineWidth = 1.5;
+  for (let i = -12; i <= 12; i++) { ctx.beginPath(); ctx.moveTo(S / 2 + i * 10, hy); ctx.lineTo(S / 2 + i * 70, S); ctx.stroke(); }
+  for (let j = 1; j < 8; j++) { const y = hy + Math.pow(j / 8, 1.8) * (S - hy); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(S, y); ctx.stroke(); }
+  const fade = ctx.createLinearGradient(0, hy - 20, 0, hy + 30);
+  fade.addColorStop(0, 'rgba(3,4,9,0)'); fade.addColorStop(1, 'rgba(3,4,9,0)');
+  // vignette
+  const v = ctx.createRadialGradient(S / 2, S / 2, S * 0.35, S / 2, S / 2, S * 0.72);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.65)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, S, S);
+}
+
+// neon stroke: wide glow, coloured tube, white-hot core
+function neon(ctx, draw, color, width = 9) {
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const passes = [[width * 2.6, 0.18, 40], [width * 1.5, 0.45, 24], [width, 1, 14], [width * 0.35, 1, 6]];
+  passes.forEach(([w, a, blur], i) => {
+    ctx.beginPath(); draw(ctx);
+    ctx.lineWidth = w; ctx.globalAlpha = a; ctx.shadowColor = color; ctx.shadowBlur = blur;
+    ctx.strokeStyle = i === 3 ? 'rgba(255,255,255,0.92)' : color; ctx.stroke();
+  });
+  ctx.restore();
+}
+function neonFill(ctx, draw, color, alpha = 0.35) {
+  ctx.save(); ctx.beginPath(); draw(ctx); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 30; ctx.fill(); ctx.restore();
+}
+function neonText(ctx, text, x, y, size, color) {
+  ctx.save(); ctx.font = `900 ${size}px "Arial Black", "Segoe UI Black", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(5,4,12,0.75)'; ctx.fillText(text, x, y);
+  [[16, 0.25, 40], [9, 0.55, 22], [5, 1, 12], [1.8, 1, 4]].forEach(([w, a, b], i) => {
+    ctx.lineWidth = w; ctx.globalAlpha = a; ctx.shadowColor = color; ctx.shadowBlur = b;
+    ctx.strokeStyle = i === 3 ? '#fff' : color; ctx.lineJoin = 'round'; ctx.strokeText(text, x, y);
+  });
+  ctx.restore();
+}
+function sparks(ctx, hue, seed, n = 40, cx = S / 2, cy = S / 2, rad = 200) {
+  const r = rng(seed); ctx.save();
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI * 2, d = rad * (0.5 + r() * 0.6), s = 1 + r() * 2.5;
+    ctx.fillStyle = hsla(hue, 100, 70 + r() * 25, 0.4 + r() * 0.6); ctx.shadowColor = hsla(hue, 100, 60, 1); ctx.shadowBlur = 8;
+    ctx.fillRect(cx + Math.cos(a) * d, cy + Math.sin(a) * d, s, s);
+  }
+  ctx.restore();
+}
+function floorReflection(ctx, color, y = 420, w = 150) {
+  ctx.save(); const g = ctx.createRadialGradient(S / 2, y, 5, S / 2, y, w);
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = 0.35; ctx.fillStyle = g; ctx.scale(1, 0.25); ctx.fillRect(0, (y - w) * 4, S, w * 8); ctx.restore();
+}
+
+// ---- glyphs ----
+const cursor = (ox, oy, k) => c => {
+  const p = [[0, 0], [0, 150], [38, 115], [65, 175], [92, 162], [65, 104], [116, 104]];
+  p.forEach(([x, y], i) => (i ? c.lineTo : c.moveTo).call(c, ox + x * k, oy + y * k)); c.closePath();
+};
+function gear(c, cx, cy, rOut, rIn, teeth) {
+  for (let i = 0; i < teeth * 2; i++) {
+    const a0 = (i / (teeth * 2)) * Math.PI * 2, a1 = ((i + 1) / (teeth * 2)) * Math.PI * 2, r = i % 2 ? rIn : rOut;
+    const pad = i % 2 ? 0 : 0.06;
+    const x0 = cx + Math.cos(a0 + pad) * r, y0 = cy + Math.sin(a0 + pad) * r;
+    if (i === 0) c.moveTo(x0, y0); else c.lineTo(x0, y0);
+    c.lineTo(cx + Math.cos(a1 - pad) * r, cy + Math.sin(a1 - pad) * r);
+  }
+  c.closePath();
+}
+function droplet(c, cx, cy, h) {
+  c.moveTo(cx, cy - h * 0.6);
+  c.bezierCurveTo(cx + h * 0.15, cy - h * 0.3, cx + h * 0.42, cy, cx + h * 0.42, cy + h * 0.2);
+  c.arc(cx, cy + h * 0.2, h * 0.42, 0, Math.PI, false);
+  c.bezierCurveTo(cx - h * 0.42, cy, cx - h * 0.15, cy - h * 0.3, cx, cy - h * 0.6);
+}
+function infinity(c, cx, cy, a) {
+  for (let i = 0; i <= 200; i++) {
+    const t = (i / 200) * Math.PI * 2, d = 1 + Math.sin(t) ** 2;
+    const x = cx + (a * Math.cos(t)) / d, y = cy + (a * Math.sin(t) * Math.cos(t)) / d;
+    i ? c.lineTo(x, y) : c.moveTo(x, y);
+  }
+  c.closePath();
+}
+function star(c, cx, cy, ro, ri) {
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? ri : ro; i ? c.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : c.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+  c.closePath();
+}
+function bolt(c, cx, cy, k) {
+  const p = [[10, -60], [-28, 8], [-2, 8], [-12, 60], [28, -10], [2, -10], [14, -60]];
+  p.forEach(([x, y], i) => (i ? c.lineTo : c.moveTo).call(c, cx + x * k, cy + y * k)); c.closePath();
+}
+
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'file:///' + src; });
+
+const ICONS = [
+  { api: 'ACH_ASCEND_15', label: 'Self-Running', bg: 'ascension_base.jpg', num: '15', color: '#d86bff' },
+  { api: 'ACH_ASCEND_25', label: 'Ascension Adept', bg: 'ascension_base.jpg', num: '25', color: '#ff6bd9' },
+  { api: 'ACH_ASCEND_50', label: 'Ascension Master', bg: 'ascension_base.jpg', num: '50', color: '#ffd36b' },
+  { api: 'ACH_AUTOMATION_FIRST', label: 'Autopilot', hue: 188, color: '#2fe6ff', draw(ctx) {
+      neon(ctx, c => gear(c, 256, 240, 150, 122, 12), this.color, 8);
+      neon(ctx, c => c.arc(256, 240, 72, 0, Math.PI * 2), this.color, 6);
+      neonFill(ctx, c => { c.moveTo(232, 196); c.lineTo(300, 240); c.lineTo(232, 284); c.closePath(); }, '#7ff3ff', 0.5);
+      neon(ctx, c => { c.moveTo(232, 196); c.lineTo(300, 240); c.lineTo(232, 284); c.closePath(); }, '#7ff3ff', 7);
+      sparks(ctx, 188, 4, 45, 256, 240, 200); floorReflection(ctx, this.color);
+    } },
+  { api: 'ACH_CHALLENGE_NO_CLICKS', label: 'Hands Off', hue: 196, color: '#2fd0ff', draw(ctx) {
+      neonFill(ctx, cursor(196, 150, 1.25), '#2fd0ff', 0.18);
+      neon(ctx, cursor(196, 150, 1.25), this.color, 8);
+      neon(ctx, c => c.arc(256, 256, 165, 0, Math.PI * 2), '#ff3b6b', 12);
+      neon(ctx, c => { c.moveTo(256 - 117, 256 - 117); c.lineTo(256 + 117, 256 + 117); }, '#ff3b6b', 12);
+      sparks(ctx, 345, 5, 30); floorReflection(ctx, '#ff3b6b');
+    } },
+  { api: 'ACH_CHALLENGE_HALF_CRYPTO', label: 'Drought Survivor', hue: 32, color: '#ffa630', draw(ctx) {
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 262, S, S); ctx.clip();
+      neonFill(ctx, c => droplet(c, 256, 230, 230), '#ffb347', 0.55); ctx.restore();
+      neon(ctx, c => droplet(c, 256, 230, 230), this.color, 8);
+      neon(ctx, c => { c.moveTo(170, 262); c.lineTo(200, 270); c.lineTo(226, 258); c.lineTo(256, 268); c.lineTo(286, 256); c.lineTo(314, 266); c.lineTo(342, 262); }, '#ffe0a0', 4);
+      neon(ctx, c => { [[110, 430, 170, 440], [190, 448, 250, 432], [270, 436, 330, 450], [350, 438, 402, 428]].forEach(([a, b, x, y]) => { c.moveTo(a, b); c.lineTo(x, y); }); }, '#ff8a30', 4);
+      sparks(ctx, 32, 6, 30);
+    } },
+  { api: 'ACH_CHALLENGE_SPRINT', label: 'Overclock Sprinter', hue: 52, color: '#ffe23a', draw(ctx) {
+      neon(ctx, c => c.arc(256, 272, 145, 0, Math.PI * 2), this.color, 9);
+      neon(ctx, c => { c.rect(232, 92, 48, 26); c.moveTo(256, 118); c.lineTo(256, 127); c.moveTo(372, 150); c.lineTo(392, 130); }, this.color, 7);
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; neon(ctx, c => { c.moveTo(256 + Math.cos(a) * 118, 272 + Math.sin(a) * 118); c.lineTo(256 + Math.cos(a) * 130, 272 + Math.sin(a) * 130); }, '#fff3a0', 3); }
+      neonFill(ctx, c => bolt(c, 256, 272, 1.45), '#7ff3ff', 0.45);
+      neon(ctx, c => bolt(c, 256, 272, 1.45), '#3ad8ff', 7);
+      neon(ctx, c => { c.moveTo(60, 230); c.lineTo(100, 230); c.moveTo(40, 272); c.lineTo(96, 272); c.moveTo(60, 314); c.lineTo(100, 314); }, this.color, 5);
+      sparks(ctx, 52, 7, 30, 256, 272); floorReflection(ctx, this.color, 440);
+    } },
+  { api: 'ACH_CHALLENGE_BARE_METAL', label: 'Bare Metal', hue: 215, color: '#bcd6ff', draw(ctx) {
+      neonFill(ctx, c => c.rect(166, 166, 180, 180), '#6f8fc0', 0.25);
+      neon(ctx, c => { c.rect(166, 166, 180, 180); }, this.color, 8);
+      neon(ctx, c => { c.rect(206, 206, 100, 100); }, '#ffffff', 5);
+      neon(ctx, c => { for (let i = 0; i < 6; i++) { const p = 186 + i * 28; c.moveTo(p, 166); c.lineTo(p, 126); c.moveTo(p, 346); c.lineTo(p, 386); c.moveTo(166, p); c.lineTo(126, p); c.moveTo(346, p); c.lineTo(386, p); } }, this.color, 5);
+      neon(ctx, c => { c.moveTo(222, 222); c.lineTo(290, 290); c.moveTo(290, 222); c.lineTo(222, 290); }, '#ff6a3a', 4);
+      sparks(ctx, 215, 8, 30); floorReflection(ctx, this.color, 440);
+    } },
+  { api: 'ACH_CHALLENGE_ALL', label: 'Challenger', hue: 44, color: '#ffc63a', draw(ctx) {
+      const cup = c => { c.moveTo(166, 120); c.lineTo(346, 120); c.lineTo(338, 200); c.bezierCurveTo(330, 270, 290, 300, 256, 304); c.bezierCurveTo(222, 300, 182, 270, 174, 200); c.closePath(); };
+      neonFill(ctx, cup, '#ffc63a', 0.28);
+      neon(ctx, cup, this.color, 9);
+      neon(ctx, c => { c.moveTo(168, 150); c.bezierCurveTo(100, 150, 110, 236, 180, 240); c.moveTo(344, 150); c.bezierCurveTo(412, 150, 402, 236, 332, 240); }, this.color, 7);
+      neon(ctx, c => { c.moveTo(256, 304); c.lineTo(256, 352); c.moveTo(206, 352); c.lineTo(306, 352); c.lineTo(320, 392); c.lineTo(192, 392); c.closePath(); }, this.color, 7);
+      neonFill(ctx, c => star(c, 256, 200, 46, 20), '#fff1b0', 0.8);
+      neon(ctx, c => star(c, 256, 200, 46, 20), '#fff1b0', 4);
+      sparks(ctx, 44, 9, 50, 256, 230, 210); floorReflection(ctx, this.color, 430);
+    } },
+  { api: 'ACH_FINALE_BREACH', label: 'Core Breached', hue: 340, color: '#ff2e7a', draw(ctx) {
+      const hex = (r, rot = 0) => c => { for (let i = 0; i < 6; i++) { const a = rot + (i * Math.PI) / 3; i ? c.lineTo(256 + Math.cos(a) * r, 250 + Math.sin(a) * r) : c.moveTo(256 + Math.cos(a) * r, 250 + Math.sin(a) * r); } c.closePath(); };
+      const core = ctx.createRadialGradient(256, 250, 0, 256, 250, 120);
+      core.addColorStop(0, 'rgba(255,255,255,1)'); core.addColorStop(0.25, 'rgba(255,120,190,0.9)'); core.addColorStop(1, 'rgba(255,46,122,0)');
+      ctx.fillStyle = core; ctx.fillRect(100, 100, 312, 312);
+      neon(ctx, hex(150, Math.PI / 6), this.color, 8);
+      neon(ctx, hex(100, 0), '#ff7ab8', 5);
+      const r = rng(77);
+      neon(ctx, c => { for (let i = 0; i < 9; i++) { let a = (i / 9) * Math.PI * 2 + r() * 0.3, d = 20; c.moveTo(256 + Math.cos(a) * d, 250 + Math.sin(a) * d); for (let k = 0; k < 4; k++) { d += 30 + r() * 25; a += (r() - 0.5) * 0.5; c.lineTo(256 + Math.cos(a) * d, 250 + Math.sin(a) * d); } } }, '#ffe0ef', 3.5);
+      for (let i = 0; i < 10; i++) { const a = r() * Math.PI * 2, d = 175 + r() * 50, x = 256 + Math.cos(a) * d, y = 250 + Math.sin(a) * d, s = 8 + r() * 12;
+        neon(ctx, c => { c.moveTo(x, y - s); c.lineTo(x + s * 0.8, y + s * 0.4); c.lineTo(x - s * 0.6, y + s * 0.7); c.closePath(); }, this.color, 3); }
+      sparks(ctx, 340, 10, 70, 256, 250, 230);
+    } },
+  ...[['ACH_ENDLESS_5', 'Deep Dive', '5'], ['ACH_ENDLESS_10', 'Deeper Still', '10'], ['ACH_ENDLESS_25', 'Abyss Runner', '25']].map(([api, label, n], idx) => ({
+    api, label, hue: 225 + idx * 20, color: ['#4aa8ff', '#7a7bff', '#b25bff'][idx], draw(ctx) {
+      for (let i = 0; i < 6; i++) { const k = 1 - i * 0.15; neon(ctx, c => c.ellipse(256, 200 + i * 8, 200 * k, 80 * k, 0, 0, Math.PI * 2), hsla(this.hue, 90, 65, 0.25 + i * 0.05), 2); }
+      neon(ctx, c => infinity(c, 256, 190, 150), this.color, 10);
+      neonText(ctx, n, 256, 360, n.length > 1 ? 120 : 130, this.color);
+      sparks(ctx, this.hue, 11 + idx, 40, 256, 220, 200);
+    } })),
+];
+
+(async () => {
+  try {
+    fs.mkdirSync(OUT, { recursive: true });
+    const big = document.createElement('canvas'); big.width = big.height = S;
+    const small = document.createElement('canvas'); small.width = small.height = 256;
+    const sheet = document.createElement('canvas');
+    const cols = 4, cw = 300, ch = 185; sheet.width = cols * cw; sheet.height = Math.ceil(ICONS.length / cols) * ch;
+    const sx = sheet.getContext('2d'); sx.fillStyle = '#101218'; sx.fillRect(0, 0, sheet.width, sheet.height);
+    const save = (name, quality) => fs.writeFileSync(path.join(OUT, name), Buffer.from(small.toDataURL('image/jpeg', quality).split(',')[1], 'base64'));
+    for (const [i, ic] of ICONS.entries()) {
+      const ctx = big.getContext('2d'); ctx.save(); ctx.clearRect(0, 0, S, S);
+      if (ic.bg) {
+        const img = await loadImg(ART + ic.bg); ctx.drawImage(img, 0, 0, S, S);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, 0, S, S);
+        neonText(ctx, ic.num, 256, 262, 170, ic.color);
+      } else { background(ctx, ic.hue, 1000 + i * 37); ic.draw(ctx); }
+      ctx.restore();
+      const s = small.getContext('2d');
+      s.filter = 'none'; s.imageSmoothingQuality = 'high'; s.drawImage(big, 0, 0, 256, 256); save(ic.api + '.jpg', 0.92);
+      const x = (i % cols) * cw, y = Math.floor(i / cols) * ch;
+      sx.drawImage(small, x + 12, y + 12, 128, 128);
+      s.filter = 'grayscale(1) brightness(0.8) contrast(1.15)'; s.drawImage(big, 0, 0, 256, 256); s.filter = 'none'; save(ic.api + '_locked.jpg', 0.92);
+      sx.drawImage(small, x + 152, y + 12, 128, 128);
+      sx.fillStyle = '#e8ecf5'; sx.font = 'bold 13px Segoe UI'; sx.fillText(ic.api, x + 12, y + 158);
+      sx.fillStyle = '#9aa3b5'; sx.font = '12px Segoe UI'; sx.fillText(ic.label, x + 12, y + 175);
+    }
+    fs.writeFileSync(path.join(OUT, 'contact-sheet.png'), Buffer.from(sheet.toDataURL('image/png').split(',')[1], 'base64'));
+    ipcRenderer.send('done', 'ok ' + ICONS.length);
+  } catch (e) { ipcRenderer.send('done', 'ERR ' + e.stack); }
+})();
+</script>
+</body></html>

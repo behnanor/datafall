@@ -1,7 +1,7 @@
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { unlockSteamAchievement, saveToSteamCloud, loadFromSteamCloud, isSteamAvailable } from './steamIntegration';
+import { unlockSteamAchievement, isSteamAvailable } from './steamIntegration';
 import { localizeInlineText, useI18n } from './i18n';
 import {
   getLocalizedTutorialObjectiveText,
@@ -4336,14 +4336,37 @@ export interface WhatsNewState {
 }
 const SEEN_WHATS_NEW: WhatsNewState = { seenVersion: WHATS_NEW_VERSION, giftClaimed: true };
 
+// v1.04 save safety: the save file is read and written directly through the Electron main process
+// (df:load-file / df:save-file). This no longer waits for Steam: the file is local and Steam Auto-Cloud
+// syncs it on its own. Loading also reports when a save exists but can't be read, so the game never
+// starts fresh and lets autosave write over it.
+type ElectronSaveApi = {
+  saveFile?: (payload: { data: string | null; fileName: string }) => Promise<{ ok?: boolean; reason?: string } | undefined>;
+  loadFile?: (payload: { fileName: string }) => Promise<{ ok?: boolean; data?: string | null; reason?: string } | undefined>;
+  quarantineSave?: (payload: { fileName: string }) => Promise<{ ok?: boolean; folder?: string; reason?: string } | undefined>;
+  openSaveFolder?: () => Promise<{ ok?: boolean } | undefined>;
+  onFlushSaveRequest?: (callback: () => Promise<void>) => (() => void) | undefined;
+  importLiveSave?: () => Promise<{ data?: string | null } | undefined>;
+  importDemoSave?: () => Promise<{ data?: string | null } | undefined>;
+};
+const getElectronSaveApi = (): ElectronSaveApi | null => {
+  if (typeof window === 'undefined') return null;
+  return ((window as unknown as { electronAPI?: ElectronSaveApi }).electronAPI) ?? null;
+};
+
+export type SaveLoadResult =
+  | { status: 'ok'; data: SaveData; from: string }
+  | { status: 'none' }
+  | { status: 'error'; reason: string };
+
 const storageAdapter = {
   save: async (data: SaveData): Promise<boolean> => {
     try {
       const payload: SaveData = { ...data, saveNamespace: SAVE_NAMESPACE, economyVersion: ECONOMY_VERSION };
+      const saveString = JSON.stringify(payload);
 
-      // Always keep a quick local fallback. This helps with crashes / Alt+F4 where async Steam IPC may not finish.
+      // Always keep a quick local fallback. This helps with crashes / Alt+F4 where async IPC may not finish.
       try {
-        const saveString = JSON.stringify(payload);
         const previousSave = localStorage.getItem(SAVE_KEY);
         if (previousSave && previousSave !== saveString) {
           localStorage.setItem(BACKUP_SAVE_KEY, previousSave);
@@ -4353,11 +4376,12 @@ const storageAdapter = {
         // ignore localStorage errors (quota / disabled)
       }
 
-      if (isSteamAvailable()) {
-        // Steam path: main process handles disk + Steam Cloud
-        const ok = await saveToSteamCloud(payload, STEAM_SAVE_FILE);
-        console.log('[Save] Steam save:', ok ? 'OK' : 'FAIL');
-        return !!ok;
+      const api = getElectronSaveApi();
+      if (api?.saveFile) {
+        // Desktop: main process writes %LOCALAPPDATA%/DataFall/<file> (+ backups); Steam Auto-Cloud syncs it.
+        const result = await api.saveFile({ data: saveString, fileName: STEAM_SAVE_FILE });
+        if (!result?.ok) console.log('[Save] file save failed:', result?.reason);
+        return !!result?.ok;
       }
 
       // Browser-only path (localStorage already written above)
@@ -4369,98 +4393,137 @@ const storageAdapter = {
   },
 
 
-  load: async (): Promise<SaveData | null> => {
+  load: async (): Promise<SaveLoadResult> => {
+    // One-way cleanup: drop legacy namespace while keeping primary/test and v3 backup untouched.
     try {
-      // One-way cleanup: drop legacy namespace while keeping primary/test and v3 backup untouched.
-      try {
-        localStorage.removeItem(LEGACY_SAVE_NAMESPACE);
-      } catch {
-        // ignore localStorage errors
-      }
-
-      const normalizeLoaded = (value: any): SaveData | null => {
-        try {
-          const parsed = typeof value === 'string' ? JSON.parse(value) : value;
-          if (!parsed || typeof parsed !== 'object') return null;
-          const data = parsed as SaveData;
-          // Hard-cut old save slots (local + cloud) after namespace bump.
-          if (data.saveNamespace !== SAVE_NAMESPACE) return null;
-          return data;
-        } catch {
-          return null;
-        }
-      };
-
-      // Save rescue: build 1.0.1 (live briefly on 2026-11-03) wrote a fresh v8 save.json over
-      // players' v11 progress, while their v11 localStorage copies stayed intact. So we no longer
-      // trust the file first: we take the newest valid copy of the current namespace among the
-      // save file and both localStorage keys. Never delete the v11 keys here.
-      const candidates: Array<{ from: string; data: SaveData }> = [];
-      if (isSteamAvailable()) {
-        const loaded = await loadFromSteamCloud(STEAM_SAVE_FILE);
-        if (loaded) {
-          const normalizedCloud = normalizeLoaded(loaded);
-          if (normalizedCloud) candidates.push({ from: 'file', data: normalizedCloud });
-          else console.log('[Save] save file rejected (namespace mismatch); checking local copies');
-        }
-      }
-      for (const key of [SAVE_KEY, BACKUP_SAVE_KEY]) {
-        const raw = localStorage.getItem(key);
-        const candidate = raw ? normalizeLoaded(raw) : null;
-        if (candidate) candidates.push({ from: key, data: candidate });
-      }
-
-      let newest: { from: string; data: SaveData } | null = null;
-      for (const candidate of candidates) {
-        if (!newest || (candidate.data.lastSaveTimestamp ?? 0) > (newest.data.lastSaveTimestamp ?? 0)) {
-          newest = candidate;
-        }
-      }
-      if (!newest && IS_TEST_BUILD && !IS_DEMO_BUILD) {
-        // First launch of a test build: start from the real game's save (read-only import).
-        try {
-          const imported = await (window as any).electronAPI?.importLiveSave?.();
-          const importedSave = imported?.data ? normalizeLoaded(imported.data) : null;
-          if (importedSave) newest = { from: 'live-save-import', data: importedSave };
-        } catch {
-          // no live save available; start fresh
-        }
-      }
-      if (!newest && !IS_DEMO_BUILD) {
-        // Full game with no save of its own: carry over the demo progress once (read-only copy).
-        try {
-          const demo = await (window as any).electronAPI?.importDemoSave?.();
-          const parsed = demo?.data ? JSON.parse(demo.data) : null;
-          if (parsed && parsed.saveNamespace === DEMO_SAVE_NAMESPACE) {
-            newest = { from: 'demo-save-import', data: { ...parsed, saveNamespace: SAVE_NAMESPACE } };
-          }
-        } catch {
-          // no demo save; start fresh
-        }
-      }
-      if (newest) console.log('[Save] loading newest save from', newest.from, newest.data.lastSaveTimestamp);
-      return newest ? newest.data : null;
-    } catch (e: any) {
-      console.log('[Save] load error:', e?.message || e);
-      return null;
+      localStorage.removeItem(LEGACY_SAVE_NAMESPACE);
+    } catch {
+      // ignore localStorage errors
     }
+
+    const normalizeLoaded = (value: any): SaveData | null => {
+      try {
+        const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+        if (!parsed || typeof parsed !== 'object') return null;
+        const data = parsed as SaveData;
+        // Hard-cut old save slots (local + cloud) after namespace bump.
+        if (data.saveNamespace !== SAVE_NAMESPACE) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    };
+
+    // Save rescue: build 1.0.1 (live briefly on 2026-11-03) wrote a fresh v8 save.json over
+    // players' v11 progress, while their v11 localStorage copies stayed intact. So we take the newest
+    // valid copy of the current namespace among the save file and both localStorage keys.
+    // Never delete the v11 keys here.
+    const candidates: Array<{ from: string; data: SaveData }> = [];
+    const api = getElectronSaveApi();
+    if (api?.loadFile) {
+      let fileResult: { ok?: boolean; data?: string | null; reason?: string } | undefined;
+      try {
+        fileResult = await api.loadFile({ fileName: STEAM_SAVE_FILE });
+      } catch (e: any) {
+        fileResult = { ok: false, reason: e?.message || String(e) };
+      }
+      if (!fileResult || fileResult.ok === false) {
+        // A save file exists but can't be read (locked by antivirus, permissions, corrupt). A local copy
+        // could be older than that file (e.g. it was synced from another PC), so don't guess: report it.
+        const reason = fileResult?.reason || 'save file could not be read';
+        console.log('[Save] save file could not be read:', reason);
+        return { status: 'error', reason };
+      }
+      if (fileResult.data) {
+        const normalizedFile = normalizeLoaded(fileResult.data);
+        if (normalizedFile) candidates.push({ from: 'file', data: normalizedFile });
+        else console.log('[Save] save file has no save for this slot; checking local copies');
+      }
+    }
+    for (const key of [SAVE_KEY, BACKUP_SAVE_KEY]) {
+      let raw: string | null = null;
+      try {
+        raw = localStorage.getItem(key);
+      } catch {
+        raw = null;
+      }
+      const candidate = raw ? normalizeLoaded(raw) : null;
+      if (candidate) candidates.push({ from: key, data: candidate });
+    }
+
+    let newest: { from: string; data: SaveData } | null = null;
+    for (const candidate of candidates) {
+      if (!newest || (candidate.data.lastSaveTimestamp ?? 0) > (newest.data.lastSaveTimestamp ?? 0)) {
+        newest = candidate;
+      }
+    }
+    if (!newest && IS_TEST_BUILD && !IS_DEMO_BUILD) {
+      // First launch of a test build: start from the real game's save (read-only import).
+      try {
+        const imported = await api?.importLiveSave?.();
+        const importedSave = imported?.data ? normalizeLoaded(imported.data) : null;
+        if (importedSave) newest = { from: 'live-save-import', data: importedSave };
+      } catch {
+        // no live save available; start fresh
+      }
+    }
+    if (!newest && !IS_DEMO_BUILD) {
+      // Full game with no save of its own: carry over the demo progress once (read-only copy).
+      try {
+        const demo = await api?.importDemoSave?.();
+        const parsed = demo?.data ? JSON.parse(demo.data) : null;
+        if (parsed && parsed.saveNamespace === DEMO_SAVE_NAMESPACE) {
+          newest = { from: 'demo-save-import', data: { ...parsed, saveNamespace: SAVE_NAMESPACE } };
+        }
+      } catch {
+        // no demo save; start fresh
+      }
+    }
+    if (!newest) return { status: 'none' };
+    console.log('[Save] loading newest save from', newest.from, newest.data.lastSaveTimestamp);
+    return { status: 'ok', data: newest.data, from: newest.from };
   },
 
+  // Reset progress: empty both local copies and write "null" to the file (the main process keeps the
+  // old save in backups/ as a rollback copy). Resolves false if the file could not be written.
   clear: async (): Promise<boolean> => {
     try {
       localStorage.removeItem(SAVE_KEY);
       localStorage.removeItem(BACKUP_SAVE_KEY);
       // Current namespace can be cleared safely; keep original v3 as backup.
       localStorage.removeItem(LEGACY_SAVE_NAMESPACE);
-      if (isSteamAvailable()) {
-        // Best-effort: overwrite with null so cloud doesn't resurrect old data
-        await saveToSteamCloud(null, STEAM_SAVE_FILE);
-      }
-      return true;
+    } catch {
+      // ignore localStorage errors
+    }
+    const api = getElectronSaveApi();
+    if (!api?.saveFile) return true;
+    try {
+      const result = await api.saveFile({ data: 'null', fileName: STEAM_SAVE_FILE });
+      return !!result?.ok;
     } catch {
       return false;
     }
-  }
+  },
+
+  // The save file could not be read and the player chose to continue: move it aside (kept in backups).
+  quarantine: async (): Promise<boolean> => {
+    const api = getElectronSaveApi();
+    if (!api?.quarantineSave) return true;
+    try {
+      const result = await api.quarantineSave({ fileName: STEAM_SAVE_FILE });
+      return !!result?.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  openFolder: async (): Promise<void> => {
+    try {
+      await getElectronSaveApi()?.openSaveFolder?.();
+    } catch {
+      // ignore
+    }
+  },
 };
 
 export interface OfflineProgress {
@@ -5142,51 +5205,58 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     setIsMusicPlaying(base.isMusicPlaying ?? true);
   }, []);
 
-  // Async load: run once on mount, apply loaded data, then unblock saving.
-// IMPORTANT: Steam IPC can become "available" a moment AFTER the first render.
-// If we load too early, we miss Steam Cloud and the game starts fresh, then autosave overwrites.
-// So in Electron, if first load returns null, we retry briefly once Steam becomes available.
-useEffect(() => {
-  let cancelled = false;
+  // Async load: run on mount, apply loaded data, then unblock saving.
+  // v1.04: the save file is read directly (no waiting for Steam). If a save exists but can't be read,
+  // or applying it throws, autosave stays locked and the player gets a retry screen instead of a fresh
+  // game that would overwrite the real save.
+  const [saveLoadError, setSaveLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  useEffect(() => {
+    if (loadReadyRef.current) return;
+    let cancelled = false;
 
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-  (async () => {
-    try {
-      // 1) First attempt (works for browser + already-ready Steam)
-      let loaded = await storageAdapter.load();
-      console.log('[Save] Loaded:', !!loaded, loaded ? 'OK' : 'null');
-
-      // 2) Electron/Steam: if not loaded yet, wait a bit for Steam to finish connecting,
-      // then retry Steam Cloud once more BEFORE enabling autosave.
-      if (!loaded && isElectronEnvironment()) {
-        const t0 = Date.now();
-        while (!cancelled && !isSteamAvailable() && Date.now() - t0 < 5000) {
-          await sleep(200);
+    (async () => {
+      try {
+        const result = await storageAdapter.load();
+        if (cancelled) return;
+        console.log('[Save] load result:', result.status);
+        if (result.status === 'error') {
+          setSaveLoadError(result.reason || 'unreadable');
+          return;
         }
-
-        if (!cancelled && isSteamAvailable()) {
-          loaded = await storageAdapter.load();
-          console.log('[Save] Loaded (retry after Steam ready):', !!loaded, loaded ? 'OK' : 'null');
-        }
+        if (result.status === 'ok') applyLoadedState(result.data);
+        setSaveLoadError(null);
+        setLoadReady(true);
+      } catch (e: any) {
+        console.log('[Save] load failed:', e?.message || e);
+        if (!cancelled) setSaveLoadError(e?.message || String(e));
       }
+    })();
 
-      if (!cancelled && loaded) {
-        applyLoadedState(loaded as SaveData);
-      }
-    } catch (e: any) {
-      console.log('[Save] load failed:', e?.message || e);
-    } finally {
-      if (!cancelled) setLoadReady(true);
-    }
-  })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyLoadedState, loadAttempt]);
 
-  return () => {
-    cancelled = true;
-  };
-}, [applyLoadedState]);
+  const retrySaveLoad = useCallback(() => {
+    setSaveLoadError(null);
+    setLoadAttempt(n => n + 1);
+  }, []);
 
-  
+  // Moves the unreadable file into the backups folder (never deletes it), then loads again, which picks
+  // the newest local copy or starts fresh.
+  const continueWithoutUnreadableSave = useCallback(async () => {
+    const ok = await storageAdapter.quarantine();
+    if (!ok) return false;
+    setSaveLoadError(null);
+    setLoadAttempt(n => n + 1);
+    return true;
+  }, []);
+
+  const openSaveFolder = useCallback(() => {
+    void storageAdapter.openFolder();
+  }, []);
+
   const clearOfflineProgress = useCallback(() => {
     setOfflineProgress(null);
   }, []);
@@ -7879,6 +7949,17 @@ useEffect(() => {
     };
   }, [saveGameState]);
 
+  // Desktop: the main process asks for one last save before the window closes and waits for it.
+  useEffect(() => {
+    const unsubscribe = getElectronSaveApi()?.onFlushSaveRequest?.(async () => {
+      if (!loadReadyRef.current) return;
+      await saveGameState(latestSnapshotRef.current());
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [saveGameState]);
+
 
   const toggleMasterVolume = useCallback(() => {
     setMasterVolume(prev => !prev);
@@ -9112,6 +9193,7 @@ useEffect(() => {
   }, [saveGameState]);
 
   const resetGame = useCallback(() => {
+    loadReadyRef.current = false;
     setResources(INITIAL_STATE.resources);
     setUpgrades(INITIAL_STATE.upgrades);
     setPrestigeUpgrades(PRESTIGE_UPGRADES);
@@ -9145,11 +9227,13 @@ useEffect(() => {
     timeWarpEligiblePickupStreakRef.current = 0;
     timeWarpPityThresholdRef.current = rollTimeWarpPityThreshold();
     setUpgradePaceDelayMultiplier(1);
-    localStorage.removeItem(SAVE_KEY);
-    localStorage.removeItem(LEGACY_SAVE_NAMESPACE);
+    // v1.04: also empty the save file and the local backup copy, otherwise the reload loads the old save
+    // again. Saving is blocked first so the unload flush can't write the pre-reset state back.
     // Intentionally keep BACKUP_SAVE_NAMESPACE (v3) untouched as backup.
-    // Force a reload to ensure clean state
-    window.location.reload();
+    void storageAdapter.clear().finally(() => {
+      // Force a reload to ensure clean state
+      window.location.reload();
+    });
   }, [clearComboSpawnTimeouts, clearAllFloatingPickupRemovalTimeouts]);
 
   const localizedUpgrades = useMemo(
@@ -9197,6 +9281,6 @@ useEffect(() => {
   const getLocalizedActiveLootBoxSkin = useCallback(() => localizeCatalogEntry(getActiveLootBoxSkin(), language), [getActiveLootBoxSkin, language]);
   const getLocalizedActiveMachineBoxSkin = useCallback(() => localizeCatalogEntry(getActiveMachineBoxSkin(), language), [getActiveMachineBoxSkin, language]);
 
-  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed };
+  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
 };
 

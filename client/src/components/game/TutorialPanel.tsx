@@ -5,6 +5,7 @@ import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import type { TutorialPhaseWithObjectives, TutorialState } from '@/lib/useGame';
 import { useI18n } from '@/lib/i18n';
+import { getResourceLabel, getTutorialUiText } from '@/lib/gameText';
 
 interface TutorialPanelProps {
   currentPhase: TutorialPhaseWithObjectives | null;
@@ -21,7 +22,7 @@ export const TutorialPanel = memo(function TutorialPanel({
   onStart,
   isTutorialComplete,
 }: TutorialPanelProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const dragRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,7 @@ export const TutorialPanel = memo(function TutorialPanel({
           setPosition(prev => ({ x: prev.x + info.offset.x, y: prev.y + info.offset.y }));
         }}
         style={{ x: position.x, y: position.y }}
-        className="fixed top-20 left-[75%] -translate-x-1/2 z-[30] w-[360px] max-w-[92vw] cursor-grab active:cursor-grabbing"
+        className="fixed top-32 left-1/2 -translate-x-1/2 z-[30] w-[360px] max-w-[92vw] cursor-grab active:cursor-grabbing"
         data-testid="tutorial-welcome"
       >
         <div className="bg-slate-900/95 border border-cyan-500/50 rounded-lg overflow-hidden shadow-xl shadow-cyan-500/10">
@@ -93,6 +94,15 @@ export const TutorialPanel = memo(function TutorialPanel({
 
   const completedCount = currentPhase.objectives.filter(o => o.completed).length;
   const totalCount = currentPhase.objectives.length;
+  const stepLabel = typeof currentPhase.phaseIndex === 'number' && currentPhase.phaseCount
+    ? getTutorialUiText('step', language, { current: currentPhase.phaseIndex + 1, total: currentPhase.phaseCount })
+    : null;
+  const rewardLabel = currentPhase.reward
+    ? getTutorialUiText('reward', language, {
+        amount: currentPhase.reward.amount.toLocaleString(),
+        resource: getResourceLabel(currentPhase.reward.resource, language),
+      })
+    : null;
 
   return (
     <motion.div
@@ -106,7 +116,7 @@ export const TutorialPanel = memo(function TutorialPanel({
         setPosition(prev => ({ x: prev.x + info.offset.x, y: prev.y + info.offset.y }));
       }}
       style={{ x: position.x, y: position.y }}
-      className="fixed top-20 left-[75%] -translate-x-1/2 z-[30] w-[360px] max-w-[92vw] cursor-grab active:cursor-grabbing"
+      className="fixed top-32 left-1/2 -translate-x-1/2 z-[30] w-[360px] max-w-[92vw] cursor-grab active:cursor-grabbing"
       data-testid="tutorial-panel"
     >
       <div className="bg-slate-900/95 border border-cyan-500/50 rounded-lg overflow-hidden shadow-xl shadow-cyan-500/10">
@@ -119,7 +129,9 @@ export const TutorialPanel = memo(function TutorialPanel({
             </div>
             <div>
               <p className="text-[10px] font-bold text-cyan-300 font-display tracking-wider">{phaseTitle}</p>
-              <p className="text-[9px] text-muted-foreground">{t('tutorialPanel.objectivesCount', { completed: completedCount, total: totalCount })}</p>
+              <p className="text-[9px] text-muted-foreground">
+                {stepLabel ? `${stepLabel} · ` : ''}{t('tutorialPanel.objectivesCount', { completed: completedCount, total: totalCount })}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -183,6 +195,14 @@ export const TutorialPanel = memo(function TutorialPanel({
                     </span>
                   </motion.div>
                 ))}
+                {rewardLabel ? (
+                  <p className="pt-1 text-[11px] font-semibold text-amber-300/90" data-testid="tutorial-step-reward">
+                    {rewardLabel}
+                  </p>
+                ) : null}
+              </div>
+              <div className="px-3 pb-2 text-[10px] text-muted-foreground/70 leading-snug" data-testid="tutorial-camera-tip">
+                {getTutorialUiText('cameraTip', language)}
               </div>
             </motion.div>
           )}

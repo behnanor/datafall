@@ -242,6 +242,9 @@ export interface TutorialPhase {
 
 export type TutorialPhaseWithObjectives = TutorialPhase & {
   objectives: Array<TutorialObjective & { completed: boolean }>;
+  reward?: { resource: 'data' | 'credits'; amount: number } | null;
+  phaseIndex?: number;
+  phaseCount?: number;
 };
 
 
@@ -251,6 +254,9 @@ export interface TutorialState {
   currentPhase: number;
   completedObjectives: string[];
   rewardGranted?: boolean;
+  /** Number of phases whose small step reward was already paid. */
+  phaseRewardsGranted?: number;
+  version?: number;
 }
 
 export type TutorialRewardCosmeticType = 'skin' | 'theme' | 'accessory' | 'headstyle' | 'pet';
@@ -264,52 +270,64 @@ export interface TutorialReward {
   currency: 'credits' | 'crypto' | 'ascension';
 }
 
+// v1.04: the tutorial now follows the real core loop (click -> miner -> nodes -> click tab ->
+// mining -> ascend). Camera/right-click tips live in the panel footer instead of being
+// required steps, and Prestige/Cosmetics are only pointed at after the first ascension
+// (players have nothing to spend there before that).
+export const TUTORIAL_VERSION = 2;
+
 const TUTORIAL_PHASES: TutorialPhase[] = [
-  { title: 'Boot Sequence', description: 'Learn click controls, camera zoom, and camera pan.' },
-  { title: 'Expansion', description: 'Buy your first upgrade and convert data into nodes.' },
-  { title: 'Prestige', description: 'Open the Prestige Shop to review long-run progression.' },
-  { title: 'Cosmetics', description: 'Open the Cosmetics Market to explore customization.' },
-  { title: 'Mining', description: 'Unlock the Mining segment and start earning crypto.' },
-  { title: 'Ascension', description: 'Open the Ascend window and review what will reset.\nTip: You can collapse or expand this panel with the arrow button.' },
+  { title: 'Boot Sequence', description: 'Click the core to pull data, then let a miner do it for you.' },
+  { title: 'Data Market', description: 'Sell data for Nodes and use them to unlock the Click tab.' },
+  { title: 'Click Power', description: 'Make every click stronger, then open the Mining protocol.' },
+  { title: 'Mining', description: 'Mining rigs turn Nodes into crypto. Crypto is what you need to Ascend.' },
+  { title: 'Ascension', description: 'Collect enough crypto, then Ascend for Prestige. After your first ascension, spend Prestige in the Prestige Shop and check the Cosmetics Market.' },
 ];
 
 const TUTORIAL_OBJECTIVES: Array<{ objectives: TutorialObjective[] }> = [
   {
     objectives: [
-      { id: 'click_core', text: 'Click to generate your first resources.' },
-      { id: 'right_click_core', text: 'Right-click also works. Try a right-click on the core.' },
-      { id: 'camera_zoom', text: 'Use the mouse wheel (middle scroll) to zoom the camera.' },
-      { id: 'camera_pan', text: 'Hold middle mouse button and drag to move the camera.' },
+      { id: 'click_core', text: 'Click the core to generate your first data.' },
+      { id: 'buy_first_upgrade', text: 'Buy a Basic Data Miner in the Factory tab (10 data).' },
     ],
   },
   {
     objectives: [
-      { id: 'buy_first_upgrade', text: 'Buy your first upgrade.' },
       { id: 'convert_data', text: 'Convert data into nodes using the Convert controls. (100 Data = 1 Node)' },
+      { id: 'unlock_click_tab', text: 'Buy Manual Intrusion Protocol (5 Nodes) to unlock the Click tab.' },
     ],
   },
   {
     objectives: [
-      { id: 'view_prestige', text: 'Open the Prestige Shop.' },
+      { id: 'buy_click_upgrade', text: 'Buy Manual Override in the Click tab.' },
+      { id: 'unlock_mining', text: 'Buy Mining Protocol Access in the Click tab to unlock Mining.' },
     ],
   },
   {
     objectives: [
-      { id: 'open_cosmetics', text: 'Open the Cosmetics Market.' },
+      { id: 'open_mining_tab', text: 'Open the Mining tab.' },
+      { id: 'earn_crypto', text: 'Buy a Basic Mining Rig and start earning crypto.' },
     ],
   },
   {
     objectives: [
-      { id: 'open_mining_tab', text: 'Open the Mining segment in Upgrades (unlock it via Mining Protocol Access in Click segment).' },
-      { id: 'earn_crypto', text: 'Start earning crypto from Mining upgrades.' },
-    ],
-  },
-  {
-    objectives: [
-      { id: 'open_ascend', text: 'Open the Ascend window (check reset rewards and requirements).\nTip: This tutorial panel can be collapsed or expanded with the arrow.' },
+      { id: 'open_ascend', text: 'Open the Ascend window (check reset rewards and requirements).' },
     ],
   },
 ];
+
+// Small reward for finishing each phase, so progress feels good right away.
+// Tuned to the next step's cost so it helps without skipping the loop.
+// The last phase keeps its cosmetic reward (see getTutorialRewardCandidate).
+export const TUTORIAL_PHASE_REWARDS: Array<{ resource: 'data' | 'credits'; amount: number } | null> = [
+  { resource: 'data', amount: 50 },
+  { resource: 'credits', amount: 10 },
+  { resource: 'credits', amount: 40 },
+  { resource: 'data', amount: 1000 },
+  null,
+];
+
+const TUTORIAL_ALL_OBJECTIVE_IDS = TUTORIAL_OBJECTIVES.flatMap(p => p.objectives.map(o => o.id));
 
 const INITIAL_TUTORIAL: TutorialState = {
   started: false,
@@ -317,6 +335,8 @@ const INITIAL_TUTORIAL: TutorialState = {
   currentPhase: 0,
   completedObjectives: [],
   rewardGranted: false,
+  phaseRewardsGranted: 0,
+  version: TUTORIAL_VERSION,
 };
 
 const CLICK_UPGRADE_DISCOUNT_RATE = 0.22;
@@ -334,6 +354,43 @@ const resolveTutorialPhase = (currentPhase: number, completedObjectives: string[
   }
 
   return phase;
+};
+
+// Tutorial saves from before v1.04 used 6 phases (with camera, Prestige and Cosmetics steps).
+// Finished tutorials stay finished; unfinished ones restart at the first open step of the new flow.
+const migrateTutorial = (saved: unknown): TutorialState => {
+  const raw = (saved && typeof saved === 'object' ? saved : {}) as Partial<TutorialState>;
+  const completedObjectives = Array.isArray(raw.completedObjectives)
+    ? raw.completedObjectives.filter((id): id is string => typeof id === 'string')
+    : [];
+  const merged: TutorialState = {
+    ...INITIAL_TUTORIAL,
+    ...raw,
+    skipped: !!raw.skipped,
+    rewardGranted: !!raw.rewardGranted,
+    completedObjectives,
+  };
+
+  if ((raw.version ?? 1) < TUTORIAL_VERSION) {
+    const lastPhase = TUTORIAL_PHASES.length - 1;
+    const wasFinished = !!raw.rewardGranted || completedObjectives.includes('open_ascend');
+    if (wasFinished) {
+      merged.completedObjectives = Array.from(new Set([...completedObjectives, ...TUTORIAL_ALL_OBJECTIVE_IDS]));
+      merged.currentPhase = lastPhase;
+    } else {
+      merged.currentPhase = resolveTutorialPhase(0, completedObjectives);
+    }
+    merged.version = TUTORIAL_VERSION;
+  }
+
+  const phase = Number.isFinite(merged.currentPhase) ? Math.floor(merged.currentPhase) : 0;
+  merged.currentPhase = Math.max(0, Math.min(TUTORIAL_PHASES.length - 1, phase));
+  // Old saves (or saves without the field) get no retroactive step rewards.
+  const granted = (raw.version ?? 1) >= TUTORIAL_VERSION && typeof raw.phaseRewardsGranted === 'number' && Number.isFinite(raw.phaseRewardsGranted)
+    ? Math.floor(raw.phaseRewardsGranted)
+    : merged.currentPhase;
+  merged.phaseRewardsGranted = Math.max(0, Math.min(TUTORIAL_PHASES.length, granted));
+  return merged;
 };
 
 // Migration helpers: merge saved data with the current canonical definitions.
@@ -5077,12 +5134,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
         ? { seenVersion: saved.seenVersion, giftClaimed: !!saved.giftClaimed }
         : returning ? { seenVersion: '', giftClaimed: false } : SEEN_WHATS_NEW);
     }
-    const savedTutorial = (base.tutorial || {}) as Partial<TutorialState>;
-    setTutorial({
-      ...INITIAL_TUTORIAL,
-      ...savedTutorial,
-      rewardGranted: !!savedTutorial.rewardGranted,
-    });
+    setTutorial(migrateTutorial(base.tutorial));
     setElapsedTime(base.elapsedTime || 0);
     setMasterVolume(base.masterVolume ?? true);
     setMusicVolume(base.musicVolume ?? 0.2);
@@ -8779,7 +8831,14 @@ useEffect(() => {
       completed: tutorial.completedObjectives.includes(obj.id),
     })) || [];
     
-    return { ...phaseInfo, ...localizedPhaseInfo, objectives };
+    return {
+      ...phaseInfo,
+      ...localizedPhaseInfo,
+      objectives,
+      reward: TUTORIAL_PHASE_REWARDS[tutorial.currentPhase] ?? null,
+      phaseIndex: tutorial.currentPhase,
+      phaseCount: TUTORIAL_PHASES.length,
+    };
   }, [tutorial, language]);
 
   const isTutorialComplete = tutorial.skipped || (
@@ -8817,6 +8876,35 @@ useEffect(() => {
     resources.data.perSecond,
     playSound,
   ]);
+
+  // Small per-phase step rewards (v1.04). Paid once per finished phase, never for skipped tutorials.
+  useEffect(() => {
+    if (tutorial.skipped) return;
+    const granted = tutorial.phaseRewardsGranted ?? tutorial.currentPhase;
+    if (tutorial.currentPhase <= granted) return;
+
+    let data = 0;
+    let credits = 0;
+    for (let i = granted; i < tutorial.currentPhase; i += 1) {
+      const reward = TUTORIAL_PHASE_REWARDS[i];
+      if (!reward) continue;
+      if (reward.resource === 'data') data += reward.amount;
+      else credits += reward.amount;
+    }
+    if (data > 0 || credits > 0) {
+      setResources(prev => ({
+        ...prev,
+        data: { ...prev.data, amount: prev.data.amount + data },
+        credits: { ...prev.credits, amount: prev.credits.amount + credits },
+      }));
+      playSound('checkpoint');
+    }
+    setTutorial(prev => (
+      (prev.phaseRewardsGranted ?? 0) >= tutorial.currentPhase
+        ? prev
+        : { ...prev, phaseRewardsGranted: tutorial.currentPhase }
+    ));
+  }, [tutorial.skipped, tutorial.currentPhase, tutorial.phaseRewardsGranted, playSound]);
 
   const skipTrack = useCallback(() => {
     setCurrentTrackIndex(prev => (prev + 1) % MUSIC_TRACKS.length);

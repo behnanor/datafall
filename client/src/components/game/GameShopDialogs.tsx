@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CurrencyIcon } from '@/components/game/CurrencyIcon';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { upperForLanguage } from "@/lib/i18n";
 
 type LocalizeFn = (...args: any[]) => string;
 type TranslateFn = (...args: any[]) => string;
@@ -211,7 +212,7 @@ export function PrestigeShopDialog({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className={`font-bold ${isMaxed ? 'text-emerald-400' : 'text-yellow-400'}`}>{upgrade.name}</p>
-                      {isMaxed && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">{t('prestigePanel.maxed').toUpperCase()}</span>}
+                      {isMaxed && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">{upperForLanguage(t('prestigePanel.maxed'))}</span>}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{upgrade.description}</p>
                     <p className="text-[11px] text-cyan-200/80 mt-1">
@@ -781,7 +782,7 @@ export function ParagonLabDialog({
                         <div>
                           <div className="flex items-center justify-between gap-2">
                             <p className="text-sm font-semibold text-cyan-100">{offer.name}</p>
-                            <span className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${lootRarityClass[offer.rarity as keyof typeof lootRarityClass]}`}>{language === 'tr' ? offer.slot === 'skin' ? 'gövde' : offer.slot === 'headstyle' ? 'bas' : offer.slot === 'accessory' ? 'aksesuar' : 'tema' : language === 'pt-BR' ? offer.slot === 'skin' ? 'corpo' : offer.slot === 'headstyle' ? 'cabeca' : offer.slot === 'accessory' ? 'acessorio' : 'tema' : language === 'es' ? offer.slot === 'skin' ? 'cuerpo' : offer.slot === 'headstyle' ? 'cabeza' : offer.slot === 'accessory' ? 'accesorio' : 'tema' : offer.slot}</span>
+                            <span className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${lootRarityClass[offer.rarity as keyof typeof lootRarityClass]}`}>{language === 'tr' ? offer.slot === 'skin' ? 'gövde' : offer.slot === 'headstyle' ? 'bas' : offer.slot === 'accessory' ? 'aksesuar' : 'tema' : language === 'pt-BR' ? offer.slot === 'skin' ? 'corpo' : offer.slot === 'headstyle' ? 'cabeca' : offer.slot === 'accessory' ? 'acessorio' : 'tema' : language === 'es' ? offer.slot === 'skin' ? 'cuerpo' : offer.slot === 'headstyle' ? 'cabeza' : offer.slot === 'accessory' ? 'accesorio' : 'tema' : language === 'ru' ? offer.slot === 'skin' ? 'корпус' : offer.slot === 'headstyle' ? 'голова' : offer.slot === 'accessory' ? 'аксессуар' : 'тема' : language === 'zh-CN' ? offer.slot === 'skin' ? '机体' : offer.slot === 'headstyle' ? '头部样式' : offer.slot === 'accessory' ? '配件' : '主题' : offer.slot}</span>
                           </div>
                           <p className="mt-1 text-[10px] text-amber-200/80">{slotHint}</p>
                           <p className="mt-1 text-[11px] text-slate-300/85">{offer.description}</p>

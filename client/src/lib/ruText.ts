@@ -111,7 +111,7 @@ const CORE_RU_TEXTS: Record<string, string> = {
   "ONLINE": "ОНЛАЙН",
   "After Buy": "После покупки",
   "Total": "Итого",
-  "Checkpoint": "Checkpoint",
+  "Checkpoint": "Контрольная точка",
   "Next: 2x multiplier at lvl {level}": "Дальше: множитель 2x на ур. {level}",
   "Unlocked": "Открыто",
   "Unlock {category}": "Открыть {category}",
@@ -132,9 +132,9 @@ const CORE_RU_TEXTS: Record<string, string> = {
   "pickup chance": "шанс бонуса",
   "pickup value": "ценность бонуса",
   "pickup spawn rate": "частота появления бонусов",
-  "Time Warp chance": "шанс Time Warp",
-  "compressed output on Time Warp": "сжатая выработка в Time Warp",
-  "Time Warp cooldown": "перезарядка Time Warp",
+  "Time Warp chance": "шанс искажения времени",
+  "compressed output on Time Warp": "сжатая выработка при искажении времени",
+  "Time Warp cooldown": "перезарядка искажения времени",
   "prestige gain": "получение престижа",
   "offline earnings": "офлайн-доход",
   "max offline time": "макс. офлайн-время",
@@ -143,7 +143,7 @@ const CORE_RU_TEXTS: Record<string, string> = {
   "starting data": "стартовые данные",
   "max interest": "макс. проценты",
   "upgrade cost": "стоимость улучшений",
-  "checkpoint speed": "скорость checkpoint",
+  "checkpoint speed": "скорость контрольных точек",
   "[ALREADY UNLOCKED]": "[УЖЕ ОТКРЫТО]",
   "[UNLOCK {category}]": "[ОТКРЫТЬ {category}]",
   "[+{value} {resource}/s]": "[+{value} {resource}/с]",
@@ -179,7 +179,7 @@ const CORE_RU_TEXTS: Record<string, string> = {
   "Loading leaderboard...": "Загрузка таблицы лидеров...",
   "Loading Boss...": "Загрузка босса...",
   "Ascension Loot Box": "Лутбокс вознесения",
-  "CHECKPOINT!": "CHECKPOINT!",
+  "CHECKPOINT!": "КОНТРОЛЬНАЯ ТОЧКА!",
   "CRIT!": "CRIT!",
   "ACHIEVEMENT!": "ДОСТИЖЕНИЕ!",
   "BONUS!": "БОНУС!",
@@ -220,7 +220,7 @@ const GAME_TEXT_RU_TEXTS: Record<string, string> = {
   "Industrial-scale crypto mining operation.": "Майнинговая операция промышленного масштаба.",
   "Quantum Miner": "Квантовый майнер",
   "Quantum computing applied to blockchain algorithms.": "Квантовые вычисления, применённые к алгоритмам блокчейна.",
-  "Mining Datacenter": "Майнинг-датacenter",
+  "Mining Datacenter": "Майнинг-датацентр",
   "Massive facility dedicated to crypto extraction.": "Огромный комплекс, посвящённый добыче крипты.",
   "Eternal Strike": "Вечный удар",
   "+5% click power per level.": "+5% силы клика за уровень.",
@@ -239,11 +239,11 @@ const GAME_TEXT_RU_TEXTS: Record<string, string> = {
   "Signal Amplifier": "Усилитель сигнала",
   "+7% floating pickup spawn rate per level.": "+7% к частоте появления парящих бонусов за уровень.",
   "Temporal Hook": "Темпоральный крюк",
-  "+2.5% Time Warp trigger chance per level.": "+2.5% к шансу срабатывания Time Warp за уровень.",
+  "+2.5% Time Warp trigger chance per level.": "+2.5% к шансу срабатывания искажения времени за уровень.",
   "Chrono Compression": "Хроно-сжатие",
-  "+90s production burst per Time Warp trigger.": "+90с производственного всплеска за каждое срабатывание Time Warp.",
+  "+90s production burst per Time Warp trigger.": "+90 с производственного всплеска за каждое срабатывание искажения времени.",
   "Phase Lock": "Фазовая блокировка",
-  "-6s Time Warp cooldown per level (min 30s).": "-6с перезарядки Time Warp за уровень (мин. 30с).",
+  "-6s Time Warp cooldown per level (min 30s).": "-6 с перезарядки искажения времени за уровень (мин. 30 с).",
   "Market Arbitrage": "Рыночный арбитраж",
   "+4% more Nodes when selling data, per level.": "+4% больше узлов при продаже данных за уровень.",
   "Ascension Catalyst": "Катализатор вознесения",
@@ -319,8 +319,8 @@ const GAME_LOCALE_RU_TEXTS: Record<string, string> = {
   "Crowns": "Короны",
   "Node conversion efficiency": "Эффективность конвертации узлов",
   "Floater spawn acceleration": "Ускорение появления бонусов",
-  "Time Warp payout": "Награда Time Warp",
-  "Time Warp cooldown reduction": "Снижение перезарядки Time Warp",
+  "Time Warp payout": "Награда искажения времени",
+  "Time Warp cooldown reduction": "Снижение перезарядки искажения времени",
   "Critical chance": "Шанс крита",
   "Production multiplier": "Множитель производства",
   "Crypto multiplier": "Множитель крипты",
@@ -557,7 +557,7 @@ const GAME_LOCALE_RU_TEXTS: Record<string, string> = {
   "Allows crit chance over 100%. Overflow converts into extra crit multiplier.": "Позволяет шансу крита превышать 100%. Излишек превращается в дополнительный множитель крита.",
   "Adjacency Matrix": "Матрица соседства",
   "One-time passive. Arrange miners: horizontal 3s boost click, vertical 3s boost production, 2x2 squares boost crypto. All patterns add luck.": "Одноразовый пассив. Расставляйте майнеры: горизонтальные тройки усиливают клик, вертикальные тройки усиливают производство, квадраты 2x2 усиливают крипту. Все схемы добавляют удачу.",
-  "Softcap Breaker": "Разрушитель softcap",
+  "Softcap Breaker": "Разрушитель мягкого предела",
   "+7% production per level. Stacks with all other bonuses.": "+7% к производству за уровень. Складывается со всеми бонусами.",
   "Node Compression": "Сжатие узлов",
   "Selling is cheaper: 6% less data per Node per level (minimum 40 data).": "Продажа дешевле: на 6% меньше данных за узел за уровень (минимум 40).",
@@ -567,12 +567,12 @@ const GAME_LOCALE_RU_TEXTS: Record<string, string> = {
   "+6% data per click per level.": "+6% данных за клик за уровень.",
   "Floater Reactor": "Реактор бонусов",
   "Floating pickups appear 5% more often per level.": "Летающие бонусы появляются на 5% чаще за уровень.",
-  "Timewarp Overdrive": "Перегрузка Timewarp",
-  "Raises Time Warp payout from mini-game clicks.": "Повышает награду Time Warp от кликов в мини-игре.",
+  "Timewarp Overdrive": "Перегрузка искажения времени",
+  "Raises Time Warp payout from mini-game clicks.": "Повышает награду искажения времени от кликов в мини-игре.",
   "Critical Singularity": "Критическая сингулярность",
   "+3.5% crit chance per level.": "+3,5% шанса крита за уровень.",
   "Chrono Stabilizer": "Хроно-стабилизатор",
-  "Time Warp recharges 5% faster per level.": "Time Warp перезаряжается на 5% быстрее за уровень.",
+  "Time Warp recharges 5% faster per level.": "Искажение времени перезаряжается на 5% быстрее за уровень.",
   "Ice Giant Orbit": "Орбита ледяного гиганта",
   "+4% Production - View from icy moon orbit": "+4% к производству - вид с орбиты ледяной луны",
   "Event Horizon": "Горизонт событий",
@@ -720,7 +720,7 @@ const UI_RU_TEXTS: Record<string, string> = {
   "Production Rate": "Скорость производства",
   "Auto-Click Active": "Автоклик активен",
   "Auto firing": "Автострельба",
-  "Time Warp Anomaly": "Аномалия Time Warp",
+  "Time Warp Anomaly": "Аномалия искажения времени",
   "Collapse in": "Схлопнется через",
   "Arrange Room": "Расставить комнату",
   "Exit Edit": "Выйти из редактирования",
@@ -827,6 +827,20 @@ type RussianPattern = {
 };
 
 const RU_TEXT_PATTERNS: RussianPattern[] = [
+  {
+    pattern: /^(\d+) permanent systems?$/,
+    replace: (count) => {
+      const n = Number(count);
+      const mod10 = n % 10;
+      const mod100 = n % 100;
+      const word = mod10 === 1 && mod100 !== 11
+        ? "постоянная система"
+        : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+          ? "постоянные системы"
+          : "постоянных систем";
+      return `${count} ${word}`;
+    },
+  },
   {
     pattern: /^Completed: (\d+) total$/,
     replace: (total) => `Завершено: всего ${total}`,

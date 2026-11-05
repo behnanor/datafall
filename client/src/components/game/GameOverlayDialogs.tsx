@@ -9,6 +9,7 @@ import { AchievementsPanel } from '@/components/game/AchievementsPanel';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
 import { CosmeticsPanel } from '@/components/game/CosmeticsPanel';
 import { getCurrencyLabel, getLootTypeLabel, getRarityLabel } from '@/lib/gameLocale';
+import { upperForLanguage } from "@/lib/i18n";
 
 type LocalizeFn = (...args: any[]) => string;
 
@@ -279,11 +280,13 @@ export function LeaderboardsDialog({
                 `${leaderboardPeriod === 'today' ? 'Global today' : 'Global all-time'} rankings (top ${limit})`,
                 `${leaderboardPeriod === 'today' ? 'Bugünkü genel' : 'Genel tüm zamanlar'} sıralama (ilk ${limit})`,
                 `${leaderboardPeriod === 'today' ? 'Global de hoje' : 'Global de todo o periodo'} (top ${limit})`,
+                `${leaderboardPeriod === 'today' ? 'Clasificación global de hoy' : 'Clasificación global histórica'} (top ${limit})`,
               )
             : l(
                 `${leaderboardPeriod === 'today' ? 'Friends today' : 'Friends all-time'} rankings (top ${limit})`,
                 `${leaderboardPeriod === 'today' ? 'Bugünkü arkadaş' : 'Arkadaş tüm zamanlar'} sıralama (ilk ${limit})`,
                 `${leaderboardPeriod === 'today' ? 'Amigos de hoje' : 'Amigos de todo o periodo'} (top ${limit})`,
+                `${leaderboardPeriod === 'today' ? 'Clasificación de amigos de hoy' : 'Clasificación histórica de amigos'} (top ${limit})`,
               )}
         </div>
         <div className="text-[10px] uppercase tracking-wide text-slate-500">
@@ -293,12 +296,14 @@ export function LeaderboardsDialog({
                 `UTC günlük döngü: ${currentUtcCycleKey} | senin günlük skorun: ${currentDailyAscensionScore}`,
                 `Ciclo diário UTC: ${currentUtcCycleKey} | sua pontuação diária: ${currentDailyAscensionScore}`,
                 `Ciclo diario UTC: ${currentUtcCycleKey} | tu puntuación diaria: ${currentDailyAscensionScore}`,
+                `Дневной цикл UTC: ${currentUtcCycleKey} | ваш дневной счёт: ${currentDailyAscensionScore}`,
               )
             : l(
                 `UTC daily board key: ${currentUtcCycleKey}`,
-                `UTC günlük tahta anahtarı: ${currentUtcCycleKey}`,
-                `Chave UTC diária do placar: ${currentUtcCycleKey}`,
-                `Clave UTC diaria del tablero: ${currentUtcCycleKey}`,
+                `UTC günlük tablo kodu: ${currentUtcCycleKey}`,
+                `Código diário do placar (UTC): ${currentUtcCycleKey}`,
+                `Código diario de la clasificación (UTC): ${currentUtcCycleKey}`,
+                `Код дневной таблицы (UTC): ${currentUtcCycleKey}`,
               )}
         </div>
 
@@ -491,7 +496,7 @@ export function LootBoxDialog({
                     </AnimatePresence>
                   </motion.div>
                   <p className="text-sm text-slate-300">
-                    {isLootBoxCharging ? l('Decrypting lock sequence...', 'Kilit dizisi çözülüyor...', 'Descriptografando sequência de bloqueio...', 'Descifrando secuencia de bloqueo...') : isLootBoxBursting ? l('Jackpot breach confirmed!', 'Büyük ödül kırılımı onaylandı!', 'Rompimento do jackpot confirmado!', 'Breach del jackpot confirmado!') : lootBoxReward?.source === 'welcome' ? pick6(language, ['A gift for coming back to DataFall v1.03. Open it to claim your reward.', 'DataFall v1.03\'e döndüğün için bir hediye. Ödülünü almak için aç.', 'Um presente por voltar ao DataFall v1.03. Abra para resgatar sua recompensa.', 'Un regalo por volver a DataFall v1.03. Ábrelo para reclamar tu recompensa.', 'Подарок за возвращение в DataFall v1.03. Откройте, чтобы забрать награду.', '回归 DataFall v1.03 的礼物。打开领取奖励。']) : l('Boss dropped a loot box. Open it to claim your reward.', 'Boss bir ganimet kutusu düşürdü. Ödülünü almak için aç.', 'O chefe derrubou uma loot box. Abra para resgatar sua recompensa.', 'El jefe ha soltado una loot box. Abrela para reclamar tu recompensa.')}
+                    {isLootBoxCharging ? l('Decrypting lock sequence...', 'Kilit dizisi çözülüyor...', 'Descriptografando sequência de bloqueio...', 'Descifrando secuencia de bloqueo...') : isLootBoxBursting ? l('Jackpot breach confirmed!', 'Büyük ödül kırılımı onaylandı!', 'Rompimento do jackpot confirmado!', 'Breach del jackpot confirmado!') : lootBoxReward?.source === 'welcome' ? pick6(language, ['A gift for coming back to DataFall. Open it to claim your reward.', 'DataFall\'a döndüğün için bir hediye. Ödülünü almak için aç.', 'Um presente por voltar ao DataFall. Abra para resgatar sua recompensa.', 'Un regalo por volver a DataFall. Ábrelo para reclamar tu recompensa.', 'Подарок за возвращение в DataFall. Откройте, чтобы забрать награду.', '回归 DataFall 的礼物。打开领取奖励。']) : l('Boss dropped a loot box. Open it to claim your reward.', 'Boss bir ganimet kutusu düşürdü. Ödülünü almak için aç.', 'O chefe derrubou uma loot box. Abra para resgatar sua recompensa.', 'El jefe ha soltado una loot box. Abrela para reclamar tu recompensa.')}
                   </p>
                   <p className="text-xs text-slate-400">{l('Click Effects and Loot-Box crate skins are exclusive. Mine Skins can drop here too, and can also be bought in Crypto Shop.', 'Tıklama efektleri ve loot-box kasa kaplamaları özeldir. Maden kaplamaları da burada düşebilir ve Kripto Dükkânından da alınabilir.', 'Efeitos de Clique e skins de caixa de loot box são exclusivos. Skins de mineradora também podem cair aqui e podem ser compradas na Loja Cripto.', 'Los Efectos de Clic y las skins de caja Loot Box son exclusivos. Las Skins de Minero también pueden salir aquí y también pueden comprarse en la Tienda de Cripto.')}</p>
                   <Button onClick={onOpenLootBox} disabled={isLootBoxOpening} className="w-full bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-80 disabled:cursor-wait">
@@ -507,7 +512,7 @@ export function LootBoxDialog({
                       <div className="text-left">
                         <p className="text-lg font-bold text-cyan-200">{lootRewardDetails?.name ?? lootBoxReward.itemName}</p>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${lootRarityClass[lootBoxReward.rarity]}`}>{getRarityLabel(lootBoxReward.rarity, language).toUpperCase()}</span>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${lootRarityClass[lootBoxReward.rarity]}`}>{upperForLanguage(getRarityLabel(lootBoxReward.rarity, language))}</span>
                           <span className="text-[11px] text-slate-300">{getLootTypeLabel(lootBoxReward.cosmeticType, language)}</span>
                           {lootBoxReward.isAscensionItem && <span className="rounded border border-fuchsia-400/45 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-300">{l('Ascension Catalog', 'Yükseliş Kataloğu', 'Catálogo de Ascensão', 'Catálogo de Ascensión')}</span>}
                         </div>

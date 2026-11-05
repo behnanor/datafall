@@ -36,6 +36,13 @@ type I18nContextValue = {
 };
 
 const LANGUAGE_STORAGE_KEY = "datafall-language";
+
+/** Upper case for the current game language: plain toUpperCase() turns Turkish "i" into "I" (VERI, not VERİ). */
+export function upperForLanguage(text: string): string {
+  let lang = "en";
+  try { lang = (typeof document !== "undefined" && document.documentElement.lang) || "en"; } catch { /* ignore */ }
+  try { return text.toLocaleUpperCase(lang); } catch { return text.toUpperCase(); }
+}
 const LANGUAGE_SOURCE_STORAGE_KEY = "datafall-language-source";
 type LanguagePreferenceSource = "user" | "auto";
 

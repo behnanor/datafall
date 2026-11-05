@@ -15,6 +15,8 @@ interface DFBridge {
 }
 
 declare global {
+  /** Game version for display, e.g. "1.04" (from package.json, see vite.config.ts). */
+  const __APP_VERSION__: string;
   interface Window {
     df?: DFBridge;
   }

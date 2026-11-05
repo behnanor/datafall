@@ -940,8 +940,11 @@ const getCheckpointInterval = (category: string): number => {
 // Get checkpoint progress info
 export const getCheckpointProgress = (count: number, category: string): { current: number; max: number; nextCheckpoint: number } => {
   const interval = getCheckpointInterval(category);
-  const nextCheckpoint = Math.ceil(count / interval) * interval;
-  const currentInCycle = ((count - 1) % interval) + 1;
+  // The checkpoint at a multiple of the interval is already reached, so the next one is the following
+  // multiple (0 -> 25, 25 -> 50, 30 -> 50). The old ceil() said "at lvl 0" for unbought cards.
+  const safeCount = Math.max(0, Math.floor(count));
+  const nextCheckpoint = (Math.floor(safeCount / interval) + 1) * interval;
+  const currentInCycle = safeCount % interval;
   return { current: currentInCycle, max: interval, nextCheckpoint };
 };
 
@@ -4345,7 +4348,7 @@ const SEEN_WHATS_NEW: WhatsNewState = { seenVersion: WHATS_NEW_VERSION, giftClai
 // starts fresh and lets autosave write over it.
 type ElectronSaveApi = {
   saveFile?: (payload: { data: string | null; fileName: string }) => Promise<{ ok?: boolean; reason?: string } | undefined>;
-  loadFile?: (payload: { fileName: string }) => Promise<{ ok?: boolean; data?: string | null; reason?: string } | undefined>;
+  loadFile?: (payload: { fileName: string; namespace?: string }) => Promise<{ ok?: boolean; data?: string | null; reason?: string } | undefined>;
   quarantineSave?: (payload: { fileName: string }) => Promise<{ ok?: boolean; folder?: string; reason?: string } | undefined>;
   openSaveFolder?: () => Promise<{ ok?: boolean } | undefined>;
   onFlushSaveRequest?: (callback: () => Promise<void>) => (() => void) | undefined;
@@ -4422,11 +4425,14 @@ const storageAdapter = {
     // valid copy of the current namespace among the save file and both localStorage keys.
     // Never delete the v11 keys here.
     const candidates: Array<{ from: string; data: SaveData }> = [];
+    let fileWasReset = false;
     const api = getElectronSaveApi();
     if (api?.loadFile) {
       let fileResult: { ok?: boolean; data?: string | null; reason?: string } | undefined;
       try {
-        fileResult = await api.loadFile({ fileName: STEAM_SAVE_FILE });
+        // The namespace lets the main process skip a save.json of another slot and look for this
+        // slot's newest copy in save.json.bak and backups/.
+        fileResult = await api.loadFile({ fileName: STEAM_SAVE_FILE, namespace: SAVE_NAMESPACE });
       } catch (e: any) {
         fileResult = { ok: false, reason: e?.message || String(e) };
       }
@@ -4437,6 +4443,8 @@ const storageAdapter = {
         console.log('[Save] save file could not be read:', reason);
         return { status: 'error', reason };
       }
+      // Reset Data writes "null" to the file. Remember it so the demo save isn't imported again.
+      if (typeof fileResult.data === 'string' && fileResult.data.trim() === 'null') fileWasReset = true;
       if (fileResult.data) {
         const normalizedFile = normalizeLoaded(fileResult.data);
         if (normalizedFile) candidates.push({ from: 'file', data: normalizedFile });
@@ -4470,8 +4478,9 @@ const storageAdapter = {
         // no live save available; start fresh
       }
     }
-    if (!newest && !IS_DEMO_BUILD) {
+    if (!newest && !IS_DEMO_BUILD && !fileWasReset) {
       // Full game with no save of its own: carry over the demo progress once (read-only copy).
+      // Not after Reset Data: the player asked for a clean start.
       try {
         const demo = await api?.importDemoSave?.();
         const parsed = demo?.data ? JSON.parse(demo.data) : null;
@@ -8867,8 +8876,13 @@ useEffect(() => {
     setTutorial(prev => ({ ...prev, skipped: true }));
   }, []);
 
+  // Replaying the tutorial must not pay its rewards again (free cosmetic + step rewards each reset).
   const resetTutorial = useCallback(() => {
-    setTutorial(INITIAL_TUTORIAL);
+    setTutorial(prev => ({
+      ...INITIAL_TUTORIAL,
+      rewardGranted: !!prev.rewardGranted,
+      phaseRewardsGranted: Math.max(0, prev.phaseRewardsGranted ?? 0),
+    }));
   }, []);
 
   const completeTutorialObjective = useCallback((objectiveId: string) => {
@@ -9234,7 +9248,22 @@ useEffect(() => {
     // v1.04: also empty the save file and the local backup copy, otherwise the reload loads the old save
     // again. Saving is blocked first so the unload flush can't write the pre-reset state back.
     // Intentionally keep BACKUP_SAVE_NAMESPACE (v3) untouched as backup.
-    void storageAdapter.clear().finally(() => {
+    void storageAdapter.clear().then((ok) => {
+      if (!ok) {
+        // The save file could not be emptied, so the reload will bring the old save back. Say so.
+        let lang = 'en';
+        try { lang = localStorage.getItem('datafall-language') || 'en'; } catch { /* ignore */ }
+        const msg: Record<string, string> = {
+          en: 'The save file could not be reset (it may be locked by another program). Your old save will load again.',
+          tr: 'Kayıt dosyası sıfırlanamadı (başka bir program kilitliyor olabilir). Eski kaydın tekrar yüklenecek.',
+          'pt-BR': 'Não foi possível redefinir o arquivo de save (pode estar bloqueado por outro programa). Seu save antigo será carregado de novo.',
+          es: 'No se pudo reiniciar el archivo de guardado (puede estar bloqueado por otro programa). Se cargará tu partida anterior.',
+          ru: 'Не удалось сбросить файл сохранения (возможно, он занят другой программой). Старое сохранение загрузится снова.',
+          'zh-CN': '无法重置存档文件（可能被其他程序占用）。将重新加载你的旧存档。',
+        };
+        try { window.alert(msg[lang] || msg.en); } catch { /* ignore */ }
+      }
+    }).finally(() => {
       // Force a reload to ensure clean state
       window.location.reload();
     });

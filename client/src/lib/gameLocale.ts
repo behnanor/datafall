@@ -915,11 +915,11 @@ Object.assign(GAME_ENTITY_TEXTS, {
   },
   overclock_lattice: {
     name: { en: "Overclock Lattice", tr: "Hız Aşırtma Kafesi", "pt-BR": "Treliça de Overclock", es: "Retícula de Overclock", ru: "Разгонная решётка", "zh-CN": "超频晶格" },
-    description: { en: "+3% production per level. Paragon II.", tr: "Seviye başına +%3 üretim. Paragon II.", "pt-BR": "+3% de produção por nível. Paragon II.", es: "+3% de producción por nivel. Paragon II.", ru: "+3% производства за уровень. Paragon II.", "zh-CN": "每级产量 +3%。Paragon II。" },
+    description: { en: "+7% production per level. Paragon II.", tr: "Seviye başına +%7 üretim. Paragon II.", "pt-BR": "+7% de produção por nível. Paragon II.", es: "+7% de producción por nivel. Paragon II.", ru: "+7% производства за уровень. Paragon II.", "zh-CN": "每级产量 +7%。Paragon II。" },
   },
   quantum_ledger: {
     name: { en: "Quantum Ledger", tr: "Kuantum Defteri", "pt-BR": "Livro Quântico", es: "Libro Cuántico", ru: "Квантовый реестр", "zh-CN": "量子账本" },
-    description: { en: "+4% crypto production per level. Paragon II.", tr: "Seviye başına +%4 kripto üretimi. Paragon II.", "pt-BR": "+4% de produção de cripto por nível. Paragon II.", es: "+4% de producción de cripto por nivel. Paragon II.", ru: "+4% добычи крипты за уровень. Paragon II.", "zh-CN": "每级加密币产量 +4%。Paragon II。" },
+    description: { en: "+9% crypto production per level. Paragon II.", tr: "Seviye başına +%9 kripto üretimi. Paragon II.", "pt-BR": "+9% de produção de cripto por nível. Paragon II.", es: "+9% de producción de cripto por nivel. Paragon II.", ru: "+9% добычи крипты за уровень. Paragon II.", "zh-CN": "每级加密币产量 +9%。Paragon II。" },
   },
   singularity_tap: {
     name: { en: "Singularity Tap", tr: "Tekillik Musluğu", "pt-BR": "Torneira da Singularidade", es: "Grifo de la Singularidad", ru: "Кран сингулярности", "zh-CN": "奇点汲取" },
@@ -927,7 +927,7 @@ Object.assign(GAME_ENTITY_TEXTS, {
   },
   critical_cascade: {
     name: { en: "Critical Cascade", tr: "Kritik Çağlayan", "pt-BR": "Cascata Crítica", es: "Cascada Crítica", ru: "Критический каскад", "zh-CN": "暴击瀑流" },
-    description: { en: "+1.5% crit chance per level. Paragon II.", tr: "Seviye başına +%1.5 kritik şansı. Paragon II.", "pt-BR": "+1,5% de chance de crítico por nível. Paragon II.", es: "+1,5% de prob. de crítico por nivel. Paragon II.", ru: "+1,5% шанса крита за уровень. Paragon II.", "zh-CN": "每级暴击率 +1.5%。Paragon II。" },
+    description: { en: "+3.5% crit chance per level. Paragon II.", tr: "Seviye başına +%3.5 kritik şansı. Paragon II.", "pt-BR": "+3,5% de chance de crítico por nível. Paragon II.", es: "+3,5% de prob. de crítico por nivel. Paragon II.", ru: "+3,5% шанса крита за уровень. Paragon II.", "zh-CN": "每级暴击率 +3.5%。Paragon II。" },
   },
   softcap_breaker: {
     name: { en: "Softcap Breaker", tr: "Yumuşak Sınır Kırıcı", "pt-BR": "Quebrador de Softcap", es: "Rompe Softcap" },

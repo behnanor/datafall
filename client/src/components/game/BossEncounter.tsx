@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Shield, Zap, Skull, Trophy, AlertTriangle, Target, Keyboard } from "lucide-react";
-import { localizeInlineText, localizeText, useI18n } from "@/lib/i18n";
-import { BOSS_MODIFIERS, pick6, type BossVariant, type BossModifierId } from "@/lib/bossVariants";
+import { localizeInlineText, localizeText, useI18n, type LocalizedText } from "@/lib/i18n";
+import { BOSS_MODIFIERS, pick6, type BossVariant, type BossModifierId, BOSS_DEFEAT_PRESTIGE_SHARE, BOSS_RETRIES_PER_FIGHT, BOSS_ASSIST_TIME_MULTIPLIER, BOSS_ASSIST_HP_MULTIPLIER, readBossAssist, writeBossAssist, getBossPowerMultiplier } from "@/lib/bossVariants";
 
 interface BossEncounterProps {
   isOpen: boolean;
@@ -22,6 +22,8 @@ interface BossEncounterProps {
   finaleWeaken?: number;
   // v1.03: modifiers / Core Signal (asc 45) / Core Echo (Endless, every 10 depths).
   variant?: BossVariant;
+  // v1.04: permanent click power in % (prestige Eternal Strike + Paragon click modules); part of it becomes boss damage.
+  permanentClickPercent?: number;
   playSound?: (type: 'click' | 'buy_fab' | 'buy_black' | 'sell' | 'crit' | 'checkpoint' | 'achievement' | 'pickup' | 'boss_hit' | 'weakspot_hit') => void;
 }
 
@@ -56,6 +58,30 @@ const BOSS_LEVELS = [
   { name: { en: "System Overlord", tr: "Sistem Hükümdarı", "pt-BR": "Soberano do Sistema", es: "Soberano del Sistema", ru: "Повелитель системы", "zh-CN": "系统霸主" }, baseClicks: 35, bossMultiplier: 1.0, timeLimit: 14, color: "#b91c1c" },
   { name: { en: "The Architect", tr: "Mimar", "pt-BR": "O Arquiteto", es: "El Arquitecto", ru: "Архитектор", "zh-CN": "造物主" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 14, color: "#991b1b" },
 ];
+// v1.04: from ascension 11 on, the boss rotates through six designs instead of "The Architect" every time
+// (asc 10 to 49). Same difficulty for all six; modifiers still add the twist. One extra second vs the Architect.
+type BossShape = "hexagon" | "diamond" | "octagon" | "triangle" | "star" | "square";
+const BOSS_SHAPES: Record<BossShape, string> = {
+  hexagon: "50,15 85,32.5 85,67.5 50,85 15,67.5 15,32.5",
+  diamond: "50,8 92,50 50,92 8,50",
+  octagon: "35,12 65,12 88,35 88,65 65,88 35,88 12,65 12,35",
+  triangle: "50,6 94,88 6,88",
+  star: "50,6 62,36 94,38 69,58 78,90 50,72 22,90 31,58 6,38 38,36",
+  square: "16,16 84,16 84,84 16,84",
+};
+const LATE_BOSS_FIRST_INDEX = 10;
+const LATE_BOSSES: Array<{ name: LocalizedText; baseClicks: number; bossMultiplier: number; timeLimit: number; color: string; shape: BossShape }> = [
+  { name: { en: "Black ICE", tr: "Kara ICE", "pt-BR": "ICE Negro", es: "ICE Negro", ru: "Чёрный ЛЁД", "zh-CN": "黑冰" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 15, color: "#38bdf8", shape: "diamond" },
+  { name: { en: "Null Warden", tr: "Boşluk Gardiyanı", "pt-BR": "Guardião Nulo", es: "Guardián Nulo", ru: "Нулевой страж", "zh-CN": "虚空典狱长" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 15, color: "#a3e635", shape: "octagon" },
+  { name: { en: "Hydra Daemon", tr: "Hidra Daemonu", "pt-BR": "Daemon Hidra", es: "Daemon Hidra", ru: "Демон-Гидра", "zh-CN": "九头蛇守护进程" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 15, color: "#10b981", shape: "triangle" },
+  { name: { en: "Zero-Day Leviathan", tr: "Sıfırıncı Gün Leviatanı", "pt-BR": "Leviatã Dia Zero", es: "Leviatán de Día Cero", ru: "Левиафан нулевого дня", "zh-CN": "零日利维坦" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 15, color: "#6366f1", shape: "star" },
+  { name: { en: "Kernel Phantom", tr: "Kernel Hayaleti", "pt-BR": "Fantasma do Kernel", es: "Fantasma del Kernel", ru: "Призрак ядра ОС", "zh-CN": "内核幽灵" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 15, color: "#e879f9", shape: "square" },
+  { name: { en: "The Architect", tr: "Mimar", "pt-BR": "O Arquiteto", es: "El Arquitecto", ru: "Архитектор", "zh-CN": "造物主" }, baseClicks: 38, bossMultiplier: 1.0, timeLimit: 15, color: "#991b1b", shape: "hexagon" },
+];
+const getRegularBoss = (ascensionLevel: number) =>
+  ascensionLevel >= LATE_BOSS_FIRST_INDEX
+    ? LATE_BOSSES[(ascensionLevel - LATE_BOSS_FIRST_INDEX) % LATE_BOSSES.length]
+    : BOSS_LEVELS[Math.min(Math.max(0, ascensionLevel), BOSS_LEVELS.length - 1)];
 const WEAK_SPOT_MULTIPLIER = 10 / 3; // One-third of previous 10x weak-spot bonus
 const WEAK_SPOT_LIFETIME_MS = 3000;
 const OVERCLOCK_MULTIPLIER = 1.35;
@@ -80,7 +106,7 @@ interface BreachSequence {
   progress: number;
 }
 
-export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound, isFinale = false, critChance = 0.05, finaleWeaken = 0, variant }: BossEncounterProps) {
+export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound, isFinale = false, critChance = 0.05, finaleWeaken = 0, variant, permanentClickPercent = 0 }: BossEncounterProps) {
   const kind = isFinale ? "finale" : variant?.kind ?? "normal";
   const modList: BossModifierId[] = isFinale ? [] : variant?.modifiers ?? [];
   const mods = new Set<BossModifierId>(modList);
@@ -113,9 +139,17 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const damageFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const queuedWeakSpotTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   
-  const bossIndex = Math.min(ascensionLevel, BOSS_LEVELS.length - 1);
-  const currentBoss = kind === "finale" ? FINAL_BOSS : kind === "signal" ? SIGNAL_BOSS : kind === "echo" ? ECHO_BOSS : BOSS_LEVELS[bossIndex];
-  const timeLimit = Math.round(currentBoss.timeLimit * (mods.has("swift") ? 0.8 : 1));
+  const currentBoss = kind === "finale" ? FINAL_BOSS : kind === "signal" ? SIGNAL_BOSS : kind === "echo" ? ECHO_BOSS : getRegularBoss(ascensionLevel);
+  const bossShape = BOSS_SHAPES[("shape" in currentBoss ? currentBoss.shape : "hexagon") as BossShape];
+  // v1.04 fairness: Assist mode and the permanent-power damage share apply to regular bosses (and power also to the
+  // asc-45 Signal). The finale keeps its own pity system and Endless echoes stay as they are.
+  const assistAllowed = kind === "normal";
+  const [assistOn, setAssistOn] = useState<boolean>(() => readBossAssist());
+  const assistActive = assistAllowed && assistOn;
+  const powerMultiplier = kind === "normal" || kind === "signal" ? getBossPowerMultiplier(permanentClickPercent) : 1;
+  const [retriesLeft, setRetriesLeft] = useState(BOSS_RETRIES_PER_FIGHT);
+  const toggleAssist = () => setAssistOn(prev => { writeBossAssist(!prev); return !prev; });
+  const timeLimit = Math.round(currentBoss.timeLimit * (mods.has("swift") ? 0.8 : 1) * (assistActive ? BOSS_ASSIST_TIME_MULTIPLIER : 1));
   const echoTier = kind === "echo" ? Math.max(1, Math.floor((variant?.depth ?? 10) / 10)) : 0;
   const currentBossName = localizeText(currentBoss.name, language);
   
@@ -136,6 +170,10 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     );
     return calculatedHealth;
   }, [dataPerClick, currentBoss, ascensionLevel, isFinale, finaleWeaken, variant]);
+  const getBattleHealth = useCallback(
+    () => Math.max(75, Math.round(calculateBossHealth() * (assistActive ? BOSS_ASSIST_HP_MULTIPLIER : 1))),
+    [calculateBossHealth, assistActive],
+  );
 
   const showBreachFeedback = useCallback((result: 'success' | 'fail') => {
     if (breachFeedbackTimeoutRef.current) {
@@ -224,9 +262,11 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       setBreachFeedback(null);
       setOverclockUntil(0);
       setBattleNow(Date.now());
-      setDamagePerClick(dataPerClick);
+      setDamagePerClick(dataPerClick * powerMultiplier);
+      setRetriesLeft(BOSS_RETRIES_PER_FIGHT);
     }
-  }, [isOpen, currentBoss, calculateBossHealth, dataPerClick, timeLimit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, currentBoss, calculateBossHealth, dataPerClick]);
   
   useEffect(() => {
     if (phase !== 'battle') return;
@@ -441,8 +481,28 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     applyAttackAt(x, y, spot);
   }, [phase, applyAttackAt]);
   
+  // Every fight (first try or retry) starts from full HP with the current Assist choice.
   const startBattle = () => {
+    const health = getBattleHealth();
+    setBossHealth(health);
+    setMaxHealth(health);
+    setTimeLeft(timeLimit);
+    setClicks(0);
+    setHitEffects([]);
+    setWeakSpots([]);
+    weakSpotsRef.current = [];
+    clearQueuedWeakSpotTimeouts();
+    setBreachSequence(null);
+    setBreachFeedback(null);
+    setOverclockUntil(0);
+    setBattleNow(Date.now());
     setPhase('battle');
+  };
+
+  const handleRetry = () => {
+    if (retriesLeft <= 0) return;
+    setRetriesLeft(r => r - 1);
+    startBattle();
   };
   
   const handleVictory = () => {
@@ -460,7 +520,27 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const overclockRemaining = Math.max(0, overclockUntil - battleNow);
   const overclockActive = overclockRemaining > 0;
   const lowHealthDanger = healthPercent <= 30;
-  const penaltyPrestige = Math.floor(prestigeGain * 0.25);
+  const penaltyPrestige = Math.floor(prestigeGain * BOSS_DEFEAT_PRESTIGE_SHARE);
+  const keptPercent = Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100);
+  const assistToggle = assistAllowed ? (
+    <button
+      type="button"
+      onClick={toggleAssist}
+      aria-pressed={assistOn}
+      data-testid="boss-assist-toggle"
+      className={`w-full rounded-lg border px-3 py-2 text-left text-xs transition-colors ${assistOn ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-200' : 'border-slate-600 bg-slate-900/50 text-slate-300 hover:border-slate-400'}`}
+    >
+      <span className="font-bold">{pick6(language, ['Assist mode', 'Yardım modu', 'Modo assistido', 'Modo asistido', 'Режим помощи', '辅助模式'])}: {assistOn ? pick6(language, ['ON', 'AÇIK', 'LIGADO', 'ACTIVADO', 'ВКЛ', '开']) : pick6(language, ['OFF', 'KAPALI', 'DESLIGADO', 'DESACTIVADO', 'ВЫКЛ', '关'])}</span>
+      <span className="ml-2 opacity-80">{pick6(language, [
+        `+${Math.round((BOSS_ASSIST_TIME_MULTIPLIER - 1) * 100)}% time, -${Math.round((1 - BOSS_ASSIST_HP_MULTIPLIER) * 100)}% boss HP. Same rewards.`,
+        `+%${Math.round((BOSS_ASSIST_TIME_MULTIPLIER - 1) * 100)} süre, boss canı -%${Math.round((1 - BOSS_ASSIST_HP_MULTIPLIER) * 100)}. Ödüller aynı.`,
+        `+${Math.round((BOSS_ASSIST_TIME_MULTIPLIER - 1) * 100)}% de tempo, -${Math.round((1 - BOSS_ASSIST_HP_MULTIPLIER) * 100)}% de vida do chefe. Mesmas recompensas.`,
+        `+${Math.round((BOSS_ASSIST_TIME_MULTIPLIER - 1) * 100)}% de tiempo, -${Math.round((1 - BOSS_ASSIST_HP_MULTIPLIER) * 100)}% de vida del jefe. Mismas recompensas.`,
+        `+${Math.round((BOSS_ASSIST_TIME_MULTIPLIER - 1) * 100)}% времени, -${Math.round((1 - BOSS_ASSIST_HP_MULTIPLIER) * 100)}% HP босса. Награды те же.`,
+        `时间 +${Math.round((BOSS_ASSIST_TIME_MULTIPLIER - 1) * 100)}%，Boss 生命 -${Math.round((1 - BOSS_ASSIST_HP_MULTIPLIER) * 100)}%。奖励不变。`,
+      ])}</span>
+    </button>
+  ) : null;
   
   if (!isOpen) return null;
   
@@ -580,8 +660,22 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                     `Таймер боя: ${timeLimit}с | Сила клика: ${Math.round(damagePerClick)} | Слабая точка: ${Math.round(damagePerClick * weakSpotMultiplier)}`,
                   )}
                 </p>
+                {powerMultiplier > 1 && (
+                  <p className="text-xs text-emerald-300" data-testid="boss-power-bonus">
+                    {pick6(language, [
+                      `Permanent power: +${Math.round((powerMultiplier - 1) * 100)}% boss damage (from Eternal Strike and Paragon click upgrades)`,
+                      `Kalıcı güç: +%${Math.round((powerMultiplier - 1) * 100)} boss hasarı (Ebedi Darbe ve Paragon tıklama yükseltmelerinden)`,
+                      `Poder permanente: +${Math.round((powerMultiplier - 1) * 100)}% de dano ao chefe (Golpe Eterno e melhorias de clique Paragon)`,
+                      `Poder permanente: +${Math.round((powerMultiplier - 1) * 100)}% de daño al jefe (Golpe Eterno y mejoras de clic Paragon)`,
+                      `Постоянная сила: +${Math.round((powerMultiplier - 1) * 100)}% урона боссу (Вечный удар и улучшения клика Paragon)`,
+                      `永久力量：Boss 伤害 +${Math.round((powerMultiplier - 1) * 100)}%（来自永恒打击和 Paragon 点击升级）`,
+                    ])}
+                  </p>
+                )}
               </div>
               
+              {assistToggle}
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
                   <Trophy className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
@@ -592,8 +686,11 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
                   <Skull className="w-5 h-5 mx-auto mb-1 text-red-400" />
                   <p className="text-red-400 font-bold">{l('Defeat', 'Yenilgi', 'Derrota', 'Derrota', 'Поражение')}</p>
-                  <p className="text-xs text-muted-foreground">+{penaltyPrestige} {l('Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж')} (25%)</p>
-                  <p className="text-xs text-red-300">{l('No Ascension Level', 'Yükseliş Seviyesi Yok', 'Sem Nível de Ascensão', 'Sin Nivel de Ascensión', 'Без уровня вознесения')}</p>
+                  <p className="text-xs text-muted-foreground">+{penaltyPrestige} {l('Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж')} ({pick6(language, [`keep ${keptPercent}%`, `%${keptPercent} korunur`, `mantém ${keptPercent}%`, `conservas ${keptPercent}%`, `сохраняется ${keptPercent}%`, `保留 ${keptPercent}%`])})</p>
+                  <p className="text-xs text-red-300">{pick6(language, ['Ascension still counts, no loot box', 'Yükseliş yine sayılır, ganimet kutusu yok', 'A ascensão conta, sem caixa de recompensa', 'La ascensión cuenta, sin caja de botín', 'Вознесение засчитывается, без лутбокса', '飞升仍计入，无战利品箱'])}</p>
+                  {!isFinale && retriesLeft > 0 && (
+                    <p className="text-xs text-cyan-300">{pick6(language, [`${retriesLeft} free retry if you lose`, `Kaybedersen ${retriesLeft} ücretsiz tekrar`, `${retriesLeft} nova tentativa grátis se perder`, `${retriesLeft} reintento gratis si pierdes`, `${retriesLeft} бесплатная попытка при поражении`, `失败可免费重试 ${retriesLeft} 次`])}</p>
+                  )}
                 </div>
               </div>
               
@@ -730,7 +827,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                       </defs>
                       
                       <motion.polygon
-                        points="50,15 85,32.5 85,67.5 50,85 15,67.5 15,32.5"
+                        points={bossShape}
                         fill={`${currentBoss.color}30`}
                         stroke={currentBoss.color}
                         strokeWidth="2"
@@ -1039,6 +1136,18 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 </p>
               </div>
               
+              {isFinale ? (
+                <p className="text-sm text-cyan-300" data-testid="finale-defeat-note">
+                  {pick6(language, [
+                    'No penalty. Each failed attempt weakens the Core for the next try.',
+                    'Ceza yok. Her başarısız deneme bir sonraki deneme için Çekirdeği zayıflatır.',
+                    'Sem penalidade. Cada tentativa falha enfraquece o Núcleo para a próxima.',
+                    'Sin penalización. Cada intento fallido debilita el Núcleo para el siguiente.',
+                    'Без штрафа. Каждая неудачная попытка ослабляет Ядро для следующей.',
+                    '没有惩罚。每次失败都会削弱核心，下次更容易。',
+                  ])}
+                </p>
+              ) : (
               <motion.div
                 className="bg-red-500/10 border border-red-500/30 rounded-lg p-6"
                 initial={{ y: 20, opacity: 0 }}
@@ -1047,23 +1156,54 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
               >
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4 text-amber-400" />
-                   <p className="text-sm text-amber-400">{l('Penalty Applied', 'Ceza Uygulandı', 'Penalidade Aplicada', 'Penalización Aplicada', 'Штраф применён')}</p>
+                   <p className="text-sm text-amber-400">{pick6(language, ['If you accept', 'Kabul edersen', 'Se aceitar', 'Si aceptas', 'Если принять', '如果接受'])}</p>
                   </div>
-                 <p className="text-sm text-muted-foreground mb-2">{l('Consolation Prestige (25%)', 'Teselli Prestiji (25%)', 'Prestígio de Consolação (25%)', 'Prestigio de Consolación (25%)', 'Утешительный престиж (25%)')}</p>
+                 <p className="text-sm text-muted-foreground mb-2">{pick6(language, [
+                   `You keep ${keptPercent}% of the prestige (${100 - keptPercent}% lost)`,
+                   `Prestijin %${keptPercent}'ini korursun (%${100 - keptPercent} kaybolur)`,
+                   `Você mantém ${keptPercent}% do prestígio (${100 - keptPercent}% perdido)`,
+                   `Conservas el ${keptPercent}% del prestigio (se pierde el ${100 - keptPercent}%)`,
+                   `Вы сохраняете ${keptPercent}% престижа (${100 - keptPercent}% теряется)`,
+                   `保留 ${keptPercent}% 声望（损失 ${100 - keptPercent}%）`,
+                 ])}</p>
                  <p className="text-3xl font-bold text-amber-400">+{penaltyPrestige}</p>
                  <p className="text-xs text-muted-foreground mt-3">
-                   {l(
-                     `Ascension level remains at ${ascensionLevel + 1}`,
-                     `Yükseliş seviyesi ${ascensionLevel + 1} olarak kalir`,
-                     `O nível de ascensão permanece em ${ascensionLevel + 1}`,
-                     `El nivel de ascensión permanece en ${ascensionLevel + 1}`,
-                     `Уровень возвышения остается ${ascensionLevel + 1}`,
-                   )}
+                   {pick6(language, [
+                     `You still reach ascension ${ascensionLevel + 1}, but get no loot box.`,
+                     `Yine de ${ascensionLevel + 1}. yükselişe ulaşırsın, ama ganimet kutusu yok.`,
+                     `Você ainda chega à ascensão ${ascensionLevel + 1}, mas sem caixa de recompensa.`,
+                     `Aun así llegas a la ascensión ${ascensionLevel + 1}, pero sin caja de botín.`,
+                     `Вы всё равно достигаете вознесения ${ascensionLevel + 1}, но без лутбокса.`,
+                     `你仍会达到第 ${ascensionLevel + 1} 次飞升，但没有战利品箱。`,
+                   ])}
                  </p>
                  <p className="text-xs text-cyan-400 mt-1">
                    {l('Run resets - try again to break through!', 'Koşu sıfırlanır - yeniden dene ve aş!', 'A run reinicia. Tente de novo para romper a defesa!', 'La partida se reinicia. Vuelve a intentarlo para romper la defensa!', 'Забег будет сброшен — попробуйте снова, чтобы прорваться!')}
                   </p>
               </motion.div>
+              )}
+
+              {!isFinale && retriesLeft > 0 && (
+                <div className="space-y-3">
+                  {assistToggle}
+                  <Button
+                    onClick={handleRetry}
+                    className="w-full text-white font-bold py-6"
+                    style={{ backgroundColor: currentBoss.color }}
+                    data-testid="button-retry-boss"
+                  >
+                    <Zap className="w-5 h-5 mr-2" />
+                    {pick6(language, [
+                      `RETRY THE SAME BOSS (${retriesLeft} left)`,
+                      `AYNI BOSSU TEKRAR DENE (${retriesLeft} hak)`,
+                      `TENTAR DE NOVO (${retriesLeft} restante)`,
+                      `REINTENTAR (${retriesLeft} restante)`,
+                      `ПОВТОРИТЬ БОЙ (осталось ${retriesLeft})`,
+                      `重试同一 Boss（剩余 ${retriesLeft} 次）`,
+                    ])}
+                  </Button>
+                </div>
+              )}
               
               <Button
                 onClick={handleDefeat}

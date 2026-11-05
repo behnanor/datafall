@@ -1,5 +1,20 @@
 const { contextBridge, ipcRenderer, webFrame } = require("electron");
 
+// The main process asks for a last save before the window closes; the game answers when it is written.
+let flushSaveHandler = null;
+function setFlushSaveHandler(callback) {
+  flushSaveHandler = typeof callback === "function" ? callback : null;
+  return () => {
+    if (flushSaveHandler === callback) flushSaveHandler = null;
+  };
+}
+ipcRenderer.on("df:flush-save", async () => {
+  try {
+    if (flushSaveHandler) await flushSaveHandler();
+  } catch {}
+  ipcRenderer.send("df:flush-save-done");
+});
+
 contextBridge.exposeInMainWorld("df", {
   // steam helpers
   isSteamReady: () => ipcRenderer.invoke("df:is-steam-ready"),
@@ -18,7 +33,7 @@ contextBridge.exposeInMainWorld("df", {
 
   // file-based save/load (mirrored by Steam Auto-Cloud)
   saveFile: (data) => ipcRenderer.invoke("df:save-file", data),
-  loadFile: () => ipcRenderer.invoke("df:load-file"),
+  loadFile: (opts) => ipcRenderer.invoke("df:load-file", opts),
 });
 
 // Your renderer code (useGame.ts) expects window.electronAPI.
@@ -38,7 +53,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setFpsLimit: (fps) => ipcRenderer.send("df:set-fps-limit", fps),
 
   saveFile: (data) => ipcRenderer.invoke("df:save-file", data),
-  loadFile: () => ipcRenderer.invoke("df:load-file"),
+  loadFile: (opts) => ipcRenderer.invoke("df:load-file", opts),
+  quarantineSave: (opts) => ipcRenderer.invoke("df:quarantine-save", opts),
+  openSaveFolder: () => ipcRenderer.invoke("df:open-save-folder"),
+  onFlushSaveRequest: (callback) => setFlushSaveHandler(callback),
   importLiveSave: () => ipcRenderer.invoke("df:import-live-save"),
   importDemoSave: () => ipcRenderer.invoke("df:import-demo-save"),
 });

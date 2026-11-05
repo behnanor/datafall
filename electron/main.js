@@ -1,8 +1,6 @@
-import { app, BrowserWindow, Menu, ipcMain, globalShortcut } from "electron";
+import { app, BrowserWindow, Menu, ipcMain, globalShortcut, protocol, shell } from "electron";
 import path from "path";
 import fs from "fs";
-import net from "net";
-import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
 
@@ -37,7 +35,6 @@ if (IS_TEST_BUILD) {
   app.setPath("userData", process.env.DATAFALL_TEST_PROFILE_DIR || path.join(app.getPath("appData"), IS_DEMO_BUILD ? "DataFall Demo V1.03 TEST" : "DataFall V1.03 TEST"));
 }
 
-let serverProcess = null;
 let mainWindow = null;
 const leaderboardIdCache = new Map();
 
@@ -236,89 +233,228 @@ async function findOrCreateLeaderboard(leaderboardName) {
   return resolvedName;
 }
 
-// -------------------- Server --------------------
-function waitForPort(port, host = "127.0.0.1", timeoutMs = 15000) {
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
+// -------------------- Game files (app:// protocol) --------------------
+// v1.04: the game is served from the packaged files through a fixed app://datafall origin instead of a local
+// HTTP server on 127.0.0.1:<port>. localStorage (settings + the local save copy) is tied to the origin, so a
+// fixed origin can never come back empty because a port was busy. No server process, no open port.
+const APP_SCHEME = "app";
+const APP_HOST = "datafall";
+const APP_URL = `${APP_SCHEME}://${APP_HOST}/`;
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: APP_SCHEME,
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true },
+  },
+]);
 
-    const tryOnce = () => {
-      const socket = new net.Socket();
-      socket.setTimeout(1000);
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+  ".mp3": "audio/mpeg",
+  ".ogg": "audio/ogg",
+  ".wav": "audio/wav",
+  ".m4a": "audio/mp4",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".txt": "text/plain; charset=utf-8",
+};
 
-      socket.once("connect", () => {
-        socket.destroy();
-        resolve(true);
-      });
-
-      const onFail = () => {
-        socket.destroy();
-        if (Date.now() - start > timeoutMs) reject(new Error(`Port ${port} not ready`));
-        else setTimeout(tryOnce, 250);
-      };
-
-      socket.once("error", onFail);
-      socket.once("timeout", onFail);
-
-      socket.connect(port, host);
-    };
-
-    tryOnce();
-  });
+function getStaticRoot() {
+  const base = process.env.NODE_ENV === "development" ? process.cwd() : app.getAppPath(); // prod: .../resources/app.asar
+  return path.join(base, "dist", "public");
 }
 
-// Preferred port 5000 keeps the renderer origin (and its localStorage) unchanged; fall back to a free port.
-let serverPort = 5000;
-// Free = nothing answers on it (on Windows a 127.0.0.1 bind can succeed next to a 0.0.0.0 listener, so we probe by connecting).
-function isPortFree(port) {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    socket.setTimeout(400);
-    socket.once("connect", () => { socket.destroy(); resolve(false); });
-    socket.once("timeout", () => { socket.destroy(); resolve(true); });
-    socket.once("error", () => { socket.destroy(); resolve(true); });
-    socket.connect(port, "127.0.0.1");
-  });
-}
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once("error", reject);
-    srv.listen(0, "127.0.0.1", () => { const p = srv.address().port; srv.close(() => resolve(p)); });
-  });
-}
-async function pickServerPort() {
-  if (await isPortFree(5000)) return 5000;
-  const p = await getFreePort();
-  console.log("[server] port 5000 busy, using", p);
-  return p;
+function isFile(p) {
+  try { return fs.statSync(p).isFile(); } catch { return false; }
 }
 
-function startServer() {
-  const isDev = process.env.NODE_ENV === "development";
-  const appRoot = app.getAppPath(); // prod: .../resources/app.asar
+// Same behaviour as the old express static server: serve the file, fall back to index.html for unknown paths.
+function serveAppRequest(request) {
+  const root = getStaticRoot();
+  let pathname = "/";
+  try { pathname = decodeURIComponent(new URL(request.url).pathname || "/"); } catch {}
+  if (pathname === LEGACY_MIGRATION_PATH) {
+    return new Response("<!doctype html><title>DataFall</title>", { headers: { "content-type": "text/html; charset=utf-8" } });
+  }
+  let filePath = path.normalize(path.join(root, pathname));
+  if (filePath !== root && !filePath.startsWith(root + path.sep)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (!isFile(filePath)) filePath = path.join(root, "index.html");
 
-  const serverEntry = isDev
-    ? path.join(process.cwd(), "dist", "index.mjs")
-    : path.join(appRoot, "dist", "index.mjs");
+  let body;
+  try {
+    body = fs.readFileSync(filePath);
+  } catch (e) {
+    console.log("[app] read failed:", filePath, e?.message || e);
+    return new Response("Not found", { status: 404 });
+  }
 
-  const env = {
-    ...process.env,
-    NODE_ENV: isDev ? "development" : "production",
-    PORT: String(serverPort),
-    ELECTRON_RUN_AS_NODE: "1",
-    SteamAppId: String(getSteamAppId()),
-    STEAM_APP_ID: String(getSteamAppId()),
+  const headers = {
+    "content-type": MIME_TYPES[path.extname(filePath).toLowerCase()] || "application/octet-stream",
+    "accept-ranges": "bytes",
+    "cache-control": "no-cache",
   };
 
-  serverProcess = spawn(process.execPath, [serverEntry], {
-    env,
-    stdio: "inherit",
-    windowsHide: false,
-  });
+  // Range requests keep <audio> seeking/looping working.
+  const range = request.headers.get("range");
+  const match = range ? /^bytes=(\d*)-(\d*)$/.exec(range.trim()) : null;
+  if (match && (match[1] || match[2])) {
+    const size = body.length;
+    let start = match[1] ? parseInt(match[1], 10) : Math.max(0, size - parseInt(match[2], 10));
+    let end = match[1] && match[2] ? parseInt(match[2], 10) : size - 1;
+    end = Math.min(end, size - 1);
+    if (!(start >= 0) || start > end) {
+      return new Response(null, { status: 416, headers: { "content-range": `bytes */${size}` } });
+    }
+    return new Response(body.subarray(start, end + 1), {
+      status: 206,
+      headers: { ...headers, "content-range": `bytes ${start}-${end}/${size}`, "content-length": String(end - start + 1) },
+    });
+  }
+  return new Response(body, { status: 200, headers: { ...headers, "content-length": String(body.length) } });
+}
 
-  serverProcess.on("exit", (code) => {
-    console.log("[server] exited with code", code);
-  });
+function registerAppProtocol() {
+  protocol.handle(APP_SCHEME, (request) => serveAppRequest(request));
+}
+
+// -------------------- One-time localStorage migration from the old http origin --------------------
+// Up to v1.03 the renderer ran on http://127.0.0.1:5000, so players' settings and the local save copy live in
+// that origin's localStorage. On first launch with app://, a hidden window on the same profile reads that
+// storage (read-only) and then copies every key the new app:// origin does not have yet, before the game opens.
+// The old storage itself is never touched, and a JSON copy is kept in the user data folder.
+const LEGACY_ORIGINS = ["http://127.0.0.1:5000", "http://localhost:5000"];
+const LEGACY_MIGRATION_MARKER = "legacy-storage-migrated.json";
+const LEGACY_STORAGE_BACKUP = "legacy-localstorage-backup.json";
+const LEGACY_MIGRATION_PATH = "/__df_migrate";
+
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), ms)),
+  ]);
+}
+
+function getSaveTimestamp(value) {
+  try {
+    const parsed = JSON.parse(value);
+    const ts = Number(parsed?.lastSaveTimestamp);
+    return Number.isFinite(ts) ? ts : null;
+  } catch {
+    return null;
+  }
+}
+
+async function migrateLegacyLocalStorage() {
+  const userData = app.getPath("userData");
+  if (fs.existsSync(path.join(userData, LEGACY_MIGRATION_MARKER))) return;
+
+  const perOrigin = [];
+  let allRead = true;
+  let copied = null;
+  let win = null;
+  try {
+    // Answer every http request with a blank page while reading, so nothing on the network is involved.
+    protocol.handle("http", () => new Response("<!doctype html><title>DataFall</title>", { headers: { "content-type": "text/html" } }));
+    win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    for (const origin of LEGACY_ORIGINS) {
+      try {
+        await withTimeout(win.loadURL(`${origin}/`), 5000, "legacy load");
+        const json = await withTimeout(
+          win.webContents.executeJavaScript(
+            "(() => { const o = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k !== null) o[k] = localStorage.getItem(k); } return JSON.stringify(o); })()",
+            true
+          ),
+          5000,
+          "legacy read"
+        );
+        perOrigin.push({ origin, data: JSON.parse(json) || {} });
+      } catch (e) {
+        allRead = false;
+        console.log("[migrate] could not read", origin, e?.message || e);
+      }
+    }
+
+    const merged = mergeLegacyStorage(perOrigin);
+    saveLegacyStorageCopy(userData, perOrigin);
+    // Write into the app:// origin (blank page from the app protocol handler), only keys that are missing.
+    await withTimeout(win.loadURL(`${APP_SCHEME}://${APP_HOST}${LEGACY_MIGRATION_PATH}`), 5000, "app origin load");
+    copied = await withTimeout(
+      win.webContents.executeJavaScript(
+        `(() => { const src = ${JSON.stringify(merged)}; let n = 0; for (const k of Object.keys(src)) { if (localStorage.getItem(k) === null) { localStorage.setItem(k, src[k]); n++; } } return n; })()`,
+        true
+      ),
+      5000,
+      "app origin write"
+    );
+    console.log("[migrate] legacy localStorage keys found:", Object.keys(merged).length, "| copied:", copied, "| all origins read:", allRead);
+  } catch (e) {
+    allRead = false;
+    console.log("[migrate] legacy storage read failed:", e?.message || e);
+  } finally {
+    // close() and wait, not destroy(): destroying the renderer here made the next app:// load fail (ERR_FAILED).
+    if (win && !win.isDestroyed()) {
+      await withTimeout(new Promise((resolve) => { win.once("closed", resolve); win.close(); }), 3000, "legacy window close")
+        .catch(() => { try { win.destroy(); } catch {} });
+    }
+    try { protocol.unhandle("http"); } catch {}
+  }
+
+  if (allRead && copied !== null) {
+    try {
+      fs.mkdirSync(userData, { recursive: true });
+      fs.writeFileSync(
+        path.join(userData, LEGACY_MIGRATION_MARKER),
+        JSON.stringify({ migratedAt: new Date().toISOString(), copied }),
+        "utf8"
+      );
+    } catch (e) {
+      console.log("[migrate] marker write failed:", e?.message || e);
+    }
+  }
+}
+
+// For save-like values keep the newest copy (lastSaveTimestamp); otherwise the first origin wins.
+function mergeLegacyStorage(perOrigin) {
+  const merged = {};
+  for (const { data } of perOrigin) {
+    for (const [key, value] of Object.entries(data)) {
+      if (typeof value !== "string") continue;
+      if (!(key in merged)) { merged[key] = value; continue; }
+      const a = getSaveTimestamp(merged[key]);
+      const b = getSaveTimestamp(value);
+      if (a !== null && b !== null && b > a) merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+function saveLegacyStorageCopy(userData, perOrigin) {
+  if (!perOrigin.some(({ data }) => Object.keys(data).length > 0)) return;
+  try {
+    const backupFile = path.join(userData, LEGACY_STORAGE_BACKUP);
+    if (fs.existsSync(backupFile)) return;
+    fs.mkdirSync(userData, { recursive: true });
+    fs.writeFileSync(backupFile, JSON.stringify({ createdAt: new Date().toISOString(), origins: perOrigin }, null, 1), "utf8");
+  } catch (e) {
+    console.log("[migrate] backup copy failed:", e?.message || e);
+  }
 }
 
 // -------------------- Window --------------------
@@ -362,6 +498,34 @@ function registerDevtoolsShortcuts() {
   }
 }
 
+// Closing the window: ask the renderer for one last save and wait for its answer (max 2.5 s) before closing,
+// so Alt+F4 / the X button no longer race the final save.
+function attachCloseFlush(win) {
+  let allowClose = false;
+  win.on("close", (event) => {
+    if (allowClose) return;
+    event.preventDefault();
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      ipcMain.removeListener("df:flush-save-done", onDone);
+      allowClose = true;
+      try { if (!win.isDestroyed()) win.close(); } catch {}
+    };
+    const onDone = (e) => { if (e.sender === win.webContents) finish(); };
+    const timer = setTimeout(finish, 2500);
+    ipcMain.on("df:flush-save-done", onDone);
+    try {
+      if (win.webContents.isDestroyed() || win.webContents.isCrashed()) finish();
+      else win.webContents.send("df:flush-save");
+    } catch {
+      finish();
+    }
+  });
+}
+
 async function createWindow() {
   Menu.setApplicationMenu(null);
 
@@ -395,9 +559,10 @@ async function createWindow() {
     mainWindow.webContents.openDevTools({ mode: "detach" });
   }
 
-  // Start server and load it
-  await waitForPort(serverPort);
-  await mainWindow.loadURL(`http://127.0.0.1:${serverPort}`);
+  attachCloseFlush(mainWindow);
+
+  // DATAFALL_DEV_URL lets development load the Vite dev server instead of the built files.
+  await mainWindow.loadURL(process.env.DATAFALL_DEV_URL || APP_URL);
 
   // Force fullscreen after load (Windows likes to argue)
   try {
@@ -464,16 +629,127 @@ function isValidSaveJson(text) {
   }
 }
 
-// Crash-safe write: temp file, keep the previous valid save as .bak, then atomic rename.
+// -------------------- Rotating save backups --------------------
+// v1.04: next to save.json.bak (previous save) we keep timestamped copies in <save folder>/backups:
+//   launch  - the save as it was before the first write of each game session (last 5)
+//   periodic- at most one per 30 minutes of play (last 12)
+//   daily   - one per calendar day (last 7)
+//   rollback- any write that would lose progress (fewer ascensions, less play time, a reset, another
+//             save slot): the old save is kept here first (last 10), and .bak is not replaced.
+// Note: whether Steam Auto-Cloud uploads backups/ depends on the Auto-Cloud file pattern in Steamworks.
+const BACKUP_DIR_NAME = "backups";
+const BACKUP_KEEP = { launch: 5, periodic: 12, daily: 7, rollback: 10 };
+const PERIODIC_BACKUP_MS = 30 * 60 * 1000;
+const sessionSnapshotTaken = new Set();
+
+function backupStamp(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+function listBackups(file, kind) {
+  const dir = path.join(path.dirname(file), BACKUP_DIR_NAME);
+  const prefix = `${path.basename(file)}.${kind ? kind + "." : ""}`;
+  try {
+    return fs.readdirSync(dir)
+      .filter((name) => name.startsWith(prefix) && name.endsWith(".json"))
+      .map((name) => {
+        const full = path.join(dir, name);
+        let mtimeMs = 0;
+        try { mtimeMs = fs.statSync(full).mtimeMs; } catch {}
+        return { name, full, mtimeMs };
+      })
+      .sort((a, b) => b.mtimeMs - a.mtimeMs || b.name.localeCompare(a.name));
+  } catch {
+    return [];
+  }
+}
+
+function snapshotSave(file, kind) {
+  try {
+    if (!fs.existsSync(file)) return false;
+    const dir = path.join(path.dirname(file), BACKUP_DIR_NAME);
+    fs.mkdirSync(dir, { recursive: true });
+    let target = path.join(dir, `${path.basename(file)}.${kind}.${backupStamp()}.json`);
+    for (let i = 2; fs.existsSync(target); i++) {
+      target = path.join(dir, `${path.basename(file)}.${kind}.${backupStamp()}-${i}.json`);
+    }
+    fs.copyFileSync(file, target);
+    for (const old of listBackups(file, kind).slice(BACKUP_KEEP[kind] ?? 10)) {
+      try { fs.unlinkSync(old.full); } catch {}
+    }
+    console.log("[cloud] backup", kind, "=>", target);
+    return true;
+  } catch (e) {
+    console.log("[cloud] backup", kind, "failed:", e?.message || e);
+    return false;
+  }
+}
+
+function takeRotatingBackups(file) {
+  if (!sessionSnapshotTaken.has(file)) {
+    sessionSnapshotTaken.add(file);
+    snapshotSave(file, "launch");
+  }
+  const newestPeriodic = listBackups(file, "periodic")[0];
+  if (!newestPeriodic || Date.now() - newestPeriodic.mtimeMs >= PERIODIC_BACKUP_MS) snapshotSave(file, "periodic");
+  const today = backupStamp().slice(0, 8);
+  if (!listBackups(file, "daily").some((b) => b.name.includes(`.daily.${today}`))) snapshotSave(file, "daily");
+}
+
+// Progress of a save, used to spot a write that would throw progress away.
+function saveProgress(text) {
+  try {
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      namespace: typeof parsed.saveNamespace === "string" ? parsed.saveNamespace : null,
+      ascensions: Number(parsed?.stats?.totalAscensions) || 0,
+      elapsed: Number(parsed?.elapsedTime) || 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isProgressLoss(oldText, newText) {
+  const before = saveProgress(oldText);
+  if (!before) return false; // nothing worth protecting in the old file
+  const after = saveProgress(newText);
+  if (!after) return true; // reset (null) or junk over a real save
+  if (before.namespace && after.namespace && before.namespace !== after.namespace) return true;
+  if (after.ascensions < before.ascensions) return true;
+  return after.ascensions === before.ascensions && after.elapsed + 60 < before.elapsed;
+}
+
+// Crash-safe write: flushed temp file, rotating backups, keep the previous valid save as .bak, atomic rename.
 function writeSaveAtomic(file, payload) {
   const tempFile = `${file}.tmp`;
   const backupFile = `${file}.bak`;
-  fs.writeFileSync(tempFile, payload, "utf8");
+  const fd = fs.openSync(tempFile, "w");
   try {
-    if (fs.existsSync(file) && isValidSaveJson(fs.readFileSync(file, "utf8"))) {
-      fs.copyFileSync(file, backupFile);
+    fs.writeFileSync(fd, payload, "utf8");
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
+  try {
+    if (fs.existsSync(file)) {
+      const current = fs.readFileSync(file, "utf8");
+      takeRotatingBackups(file);
+      if (isValidSaveJson(current)) {
+        if (isProgressLoss(current, payload)) {
+          // Keep the better save out of reach of the next writes; .bak keeps the previous good save too.
+          snapshotSave(file, "rollback");
+          console.log("[cloud] write would lose progress; old save kept in backups, .bak left as is");
+        } else {
+          fs.copyFileSync(file, backupFile);
+        }
+      }
     }
-  } catch {}
+  } catch (e) {
+    console.log("[cloud] backup step failed:", e?.message || e);
+  }
   fs.renameSync(tempFile, file);
 }
 
@@ -490,6 +766,32 @@ function readSaveWithBackup(file) {
     }
   }
   return { data: null, from: null };
+}
+
+// Like readSaveWithBackup, but also falls back to the rotating backups, and tells "no save" apart from
+// "there is a save but it could not be read" so the game never starts fresh over an unreadable save.
+function readSaveForGame(file) {
+  let sawFile = false;
+  let lastError = null;
+  const candidates = [file, `${file}.bak`, ...listBackups(file).map((b) => b.full)];
+  for (const f of candidates) {
+    try {
+      if (!fs.existsSync(f)) continue;
+      sawFile = true;
+      const data = fs.readFileSync(f, "utf8");
+      if (isValidSaveJson(data)) {
+        if (f !== file) console.log("[cloud] save.json missing or unreadable, using", f);
+        return { status: "ok", data, from: f };
+      }
+      lastError = "corrupt";
+      console.log("[cloud] corrupt save ignored =>", f);
+    } catch (e) {
+      lastError = e?.code || e?.message || String(e);
+      console.log("[cloud] read failed =>", f, e?.message || e);
+    }
+  }
+  if (!sawFile) return { status: "none", data: null, from: null };
+  return { status: "error", data: null, from: null, reason: lastError || "unreadable" };
 }
 
 function getAutoCloudSavePath(fileName = "save.json") {
@@ -538,16 +840,59 @@ ipcMain.handle("df:load-file", async (_event, payloadInput) => {
         ? payloadInput.fileName
         : undefined;
     const { file } = getAutoCloudSavePath(fileName);
-    const { data, from } = readSaveWithBackup(file);
-    if (!data) {
-      console.log("[cloud] load: no valid save =>", file);
+    const result = readSaveForGame(file);
+    if (result.status === "error") {
+      console.log("[cloud] load: save exists but could not be read =>", file, result.reason);
+      return { ok: false, data: null, file, reason: result.reason };
+    }
+    if (!result.data) {
+      console.log("[cloud] load: no save =>", file);
       return { ok: true, data: null, file };
     }
-    console.log("[cloud] load OK =>", from, "| bytes =", Buffer.byteLength(data, "utf8"));
-    return { ok: true, data, file: from };
+    console.log("[cloud] load OK =>", result.from, "| bytes =", Buffer.byteLength(result.data, "utf8"));
+    return { ok: true, data: result.data, file: result.from };
   } catch (e) {
     console.log("[cloud] load failed:", e?.message || e);
     return { ok: false, data: null, reason: e?.message || String(e) };
+  }
+});
+
+// The save could not be read and the player chose to go on: move the unreadable files into
+// backups/unreadable-<time>/ (never delete them), so the next load starts from the local copy or fresh.
+ipcMain.handle("df:quarantine-save", async (_event, payloadInput) => {
+  try {
+    const fileName =
+      payloadInput && typeof payloadInput === "object" && !Array.isArray(payloadInput)
+        ? payloadInput.fileName
+        : undefined;
+    const { dir, file } = getAutoCloudSavePath(fileName);
+    const target = path.join(dir, BACKUP_DIR_NAME, `unreadable-${backupStamp()}`);
+    fs.mkdirSync(target, { recursive: true });
+    for (const f of [file, `${file}.bak`]) {
+      if (!fs.existsSync(f)) continue;
+      try {
+        fs.renameSync(f, path.join(target, path.basename(f)));
+      } catch {
+        fs.copyFileSync(f, path.join(target, path.basename(f)));
+        fs.unlinkSync(f);
+      }
+    }
+    console.log("[cloud] unreadable save moved to", target);
+    return { ok: true, folder: target };
+  } catch (e) {
+    console.log("[cloud] quarantine failed:", e?.message || e);
+    return { ok: false, reason: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle("df:open-save-folder", async () => {
+  try {
+    const { dir } = getAutoCloudSavePath();
+    fs.mkdirSync(dir, { recursive: true });
+    const error = await shell.openPath(dir);
+    return { ok: !error, reason: error || undefined };
+  } catch (e) {
+    return { ok: false, reason: e?.message || String(e) };
   }
 });
 
@@ -887,8 +1232,8 @@ if (!app.requestSingleInstanceLock()) {
 app.whenReady().then(async () => {
   if (!app.hasSingleInstanceLock()) return;
   initSteam();
-  serverPort = await pickServerPort();
-  startServer();
+  registerAppProtocol();
+  await migrateLegacyLocalStorage();
   await createWindow();
 });
 
@@ -899,8 +1244,6 @@ app.on("will-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  if (serverProcess) {
-    try { serverProcess.kill(); } catch {}
-  }
+  if (!mainWindow) return; // only the hidden legacy-storage window closed during startup
   if (process.platform !== "darwin") app.quit();
 });

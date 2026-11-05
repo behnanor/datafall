@@ -5,6 +5,7 @@ import { shiftThemeColorsForEra } from '@/lib/colorEra';
 import { useGame, formatNumber, getPrestigeGainBreakdown, getEndlessDepth, getFinaleWeaken, IS_TEST_BUILD, type ResourceType, type LootBoxReward, type TutorialReward, type FloatingPickupItem, CHARACTER_SKINS, ROOM_THEMES, CHARACTER_ACCESSORIES, CHARACTER_HEAD_STYLES, CHARACTER_PETS, ASCENSION_PETS, ASCENSION_SKINS, ASCENSION_HEAD_STYLES, ASCENSION_ACCESSORIES, ASCENSION_ROOM_THEMES, CLICK_EFFECTS, LOOT_BOX_SKINS, MACHINE_BOX_SKINS, CRYPTO_RELIC_TREE, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_CAPES, BLACK_MARKET_WINGS, BLACK_MARKET_UPGRADES, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, PARAGON_UPGRADES, computeParagonBonuses } from '@/lib/useGame';
 import { ABYSS_VARIANT_HUES } from '@/lib/endless';
 import { DemoEndScreen } from '@/components/game/DemoEndScreen';
+import { SaveLoadErrorScreen } from '@/components/game/SaveLoadErrorScreen';
 import { DemoPrompts } from '@/components/game/DemoPrompts';
 import { WhatsNewDialog } from '@/components/game/WhatsNewDialog';
 import { WHATS_NEW_VERSION } from '@/lib/useGame';
@@ -159,7 +160,8 @@ export default function GamePage() {
       claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, 
       getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, 
       completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, 
-      resetGame, setFullscreen, setWindowed 
+      resetGame, setFullscreen, setWindowed, 
+      saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder 
     } = useGame();
 
   const currentTutorialPhase = useMemo(() => getCurrentTutorialPhase(), [getCurrentTutorialPhase]);
@@ -2040,6 +2042,7 @@ export default function GamePage() {
           }}
           onClose={markWhatsNewSeen} />
       )}
+      {saveLoadError !== null && <SaveLoadErrorScreen language={language} reason={saveLoadError} onRetry={retrySaveLoad} onOpenFolder={openSaveFolder} onContinueWithout={continueWithoutUnreadableSave} />}
       {showDemoEnd && !isBossEncounterActive && <DemoEndScreen language={language} ascensions={stats.totalAscensions} onQuit={() => { void saveGame(); setTimeout(() => window.close(), 300); }} />}
       {showFinaleCredits && (
         <FinaleCredits totalAscensions={stats.totalAscensions} onContinue={() => setShowFinaleCredits(false)} />

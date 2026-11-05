@@ -70,23 +70,23 @@ export function OfflineProgressModal({ progress, onClose }: OfflineProgressModal
   const hasAnyReward = progress.dataEarned > 0 || progress.creditsEarned > 0 || 
                        progress.cryptoEarned > 0;
   const maxOfflineTime = progress.maxTime ?? 8 * 60 * 60;
-  const title = l("Welcome Back, Operator", "Tekrar Hos Geldin", "Boas-vindas de volta, Operador", "Bienvenido de nuevo, Operador");
+  const title = l("Welcome Back, Operator", "Tekrar Hoş Geldin", "Boas-vindas de volta, Operador", "Bienvenido de nuevo, Operador");
   const awayText = l(
     `You were away for ${formatTime(progress.timeAway, language)}`,
-    `${formatTime(progress.timeAway, language)} boyunca uzaktaydin`,
-    `Voce ficou ausente por ${formatTime(progress.timeAway, language)}`,
+    `${formatTime(progress.timeAway, language)} boyunca uzaktaydın`,
+    `Você ficou ausente por ${formatTime(progress.timeAway, language)}`,
     `Estuviste ausente durante ${formatTime(progress.timeAway, language)}`,
   );
   const maxOfflineText = l(
     `(Max ${formatTime(maxOfflineTime, language)} of offline progress)`,
     `(En fazla ${formatTime(maxOfflineTime, language)} çevrimdışı ilerleme)`,
-    `(Maximo de ${formatTime(maxOfflineTime, language)} de progresso offline)`,
-    `(Maximo ${formatTime(maxOfflineTime, language)} de progreso offline)`,
+    `(Máximo de ${formatTime(maxOfflineTime, language)} de progresso offline)`,
+    `(Máximo ${formatTime(maxOfflineTime, language)} de progreso offline)`,
   );
   const rewardsText = l(
     "Your systems continued mining while you were away:",
-    "Sen yokken sistemlerin kazim yapmaya devam etti:",
-    "Seus sistemas continuaram minerando enquanto voce estava ausente:",
+    "Sen yokken sistemlerin kazım yapmaya devam etti:",
+    "Seus sistemas continuaram minerando enquanto você estava ausente:",
     "Tus sistemas siguieron minando mientras estabas ausente:",
   );
   const continueText = l("Continue Hacking", "Hacking'e Devam Et", "Continuar Hackeando");

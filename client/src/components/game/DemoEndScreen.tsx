@@ -14,7 +14,7 @@ const openFullGameStore = () => {
 
 const FEATURES: L6[] = [
   ["50 ascensions, a final boss and an Endless mode", "50 yükseliş, final bossu ve Sonsuz mod", "50 ascensões, um chefe final e o modo Infinito", "50 ascensiones, un jefe final y el modo Infinito", "50 вознесений, финальный босс и бесконечный режим", "50 次飞升、最终首领与无尽模式"],
-  ["Automation, challenges, Paragon Lab and relics", "Otomasyon, görevler, Paragon Laboratuvarı ve relikler", "Automação, desafios, Laboratório Paragon e relíquias", "Automatización, desafíos, Laboratorio Paragon y reliquias", "Автоматизация, испытания, лаборатория Paragon и реликвии", "自动化、挑战、Paragon 实验室与遗物"],
+  ["Automation, challenges, Paragon Lab and relics", "Otomasyon, meydan okumalar, Paragon Laboratuvarı ve relikler", "Automação, desafios, Laboratório Paragon e relíquias", "Automatización, desafíos, Laboratorio Paragon y reliquias", "Автоматизация, испытания, лаборатория Paragon и реликвии", "自动化、挑战、Paragon 实验室与遗物"],
   ["Hundreds of cosmetics, Steam achievements and leaderboards", "Yüzlerce kozmetik, Steam başarımları ve liderlik tabloları", "Centenas de cosméticos, conquistas e placares da Steam", "Cientos de cosméticos, logros y clasificaciones de Steam", "Сотни косметики, достижения и таблицы лидеров Steam", "数百种外观、Steam 成就与排行榜"],
   ["Your demo progress carries over", "Demo ilerlemen tam sürüme taşınır", "Seu progresso da demo é mantido", "Tu progreso de la demo se conserva", "Прогресс демо сохраняется", "试玩进度可继承"],
 ];

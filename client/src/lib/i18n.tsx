@@ -9,6 +9,7 @@ import {
 } from "react";
 import { getRussianTextFallback } from "./ruText";
 import { getSimplifiedChineseTextFallback } from "./zhCnText";
+import { V104_ES, V104_PT_BR } from "./v104Text";
 
 export type Language = "en" | "tr" | "pt-BR" | "es" | "ru" | "zh-CN";
 
@@ -66,7 +67,7 @@ const translations: Record<Language, TranslationTree> = {
       tutorial: "Tutorial",
       language: "Language",
       english: "English",
-      turkish: "Turkce",
+      turkish: "Türkçe",
       portugueseBrazil: "Português (Brasil)",
       spanish: "Spanish",
       russian: "Russian",
@@ -264,7 +265,7 @@ const translations: Record<Language, TranslationTree> = {
       displaySettings: "Görüntü Ayarları",
       performanceMode: "Performans Modu",
       disableSceneGlow: "Sahne Parlamalarini Azalt",
-      disableSceneGlowHint: "FPS icin agir sahne parlamalarini kapatir",
+      disableSceneGlowHint: "FPS için agir sahne parlamalarini kapatir",
       fullscreen: "TAM EKRAN",
       windowed: "PENCERELİ",
       languageSettings: "Dil",
@@ -418,7 +419,7 @@ const translations: Record<Language, TranslationTree> = {
       tutorial: "Tutorial",
       language: "Idioma",
       english: "English",
-      turkish: "Turkce",
+      turkish: "Türkçe",
       portugueseBrazil: "Português (Brasil)",
       spanish: "Espanhol",
       russian: "Russo",
@@ -594,7 +595,7 @@ const translations: Record<Language, TranslationTree> = {
       tutorial: "Tutorial",
       language: "Idioma",
       english: "English",
-      turkish: "Turkce",
+      turkish: "Türkçe",
       portugueseBrazil: "Português (Brasil)",
       spanish: "Español",
       russian: "Ruso",
@@ -891,6 +892,8 @@ export const localizeText = (value: LocalizedText | string, language: Language):
   if (typeof value === "string") return value;
   if (language === "ru") return value.ru ?? getRussianTextFallback(value.en) ?? value.en;
   if (language === "zh-CN") return value["zh-CN"] ?? getSimplifiedChineseTextFallback(value.en) ?? value.en;
+  if (language === "pt-BR") return value["pt-BR"] ?? V104_PT_BR[value.en] ?? value.en;
+  if (language === "es") return value.es ?? V104_ES[value.en] ?? value.en;
   return value[language] ?? value.en;
 };
 
@@ -904,7 +907,7 @@ export const localizeInlineText = (
 ): string => {
   if (language === "tr") return tr;
   if (language === "pt-BR") return ptBR;
-  if (language === "es") return es ?? en;
+  if (language === "es") return es ?? V104_ES[en] ?? en;
   if (language === "ru") return ru ?? getRussianTextFallback(en) ?? en;
   if (language === "zh-CN") return getSimplifiedChineseTextFallback(en) ?? en;
   return en;

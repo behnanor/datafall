@@ -145,7 +145,7 @@ interface MachineConfig {
 const MACHINE_CONFIGS: MachineConfig[] = [
   { upgradeId: 'data_miner_v1', variant: 'data', gridRow: 0, gridCol: 0, size: 22, name: 'Basic Computer' },
   { upgradeId: 'data_miner_v2', variant: 'data_gold', gridRow: 0, gridCol: 0, size: 24, name: 'Server Rack' },
-  { upgradeId: 'botnet_node', variant: 'botnet', gridRow: 0, gridCol: 0, size: 24, name: 'Botnet Server' },
+  { upgradeId: 'botnet_node', variant: 'botnet', gridRow: 0, gridCol: 0, size: 24, name: 'Botnet Cluster' },
   { upgradeId: 'neural_network', variant: 'neural', gridRow: 0, gridCol: 0, size: 22, name: 'Neural Network' },
   { upgradeId: 'crypto_rig_basic', variant: 'mining1', gridRow: 0, gridCol: 0, size: 24, name: 'Mining Rig Basic' },
   { upgradeId: 'crypto_rig_advanced', variant: 'mining2', gridRow: 0, gridCol: 0, size: 26, name: 'Mining Rig Pro' },
@@ -4435,10 +4435,10 @@ export const CyberpunkRoom = React.memo(function CyberpunkRoom({
           transition={{ delay: 1 }}
         >
           <p className="text-cyan-400/50 text-sm font-mono tracking-wide">
-            {language === 'tr' ? '[ LAB BOS ]' : language === 'pt-BR' ? '[ LAB VAZIO ]' : language === 'es' ? '[ LAB VACIO ]' : language === 'ru' ? '[ ЛАБ ПУСТА ]' : '[ LAB EMPTY ]'}
+            {language === 'tr' ? '[ LAB BOŞ ]' : language === 'pt-BR' ? '[ LAB VAZIO ]' : language === 'es' ? '[ LAB VACIO ]' : language === 'ru' ? '[ ЛАБ ПУСТА ]' : '[ LAB EMPTY ]'}
           </p>
           <p className="text-muted-foreground/50 text-xs mt-1">
-            {language === 'tr' ? 'Makinelerin ortaya cikmasi icin yukseltme satin al' : language === 'pt-BR' ? 'Compre upgrades para fazer as maquinas surgirem' : language === 'es' ? 'Compra mejoras para hacer aparecer las maquinas' : language === 'ru' ? 'Купите улучшения, чтобы появились машины' : 'Purchase upgrades to spawn machines'}
+            {language === 'tr' ? 'Makinelerin ortaya çıkması için yükseltme satın al' : language === 'pt-BR' ? 'Compre upgrades para fazer as maquinas surgirem' : language === 'es' ? 'Compra mejoras para hacer aparecer las maquinas' : language === 'ru' ? 'Купите улучшения, чтобы появились машины' : 'Purchase upgrades to spawn machines'}
           </p>
         </motion.div>
       )}

@@ -438,7 +438,7 @@ export function SettingsModal({
                   <RotateCcw className="w-3 h-3 mr-1" />
                   {resetArmed
                     ? (language === 'tr' ? 'Sifirlamayi Onayla' : language === 'pt-BR' ? 'Confirmar Reset' : language === 'es' ? 'Confirmar Reinicio' : language === 'ru' ? 'Подтвердить сброс' : language === 'zh-CN' ? '确认重置' : 'Confirm Reset')
-                    : (language === 'tr' ? 'Veriyi Sifirla' : language === 'pt-BR' ? 'Resetar Dados' : language === 'es' ? 'Restablecer Datos' : language === 'ru' ? 'Сбросить данные' : language === 'zh-CN' ? '重置数据' : 'Reset Data')}
+                    : (language === 'tr' ? 'Veriyi Sıfırla' : language === 'pt-BR' ? 'Resetar Dados' : language === 'es' ? 'Restablecer Datos' : language === 'ru' ? 'Сбросить данные' : language === 'zh-CN' ? '重置数据' : 'Reset Data')}
                 </Button>
               </div>
 
@@ -478,11 +478,11 @@ export function SettingsModal({
             <AlertDialogContent className="max-w-md border-red-500/35 bg-slate-950 text-slate-100 shadow-2xl">
               <AlertDialogHeader>
                 <AlertDialogTitle className="font-mono text-red-300">
-                  {language === 'tr' ? 'Tum veriyi sifirla?' : language === 'pt-BR' ? 'Resetar todos os dados?' : language === 'es' ? 'Restablecer todos los datos?' : language === 'ru' ? 'Сбросить все данные?' : language === 'zh-CN' ? '重置全部数据？' : 'Reset all data?'}
+                  {language === 'tr' ? 'Tüm veriyi sıfırla?' : language === 'pt-BR' ? 'Resetar todos os dados?' : language === 'es' ? 'Restablecer todos los datos?' : language === 'ru' ? 'Сбросить все данные?' : language === 'zh-CN' ? '重置全部数据？' : 'Reset all data?'}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="font-mono text-xs leading-5 text-slate-300">
                   {language === 'tr'
-                    ? 'Bu, oyunu en basa dondurur. Tum kayitli veri, yukseltmeler, prestij, kozmetikler ve istatistikler kalici olarak silinir. Bu islem geri alinamaz.'
+                    ? 'Bu, oyunu en başa döndürür. Tüm kayıtlı veri, yükseltmeler, prestij, kozmetikler ve istatistikler kalıcı olarak silinir. Bu işlem geri alınamaz.'
                     : language === 'pt-BR'
                       ? 'Isso leva o jogo de volta ao inicio. Todos os dados salvos, melhorias, prestigio, cosmeticos e estatisticas serao apagados permanentemente. Esta acao nao pode ser desfeita.'
                       : language === 'es'
@@ -521,7 +521,7 @@ export function SettingsModal({
 
 const FPS_LIMIT_LABEL: Record<Language, string> = {
   en: 'FPS Limit (lower = less CPU/GPU)',
-  tr: 'FPS Limiti (dusuk = daha az CPU/GPU)',
+  tr: 'FPS Limiti (düşük = daha az CPU/GPU)',
   'pt-BR': 'Limite de FPS (menor = menos CPU/GPU)',
   es: 'Limite de FPS (menor = menos CPU/GPU)',
   ru: 'Лимит FPS (меньше = ниже нагрузка)',

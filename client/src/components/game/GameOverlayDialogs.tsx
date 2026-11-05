@@ -26,7 +26,7 @@ export function AchievementsDialog({
       <DialogContent className="max-w-2xl h-[80vh] bg-card/95 border-amber-500/30 z-[50]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-amber-400">
-            <Trophy className="w-5 h-5" /> {l('Achievements', 'Basarimlar', 'Conquistas', 'Logros')}
+            <Trophy className="w-5 h-5" /> {l('Achievements', 'Başarımlar', 'Conquistas', 'Logros')}
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-hidden -mx-6 -mb-6 px-6 pb-6">
@@ -55,19 +55,19 @@ export function StatsDialog({
       <DialogContent className="max-w-md bg-card/95 border-fuchsia-500/30 z-[50]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-fuchsia-400">
-            <BarChart3 className="w-5 h-5" /> {l('Player Stats', 'Oyuncu Istatistikleri', 'Estatisticas do Jogador', 'Estadisticas del Jugador')}
+            <BarChart3 className="w-5 h-5" /> {l('Player Stats', 'Oyuncu İstatistikleri', 'Estatísticas do Jogador', 'Estadísticas del Jugador')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Total Clicks', 'Toplam Tiklama', 'Cliques Totais', 'Clics Totales')}</div><div className="text-lg font-mono text-cyan-400">{formatNumber(stats.totalClicks)}</div></div>
-            <div className="bg-fuchsia-500/10 border border-fuchsia-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Critical Hits', 'Kritik Vuruslar', 'Acertos Criticos', 'Golpes Criticos')}</div><div className="text-lg font-mono text-fuchsia-400">{formatNumber(stats.totalCrits)}</div></div>
+            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Total Clicks', 'Toplam Tıklama', 'Cliques Totais', 'Clics Totales')}</div><div className="text-lg font-mono text-cyan-400">{formatNumber(stats.totalClicks)}</div></div>
+            <div className="bg-fuchsia-500/10 border border-fuchsia-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Critical Hits', 'Kritik Vuruşlar', 'Acertos Críticos', 'Golpes Críticos')}</div><div className="text-lg font-mono text-fuchsia-400">{formatNumber(stats.totalCrits)}</div></div>
             <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Data', 'Veri', 'Dados', 'Datos')}</div><div className="text-lg font-mono text-amber-400">{formatNumber(Math.floor(stats.totalDataCollected))}</div></div>
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Nodes', 'Dizin', 'Nodes', 'Nodos')}</div><div className="text-lg font-mono text-yellow-400">{formatNumber(Math.floor(stats.totalCreditsEarned))}</div></div>
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Ascensions', 'Yukselisler', 'Ascensoes', 'Ascensiones')}</div><div className="text-lg font-mono text-purple-400">{stats.totalAscensions}</div></div>
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Upgrades Bought', 'Alinan Yukseltmeler', 'Upgrades Comprados', 'Mejoras Compradas')}</div><div className="text-lg font-mono text-emerald-400">{stats.totalUpgradesPurchased}</div></div>
-            <div className="bg-orange-500/10 border border-orange-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Pickups Collected', 'Toplanan Oduller', 'Coletas Recolhidas', 'Pickups Recogidos')}</div><div className="text-lg font-mono text-orange-400">{stats.pickupsCollected}</div></div>
-            <div className="bg-indigo-500/10 border border-indigo-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Prestige Spent', 'Harcanan Prestij', 'Prestigio Gasto', 'Prestigio Gastado')}</div><div className="text-lg font-mono text-indigo-400">{formatNumber(Math.floor(stats.totalPrestigeSpent))}</div></div>
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Ascensions', 'Yükselişler', 'Ascensões', 'Ascensiones')}</div><div className="text-lg font-mono text-purple-400">{stats.totalAscensions}</div></div>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Upgrades Bought', 'Alınan Yükseltmeler', 'Upgrades Comprados', 'Mejoras Compradas')}</div><div className="text-lg font-mono text-emerald-400">{stats.totalUpgradesPurchased}</div></div>
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Pickups Collected', 'Toplanan Ödüller', 'Coletas Recolhidas', 'Pickups Recogidos')}</div><div className="text-lg font-mono text-orange-400">{stats.pickupsCollected}</div></div>
+            <div className="bg-indigo-500/10 border border-indigo-500/30 rounded p-3"><div className="text-[10px] text-muted-foreground uppercase">{l('Prestige Spent', 'Harcanan Prestij', 'Prestígio Gasto', 'Prestigio Gastado')}</div><div className="text-lg font-mono text-indigo-400">{formatNumber(Math.floor(stats.totalPrestigeSpent))}</div></div>
           </div>
         </div>
       </DialogContent>
@@ -89,7 +89,7 @@ export function AscensionPetUnlockDialog({
       <DialogContent className="max-w-md bg-card/95 border-purple-500/40 z-[120]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-purple-300">
-            <Sparkles className="w-5 h-5" /> {l('Ascension Pet Unlocked', 'Yukselis Evcili Acildi', 'Pet de Ascensao Desbloqueado', 'Mascota de Ascension Desbloqueada')}
+            <Sparkles className="w-5 h-5" /> {l('Ascension Pet Unlocked', 'Yükseliş Evcili Açıldı', 'Pet de Ascensão Desbloqueado', 'Mascota de Ascensión Desbloqueada')}
           </DialogTitle>
         </DialogHeader>
         {pet && (
@@ -103,7 +103,7 @@ export function AscensionPetUnlockDialog({
                   <p className="font-bold text-purple-100">{pet.name}</p>
                   <p className="text-xs text-muted-foreground">{pet.description}</p>
                   <p className="text-[11px] text-purple-200/80 mt-1">
-                    {l('Unlock Requirement', 'Acilis Kosulu', 'Requisito de Desbloqueio', 'Requisito de Desbloqueo')}: {pet.ascensionRequirement ?? 0} {l('ascensions', 'yukselis', 'ascensoes', 'ascensiones')}
+                    {l('Unlock Requirement', 'Açılış Koşulu', 'Requisito de Desbloqueio', 'Requisito de Desbloqueo')}: {pet.ascensionRequirement ?? 0} {l('ascensions', 'yükseliş', 'ascensões', 'ascensiones')}
                   </p>
                 </div>
               </div>
@@ -141,28 +141,28 @@ export function TutorialRewardDialog({
       <DialogContent className="max-w-md bg-card/95 border-cyan-500/40 z-[120]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-cyan-300">
-            <Sparkles className="w-5 h-5" /> {l('Tutorial Complete', 'Egitim Tamamlandi', 'Tutorial Completo', 'Tutorial Completado')}
+            <Sparkles className="w-5 h-5" /> {l('Tutorial Complete', 'Eğitim Tamamlandı', 'Tutorial Completo', 'Tutorial Completado')}
           </DialogTitle>
         </DialogHeader>
         {reward && (
           <div className="space-y-4">
             <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-3">
-              <p className="text-sm text-cyan-100">{l('Congratulations on completing the tutorial. Here is your reward.', 'Egitimi tamamladigin icin tebrikler. Odulun burada.', 'Parabens por concluir o tutorial. Aqui esta sua recompensa.', 'Felicidades por completar el tutorial. Aqui tienes tu recompensa.')}</p>
+              <p className="text-sm text-cyan-100">{l('Congratulations on completing the tutorial. Here is your reward.', 'Eğitimi tamamladığın için tebrikler. Ödülün burada.', 'Parabens por concluir o tutorial. Aqui esta sua recompensa.', 'Felicidades por completar el tutorial. Aquí tienes tu recompensa.')}</p>
             </div>
             <div className="rounded-lg border border-cyan-500/30 bg-slate-900/70 p-3">
               {preview && (
                 <div className="mb-3 rounded-lg border border-cyan-500/25 bg-slate-950/80 p-2">
-                  <p className="text-[10px] uppercase tracking-widest text-cyan-300/80 mb-2">{l('Preview', 'Onizleme', 'Previa', 'Vista Previa')}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-cyan-300/80 mb-2">{l('Preview', 'Önizleme', 'Previa', 'Vista Previa')}</p>
                   <div>{preview}</div>
                 </div>
               )}
               <p className="text-xs text-cyan-300/80 uppercase tracking-wider">{rewardTypeLabel}</p>
               <p className="text-lg font-bold text-cyan-100">{localizedInfo?.name ?? reward.itemName}</p>
               <p className="text-xs text-muted-foreground mt-1">{localizedInfo?.description ?? reward.itemDescription}</p>
-              <p className="text-xs text-emerald-300 mt-2">{l('Shop Value', 'Magaza Degeri', 'Valor de Loja', 'Valor de Tienda')}: {formatNumber(reward.price)} {getCurrencyLabel(reward.currency, language)}</p>
+              <p className="text-xs text-emerald-300 mt-2">{l('Shop Value', 'Mağaza Değeri', 'Valor de Loja', 'Valor de Tienda')}: {formatNumber(reward.price)} {getCurrencyLabel(reward.currency, language)}</p>
             </div>
             <div className="flex items-center justify-end gap-2">
-              <Button onClick={onOpenCosmetics} className="bg-cyan-600/85 hover:bg-cyan-600 text-white">{l('Open Cosmetics', 'Kozmetiklere Git', 'Abrir Cosmeticos', 'Abrir Cosmeticos')}</Button>
+              <Button onClick={onOpenCosmetics} className="bg-cyan-600/85 hover:bg-cyan-600 text-white">{l('Open Cosmetics', 'Kozmetiklere Git', 'Abrir Cosméticos', 'Abrir Cosmeticos')}</Button>
               <Button variant="outline" onClick={onContinue} className="border-cyan-500/40 text-cyan-200">{l('Continue', 'Devam Et', 'Continuar', 'Continuar')}</Button>
             </div>
           </div>
@@ -244,7 +244,7 @@ export function LeaderboardsDialog({
       <DialogContent className="max-w-2xl h-[80vh] bg-card/95 border-amber-500/30 z-[55] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-amber-300">
-            <Crown className="w-5 h-5" /> {l('Leaderboards', 'Liderlik Tablolari', 'Placar de Lideres', 'Clasificaciones')}
+            <Crown className="w-5 h-5" /> {l('Leaderboards', 'Liderlik Tabloları', 'Placar de Lideres', 'Clasificaciones')}
           </DialogTitle>
         </DialogHeader>
 
@@ -253,10 +253,10 @@ export function LeaderboardsDialog({
             {l('Global', 'Genel', 'Global', 'Global')}
           </Button>
           <Button type="button" variant="outline" onClick={() => onLeaderboardPeriodChange('today')} className={`h-8 px-3 text-xs ${leaderboardPeriod === 'today' ? 'bg-violet-500/20 border-violet-500/50 text-violet-200' : 'bg-slate-900/70 border-slate-700 text-slate-300'}`} data-testid="button-leaderboard-period-today">
-            {l('Today', 'Bugun', 'Hoje', 'Hoy')}
+            {l('Today', 'Bugün', 'Hoje', 'Hoy')}
           </Button>
           <Button type="button" variant="outline" onClick={() => onLeaderboardPeriodChange('all_time')} className={`h-8 px-3 text-xs ${leaderboardPeriod === 'all_time' ? 'bg-amber-500/20 border-amber-500/50 text-amber-200' : 'bg-slate-900/70 border-slate-700 text-slate-300'}`} data-testid="button-leaderboard-period-all-time">
-            {l('All time', 'Tum Zamanlar', 'Todo o periodo', 'Todo el tiempo')}
+            {l('All time', 'Tüm Zamanlar', 'Todo o periodo', 'Todo el tiempo')}
           </Button>
           {endlessUnlocked && (
             <Button type="button" variant="outline" onClick={() => onLeaderboardPeriodChange('endless')} className={`h-8 px-3 text-xs ${leaderboardPeriod === 'endless' ? 'bg-orange-500/20 border-orange-500/50 text-orange-200' : 'bg-slate-900/70 border-slate-700 text-slate-300'}`} data-testid="button-leaderboard-period-endless">
@@ -264,7 +264,7 @@ export function LeaderboardsDialog({
             </Button>
           )}
           <Button type="button" variant="outline" onClick={() => onLeaderboardTabChange('friends')} className={`h-8 px-3 text-xs ${leaderboardTab === 'friends' ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200' : 'bg-slate-900/70 border-slate-700 text-slate-300'}`} data-testid="button-leaderboard-tab-friends">
-            {l('Friends', 'Arkadaslar', 'Amigos', 'Amigos')}
+            {l('Friends', 'Arkadaşlar', 'Amigos', 'Amigos')}
           </Button>
           <div className="ml-auto">
             <Button type="button" onClick={onRefresh} className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-500" data-testid="button-leaderboard-refresh-modal">
@@ -277,12 +277,12 @@ export function LeaderboardsDialog({
           {leaderboardTab === 'global'
             ? l(
                 `${leaderboardPeriod === 'today' ? 'Global today' : 'Global all-time'} rankings (top ${limit})`,
-                `${leaderboardPeriod === 'today' ? 'Bugunku genel' : 'Genel tum zamanlar'} siralama (ilk ${limit})`,
+                `${leaderboardPeriod === 'today' ? 'Bugünkü genel' : 'Genel tüm zamanlar'} sıralama (ilk ${limit})`,
                 `${leaderboardPeriod === 'today' ? 'Global de hoje' : 'Global de todo o periodo'} (top ${limit})`,
               )
             : l(
                 `${leaderboardPeriod === 'today' ? 'Friends today' : 'Friends all-time'} rankings (top ${limit})`,
-                `${leaderboardPeriod === 'today' ? 'Bugunku arkadas' : 'Arkadas tum zamanlar'} siralama (ilk ${limit})`,
+                `${leaderboardPeriod === 'today' ? 'Bugünkü arkadaş' : 'Arkadaş tüm zamanlar'} sıralama (ilk ${limit})`,
                 `${leaderboardPeriod === 'today' ? 'Amigos de hoje' : 'Amigos de todo o periodo'} (top ${limit})`,
               )}
         </div>
@@ -290,14 +290,14 @@ export function LeaderboardsDialog({
           {leaderboardPeriod === 'today'
             ? l(
                 `UTC daily cycle: ${currentUtcCycleKey} | your daily score: ${currentDailyAscensionScore}`,
-                `UTC gunluk dongu: ${currentUtcCycleKey} | senin gunluk skorun: ${currentDailyAscensionScore}`,
-                `Ciclo diario UTC: ${currentUtcCycleKey} | sua pontuacao diaria: ${currentDailyAscensionScore}`,
-                `Ciclo diario UTC: ${currentUtcCycleKey} | tu puntuacion diaria: ${currentDailyAscensionScore}`,
+                `UTC günlük döngü: ${currentUtcCycleKey} | senin günlük skorun: ${currentDailyAscensionScore}`,
+                `Ciclo diário UTC: ${currentUtcCycleKey} | sua pontuação diária: ${currentDailyAscensionScore}`,
+                `Ciclo diario UTC: ${currentUtcCycleKey} | tu puntuación diaria: ${currentDailyAscensionScore}`,
               )
             : l(
                 `UTC daily board key: ${currentUtcCycleKey}`,
-                `UTC gunluk tahta anahtari: ${currentUtcCycleKey}`,
-                `Chave UTC diaria do placar: ${currentUtcCycleKey}`,
+                `UTC günlük tahta anahtarı: ${currentUtcCycleKey}`,
+                `Chave UTC diária do placar: ${currentUtcCycleKey}`,
                 `Clave UTC diaria del tablero: ${currentUtcCycleKey}`,
               )}
         </div>
@@ -305,13 +305,13 @@ export function LeaderboardsDialog({
         <div className="min-h-0 flex-1 overflow-y-auto space-y-2 pr-1">
           {activeLoading ? (
             <div className="rounded border border-slate-700/50 bg-slate-900/70 p-3 text-sm text-slate-300">
-              {l('Loading leaderboard...', 'Liderlik tablosu yukleniyor...', 'Carregando placar...', 'Cargando clasificacion...')}
+              {l('Loading leaderboard...', 'Liderlik tablosu yükleniyor...', 'Carregando placar...', 'Cargando clasificación...')}
             </div>
           ) : activeError ? (
             <div className="rounded border border-red-500/35 bg-red-500/10 p-3 text-sm text-red-300">{activeError}</div>
           ) : activeEntries.length === 0 ? (
             <div className="rounded border border-slate-700/50 bg-slate-900/70 p-3 text-sm text-slate-400">
-              {l('No entries yet.', 'Henuz kayit yok.', 'Ainda nao ha registros.', 'Aun no hay registros.')}
+              {l('No entries yet.', 'Henüz kayıt yok.', 'Ainda não há registros.', 'Aun no hay registros.')}
             </div>
           ) : (
             activeEntries.map((entry) => (
@@ -321,7 +321,7 @@ export function LeaderboardsDialog({
                   <p className="truncate text-xs text-slate-300">{entry.personaName}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-wide text-slate-400">{l('Ascension', 'Yukselis', 'Ascensao', 'Ascension')}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-slate-400">{l('Ascension', 'Yükseliş', 'Ascensão', 'Ascensión')}</p>
                   <p className="text-sm font-mono text-cyan-300">{entry.score}</p>
                 </div>
               </div>
@@ -361,7 +361,7 @@ export function CosmeticsMarketDialog({
       <DialogContent className="w-[95vw] max-w-6xl h-[84vh] grid-rows-[auto_minmax(0,1fr)] content-start bg-card/95 border-purple-500/30 z-[50]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl font-display text-purple-400">
-            <Sparkles className="w-5 h-5" /> {l('Cosmetics Market', 'Kozmetik Pazari', 'Mercado de Cosmeticos', 'Mercado de Cosmeticos')}
+            <Sparkles className="w-5 h-5" /> {l('Cosmetics Market', 'Kozmetik Pazarı', 'Mercado de Cosméticos', 'Mercado de Cosmeticos')}
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-hidden -mx-6 -mb-6 px-6 pb-6">
@@ -374,8 +374,8 @@ export function CosmeticsMarketDialog({
 
             <div className="hidden lg:flex min-h-0 flex-col rounded-xl border border-cyan-500/30 bg-slate-950/60 p-3 shadow-[0_0_24px_rgba(6,182,212,0.12)]">
               <div className="mb-3">
-                <p className="text-xs uppercase tracking-[0.18em] text-cyan-300/80">{l('Live Character Preview', 'Canli Karakter Onizlemesi', 'Previa de Personagem ao Vivo', 'Vista Previa del Personaje en Vivo')}</p>
-                <p className="text-[11px] text-slate-400 mt-1">{l('Updates instantly as you equip cosmetics.', 'Kozmetik taktikca aninda guncellenir.', 'Atualiza instantaneamente conforme voce equipa cosmeticos.', 'Se actualiza al instante al equipar cosmeticos.')}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-cyan-300/80">{l('Live Character Preview', 'Canlı Karakter Önizlemesi', 'Previa de Personagem ao Vivo', 'Vista Previa del Personaje en Vivo')}</p>
+                <p className="text-[11px] text-slate-400 mt-1">{l('Updates instantly as you equip cosmetics.', 'Kozmetik taktıkça anında güncellenir.', 'Atualiza instantaneamente conforme você equipa cosméticos.', 'Se actualiza al instante al equipar cosmeticos.')}</p>
               </div>
 
               <div className="relative flex-1 min-h-[420px] overflow-hidden rounded-lg border border-cyan-500/25 bg-slate-950/80">
@@ -410,15 +410,15 @@ export function CosmeticsMarketDialog({
                   <p className="text-xs text-cyan-200 truncate">{equippedSkin.name}</p>
                 </div>
                 <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{l('Head', 'Bas', 'Cabeca', 'Cabeza')}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{l('Head', 'Baş', 'Cabeça', 'Cabeza')}</p>
                   <p className="text-xs text-cyan-200 truncate">{equippedHeadStyle.name}</p>
                 </div>
                 <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{l('Accessory', 'Aksesuar', 'Acessorio', 'Accesorio')}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{l('Accessory', 'Aksesuar', 'Acessório', 'Accesorio')}</p>
                   <p className="text-xs text-cyan-200 truncate">{equippedAccessory.name}</p>
                 </div>
                 <div className="rounded border border-slate-700/60 bg-slate-900/70 px-2 py-1 col-span-2">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{l('Click Effect', 'Tiklama Efekti', 'Efeito de Clique', 'Efecto de Clic')}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{l('Click Effect', 'Tıklama Efekti', 'Efeito de Clique', 'Efecto de Clic')}</p>
                   <p className="text-xs text-cyan-200 truncate">{equippedClickEffect ? equippedClickEffect.name : l('None', 'Yok', 'Nenhum', 'Ninguno')}</p>
                 </div>
               </div>
@@ -458,7 +458,7 @@ export function LootBoxDialog({
         <DialogContent className="max-w-md bg-card/95 border-amber-500/30 z-[55]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-display text-amber-400">
-              <Sparkles className="w-5 h-5" /> {lootBoxReward?.source === 'welcome' ? pick6(language, ['Welcome-Back Loot Box', 'Hoş Geldin Ganimet Kutusu', 'Loot Box de Boas-Vindas', 'Loot Box de Bienvenida', 'Подарочный лутбокс', '回归战利品箱']) : l('Ascension Loot Box', 'Yukselis Ganimet Kutusu', 'Loot Box de Ascensao', 'Loot Box de Ascension')}
+              <Sparkles className="w-5 h-5" /> {lootBoxReward?.source === 'welcome' ? pick6(language, ['Welcome-Back Loot Box', 'Hoş Geldin Ganimet Kutusu', 'Loot Box de Boas-Vindas', 'Loot Box de Bienvenida', 'Подарочный лутбокс', '回归战利品箱']) : l('Ascension Loot Box', 'Yükseliş Ganimet Kutusu', 'Loot Box de Ascensão', 'Loot Box de Ascensión')}
             </DialogTitle>
           </DialogHeader>
 
@@ -491,17 +491,17 @@ export function LootBoxDialog({
                     </AnimatePresence>
                   </motion.div>
                   <p className="text-sm text-slate-300">
-                    {isLootBoxCharging ? l('Decrypting lock sequence...', 'Kilit dizisi cozülüyor...', 'Descriptografando sequencia de bloqueio...', 'Descifrando secuencia de bloqueo...') : isLootBoxBursting ? l('Jackpot breach confirmed!', 'Buyuk odul kirilimi onaylandi!', 'Rompimento do jackpot confirmado!', 'Breach del jackpot confirmado!') : lootBoxReward?.source === 'welcome' ? pick6(language, ['A gift for coming back to DataFall v1.03. Open it to claim your reward.', 'DataFall v1.03\'e döndüğün için bir hediye. Ödülünü almak için aç.', 'Um presente por voltar ao DataFall v1.03. Abra para resgatar sua recompensa.', 'Un regalo por volver a DataFall v1.03. Ábrelo para reclamar tu recompensa.', 'Подарок за возвращение в DataFall v1.03. Откройте, чтобы забрать награду.', '回归 DataFall v1.03 的礼物。打开领取奖励。']) : l('Boss dropped a loot box. Open it to claim your reward.', 'Boss bir ganimet kutusu dusurdu. Odulunu almak icin ac.', 'O chefe derrubou uma loot box. Abra para resgatar sua recompensa.', 'El jefe ha soltado una loot box. Abrela para reclamar tu recompensa.')}
+                    {isLootBoxCharging ? l('Decrypting lock sequence...', 'Kilit dizisi çözülüyor...', 'Descriptografando sequência de bloqueio...', 'Descifrando secuencia de bloqueo...') : isLootBoxBursting ? l('Jackpot breach confirmed!', 'Büyük ödül kırılımı onaylandı!', 'Rompimento do jackpot confirmado!', 'Breach del jackpot confirmado!') : lootBoxReward?.source === 'welcome' ? pick6(language, ['A gift for coming back to DataFall v1.03. Open it to claim your reward.', 'DataFall v1.03\'e döndüğün için bir hediye. Ödülünü almak için aç.', 'Um presente por voltar ao DataFall v1.03. Abra para resgatar sua recompensa.', 'Un regalo por volver a DataFall v1.03. Ábrelo para reclamar tu recompensa.', 'Подарок за возвращение в DataFall v1.03. Откройте, чтобы забрать награду.', '回归 DataFall v1.03 的礼物。打开领取奖励。']) : l('Boss dropped a loot box. Open it to claim your reward.', 'Boss bir ganimet kutusu düşürdü. Ödülünü almak için aç.', 'O chefe derrubou uma loot box. Abra para resgatar sua recompensa.', 'El jefe ha soltado una loot box. Abrela para reclamar tu recompensa.')}
                   </p>
-                  <p className="text-xs text-slate-400">{l('Click Effects and Loot-Box crate skins are exclusive. Mine Skins can drop here too, and can also be bought in Crypto Shop.', 'Tiklama efektleri ve loot-box kasa kaplamalari ozeldir. Maden kaplamalari da burada dusebilir ve Kripto Dukkanindan da alinabilir.', 'Efeitos de Clique e skins de caixa de loot box sao exclusivos. Skins de mineradora tambem podem cair aqui e podem ser compradas na Loja Cripto.', 'Los Efectos de Clic y las skins de caja Loot Box son exclusivos. Las Skins de Minero tambien pueden salir aqui y tambien pueden comprarse en la Tienda de Cripto.')}</p>
+                  <p className="text-xs text-slate-400">{l('Click Effects and Loot-Box crate skins are exclusive. Mine Skins can drop here too, and can also be bought in Crypto Shop.', 'Tıklama efektleri ve loot-box kasa kaplamaları özeldir. Maden kaplamaları da burada düşebilir ve Kripto Dükkânından da alınabilir.', 'Efeitos de Clique e skins de caixa de loot box são exclusivos. Skins de mineradora também podem cair aqui e podem ser compradas na Loja Cripto.', 'Los Efectos de Clic y las skins de caja Loot Box son exclusivos. Las Skins de Minero también pueden salir aquí y también pueden comprarse en la Tienda de Cripto.')}</p>
                   <Button onClick={onOpenLootBox} disabled={isLootBoxOpening} className="w-full bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-80 disabled:cursor-wait">
-                    {isLootBoxCharging ? l('Charging Loot Box...', 'Kutu Yukleniyor...', 'Carregando Loot Box...', 'Cargando Loot Box...') : isLootBoxBursting ? l('Revealing Reward...', 'Odul Aciga Cikiyor...', 'Revelando Recompensa...', 'Revelando Recompensa...') : l('Open Loot Box', 'Kutuyu Ac', 'Abrir Loot Box', 'Abrir Loot Box')}
+                    {isLootBoxCharging ? l('Charging Loot Box...', 'Kutu Yükleniyor...', 'Carregando Loot Box...', 'Cargando Loot Box...') : isLootBoxBursting ? l('Revealing Reward...', 'Ödül Açığa Çıkıyor...', 'Revelando Recompensa...', 'Revelando Recompensa...') : l('Open Loot Box', 'Kutuyu Aç', 'Abrir Loot Box', 'Abrir Loot Box')}
                   </Button>
                 </div>
               ) : lootBoxReward.kind === 'cosmetic' ? (
                 <div className="space-y-3">
                   <motion.div initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4">
-                    <p className="text-center text-xs uppercase tracking-wider text-cyan-300/80">{l('Unlocked Cosmetic', 'Acilan Kozmetik', 'Cosmetico Desbloqueado', 'Cosmetico Desbloqueado')}</p>
+                    <p className="text-center text-xs uppercase tracking-wider text-cyan-300/80">{l('Unlocked Cosmetic', 'Açılan Kozmetik', 'Cosmético Desbloqueado', 'Cosmetico Desbloqueado')}</p>
                     <div className="mt-3 grid grid-cols-[140px_minmax(0,1fr)] gap-3 items-start">
                       <div>{lootRewardDetails?.preview}</div>
                       <div className="text-left">
@@ -509,32 +509,32 @@ export function LootBoxDialog({
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${lootRarityClass[lootBoxReward.rarity]}`}>{getRarityLabel(lootBoxReward.rarity, language).toUpperCase()}</span>
                           <span className="text-[11px] text-slate-300">{getLootTypeLabel(lootBoxReward.cosmeticType, language)}</span>
-                          {lootBoxReward.isAscensionItem && <span className="rounded border border-fuchsia-400/45 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-300">{l('Ascension Catalog', 'Yukselis Katalogu', 'Catalogo de Ascensao', 'Catalogo de Ascension')}</span>}
+                          {lootBoxReward.isAscensionItem && <span className="rounded border border-fuchsia-400/45 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-300">{l('Ascension Catalog', 'Yükseliş Kataloğu', 'Catálogo de Ascensão', 'Catálogo de Ascensión')}</span>}
                         </div>
                         {lootRewardDetails?.description && <p className="mt-2 text-xs text-slate-300">{lootRewardDetails.description}</p>}
                         <div className="mt-3 space-y-1 rounded border border-cyan-500/20 bg-slate-950/55 p-2">
-                          <p className="text-[10px] uppercase tracking-wide text-cyan-300/75">{l('Stats', 'Istatistikler', 'Atributos', 'Atributos')}</p>
-                          {lootRewardDetails?.boostLines.length ? lootRewardDetails.boostLines.map((line: string, idx: number) => <p key={`${line}-${idx}`} className="text-xs text-emerald-300">{line}</p>) : <p className="text-xs text-slate-400">{l('No direct stat boost.', 'Dogrudan stat bonusu yok.', 'Sem bonus direto de atributo.', 'Sin bonus directo de atributo.')}</p>}
+                          <p className="text-[10px] uppercase tracking-wide text-cyan-300/75">{l('Stats', 'İstatistikler', 'Atributos', 'Atributos')}</p>
+                          {lootRewardDetails?.boostLines.length ? lootRewardDetails.boostLines.map((line: string, idx: number) => <p key={`${line}-${idx}`} className="text-xs text-emerald-300">{line}</p>) : <p className="text-xs text-slate-400">{l('No direct stat boost.', 'Doğrudan stat bonusu yok.', 'Sem bônus direto de atributo.', 'Sin bonus directo de atributo.')}</p>}
                         </div>
                       </div>
                     </div>
                   </motion.div>
-                  <p className="text-xs text-slate-400 text-center">{l('Added to your Cosmetics Market inventory. Duplicate drops are blocked.', 'Kozmetik Pazar envanterine eklendi. Cift dusmeler engellenir.', 'Adicionado ao inventario do Mercado de Cosmeticos. Drops duplicados sao bloqueados.', 'Anadido a tu inventario del Mercado de Cosmeticos. Las recompensas duplicadas estan bloqueadas.')}</p>
+                  <p className="text-xs text-slate-400 text-center">{l('Added to your Cosmetics Market inventory. Duplicate drops are blocked.', 'Kozmetik Pazar envanterine eklendi. Çift düşmeler engellenir.', 'Adicionado ao inventário do Mercado de Cosméticos. Drops duplicados são bloqueados.', 'Anadido a tu inventario del Mercado de Cosmeticos. Las recompensas duplicadas están bloqueadas.')}</p>
                   <div className="grid grid-cols-2 gap-2">
                     <Button variant="outline" onClick={onEquipLootReward} disabled={isLootRewardEquipped} className="border-cyan-500/50 text-cyan-200 hover:bg-cyan-500/15 disabled:opacity-80">
-                      {isLootRewardEquipped ? l('Equipped', 'Takili', 'Equipado', 'Equipado') : l('Equip Now', 'Hemen Tak', 'Equipar Agora', 'Equipar Ahora')}
+                      {isLootRewardEquipped ? l('Equipped', 'Takılı', 'Equipado', 'Equipado') : l('Equip Now', 'Hemen Tak', 'Equipar Agora', 'Equipar Ahora')}
                     </Button>
-                    <Button onClick={onContinueRun} className="w-full">{l('Continue Run', 'Kosuya Devam Et', 'Continuar Run', 'Continuar Partida')}</Button>
+                    <Button onClick={onContinueRun} className="w-full">{l('Continue Run', 'Koşuya Devam Et', 'Continuar Run', 'Continuar Partida')}</Button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3 text-center">
                   <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
-                    <p className="text-xs uppercase tracking-wider text-emerald-300/90">{l('Loot Pool Exhausted', 'Ganimet Havuzu Tukendi', 'Pool de Saque Esgotado', 'Pool de Loot Agotado')}</p>
-                    <p className="mt-1 text-sm text-emerald-200">{l('No cosmetic items left to drop.', 'Dusecek kozmetik esya kalmadi.', 'Nao restam itens cosmeticos para cair.', 'No quedan cosmeticos por soltar.')}</p>
+                    <p className="text-xs uppercase tracking-wider text-emerald-300/90">{l('Loot Pool Exhausted', 'Ganimet Havuzu Tükendi', 'Pool de Saque Esgotado', 'Pool de Loot Agotado')}</p>
+                    <p className="mt-1 text-sm text-emerald-200">{l('No cosmetic items left to drop.', 'Düşecek kozmetik eşya kalmadı.', 'Não restam itens cosméticos para cair.', 'No quedan cosmeticos por soltar.')}</p>
                     <p className="mt-2 text-base font-bold text-emerald-300">+{lootBoxReward.data} {getCurrencyLabel('data', language)} | +{lootBoxReward.credits} {getCurrencyLabel('credits', language)} | +{lootBoxReward.crypto} {getCurrencyLabel('crypto', language)}</p>
                   </div>
-                  <Button onClick={onContinueRun} className="w-full">{l('Continue Run', 'Kosuya Devam Et', 'Continuar Run', 'Continuar Partida')}</Button>
+                  <Button onClick={onContinueRun} className="w-full">{l('Continue Run', 'Koşuya Devam Et', 'Continuar Run', 'Continuar Partida')}</Button>
                 </div>
               )}
             </div>
@@ -552,7 +552,7 @@ export function LootBoxDialog({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.96 }}
           className={`fixed bottom-4 z-[70] h-12 w-12 rounded-full border backdrop-blur-sm shadow-[0_0_20px_rgba(251,191,36,0.35)] ${rightPanelOpen ? (leftPanelOpen ? 'left-[336px]' : 'left-4') : 'right-4'} bg-amber-500/20 border-amber-400/60 text-amber-200`}
-          title={l('Loot box ready - click to reopen', 'Kutu hazir - yeniden acmak icin tikla', 'Loot box pronta. Clique para reabrir', 'Loot box lista: haz clic para reabrir')}
+          title={l('Loot box ready - click to reopen', 'Kutu hazır - yeniden açmak için tıkla', 'Loot box pronta. Clique para reabrir', 'Loot box lista: haz clic para reabrir')}
           data-testid="lootbox-reopen-bubble"
         >
           <Sparkles className="mx-auto h-5 w-5" />

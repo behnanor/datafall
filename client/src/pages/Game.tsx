@@ -19,6 +19,7 @@ import { usePublishLiveResources } from '@/lib/liveResources';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { FloatingPickup } from '@/components/game/FloatingPickup';
 import { TutorialPanel } from '@/components/game/TutorialPanel';
+import { NetworkEventBanner } from '@/components/game/RunVarietyHud';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
 import { CurrencyIcon } from '@/components/game/CurrencyIcon';
 import { toast } from '@/hooks/use-toast';
@@ -159,6 +160,7 @@ export default function GamePage() {
       buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin, getActiveTheme, getActiveAccessory, getActiveCape, getActiveWing, getActiveHeadStyle, 
       getActivePet, getActiveAscensionPet, getActiveClickEffect, getActiveLootBoxSkin, getActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, 
       clearOfflineProgress, contracts, refreshContracts, updateContractProgress, 
+      networkEvent, respondToNetworkEvent, runMods, forceDebugNetworkEvent,
       claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, 
       getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, 
       completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, 
@@ -188,8 +190,9 @@ export default function GamePage() {
       return total + upgrade.effect.value * upgrade.count;
     }, 0);
 
-    return 1 + sellBoost;
-  }, [prestigeUpgrades]);
+    // v1.04: Run Protocol / Network Event sell modifiers.
+    return (1 + sellBoost) * runMods.sell;
+  }, [prestigeUpgrades, runMods.sell]);
   const activeTutorialObjectiveId = useMemo(() => {
     if (!currentTutorialPhase) return null;
     const activeObjective = currentTutorialPhase.objectives.find(obj => !obj.completed);
@@ -451,6 +454,12 @@ export default function GamePage() {
     const reached = unlocks.filter(([level]) => previous < level && stats.totalAscensions >= level).pop();
     if (reached) celebrate('shop', reached[1]);
   }, [stats.totalAscensions, celebrate, l]);
+
+  // Test builds only: console hooks for checking Network Events quickly.
+  useEffect(() => {
+    if (!IS_TEST_BUILD) return;
+    (window as unknown as Record<string, unknown>).__datafallDebug = { forceDebugNetworkEvent, addDebugData, addDebugCredits, addDebugCrypto, addDebugAscensionCount, buyUpgrade };
+  });
 
   // Test builds only: Ctrl+Shift+F9 toggles a popup-free room view for screenshots.
   useEffect(() => {
@@ -2403,6 +2412,11 @@ export default function GamePage() {
           />
         </div>
       </motion.div>
+
+      {/* v1.04 Network Events */}
+      {!isBossEncounterActive && (
+        <NetworkEventBanner event={networkEvent} language={language} onRespond={respondToNetworkEvent} />
+      )}
 
       {/* Tutorial Panel */}
       <TutorialPanel

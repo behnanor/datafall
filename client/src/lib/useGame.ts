@@ -1,5 +1,6 @@
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
+import { combineRunMods, scaleEventMods, rollNextEventDelaySec, pickNetworkEvent, getNetworkEvent, SIGNAL_FORK_OPTIONS, ENCRYPTED_CACHE_CLICKS, ENCRYPTED_CACHE_DATA_SECONDS, ENCRYPTED_CACHE_CRYPTO_SECONDS, ROGUE_BROKER_COST_SHARE, CHOICE_DECIDE_SECONDS, EVENTS_MIN_UPGRADES, type ActiveNetworkEvent, type NetworkEventId, type RunMods } from './runVariety';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { unlockSteamAchievement, isSteamAvailable } from './steamIntegration';
 import { localizeInlineText, useI18n } from './i18n';
@@ -4684,6 +4685,9 @@ export const computeProductionRates = (input: {
   adjacencyCryptoBoost: number;
   // Challenge handicap (Crypto Drought halves crypto).
   cryptoChallengeMultiplier?: number;
+  // v1.04 run variety: Run Protocol and Network Event multipliers (data only / crypto only).
+  runDataMultiplier?: number;
+  runCryptoMultiplier?: number;
 }): Record<'data' | 'credits' | 'crypto', number> => {
   let productionMultiplier = 1;
   let cryptoMultiplier = 1;
@@ -4711,6 +4715,8 @@ export const computeProductionRates = (input: {
     }
     rates[resource] += totalProduction * (resource === 'crypto' ? productionMultiplier * cryptoMultiplier : productionMultiplier);
   });
+  rates.data *= input.runDataMultiplier ?? 1;
+  rates.crypto *= input.runCryptoMultiplier ?? 1;
   // Passive Node income: a small share of data production arrives as credits without selling.
   rates.credits += rates.data * CREDIT_TRICKLE_RATE;
   return rates;
@@ -4996,6 +5002,14 @@ export const useGame = () => {
   const [whatsNew, setWhatsNew] = useState<WhatsNewState>(SEEN_WHATS_NEW);
   const challengesRef = useRef<ChallengeState>(INITIAL_CHALLENGES);
   challengesRef.current = challenges;
+  // v1.04 run variety: the Network Event running right now (not saved).
+  const [networkEvent, setNetworkEvent] = useState<ActiveNetworkEvent | null>(null);
+  const networkEventRef = useRef<ActiveNetworkEvent | null>(null);
+  networkEventRef.current = networkEvent;
+  // Multipliers from the run's protocol and the running event, applied to production, clicks and selling.
+  const runMods = useMemo<RunMods>(() => combineRunMods(
+    networkEvent?.phase === 'active' ? networkEvent.mods : null,
+  ), [networkEvent]);
 
   useEffect(() => {
     statsRef.current = stats;
@@ -6151,7 +6165,9 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     paragonCryptoMultiplier: activeParagonBonuses.cryptoMultiplier,
     adjacencyProductionBoost: activeAdjacencyProductionBoost,
     adjacencyCryptoBoost: activeAdjacencyCryptoBoost,
-  }), [upgrades, prestigeUpgrades, activeCosmeticBoosts, activeAdjacencyProductionBoost, activeAdjacencyCryptoBoost, activeParagonBonuses.productionMultiplier, activeParagonBonuses.cryptoMultiplier, challenges.active]);
+    runDataMultiplier: runMods.data,
+    runCryptoMultiplier: runMods.crypto,
+  }), [upgrades, prestigeUpgrades, activeCosmeticBoosts, activeAdjacencyProductionBoost, activeAdjacencyCryptoBoost, activeParagonBonuses.productionMultiplier, activeParagonBonuses.cryptoMultiplier, challenges.active, runMods.data, runMods.crypto]);
 
   useEffect(() => {
     const rates = productionRates;
@@ -6234,8 +6250,9 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     if (activeAdjacencyClickBoost > 0) {
       baseClick *= (1 + activeAdjacencyClickBoost);
     }
+    baseClick *= runMods.click;
     return baseClick * multiplier;
-  }, [upgrades, prestigeUpgrades, activeCosmeticBoosts.clickBoost, activeAdjacencyClickBoost, activeParagonBonuses.clickMultiplier]);
+  }, [upgrades, prestigeUpgrades, activeCosmeticBoosts.clickBoost, activeAdjacencyClickBoost, activeParagonBonuses.clickMultiplier, runMods.click]);
   const currentDataPerClick = useMemo(() => getCurrentDataPerClick(), [getCurrentDataPerClick]);
 
   const clickTuning = useMemo(() => {
@@ -6279,6 +6296,10 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     critChance += activeCosmeticBoosts.critBoost / 100;
     critChance += activeParagonBonuses.critChanceBonus;
     critMult *= 1 + activeCosmeticBoosts.critDamageBoost / 100;
+    // Run Protocol / Network Event modifiers.
+    baseClick *= runMods.click;
+    critChance += runMods.critChance;
+    dropChance += runMods.dropChance;
 
     if (activeAdjacencyLuckBoostPercent > 0) {
       dropChance += activeAdjacencyLuckBoostPercent / 100;
@@ -6302,6 +6323,9 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     activeParagonBonuses.critChanceBonus,
     activeParagonBonuses.clickMultiplier,
     stats.totalAscensions,
+    runMods.click,
+    runMods.critChance,
+    runMods.dropChance,
   ]);
 
   const getScaledNodeFloaterValue = useCallback((baseValue: number, source: 'auto' | 'click' | 'debug' = 'auto'): number => {
@@ -6752,6 +6776,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     lastClickTimeRef.current = now;
 
     const { value: finalValue, isCrit } = getClickOutcome(now);
+    if (source === 'manual') networkEventClickRef.current();
 
     playSound(isCrit ? 'crit' : 'click');
 
@@ -6884,6 +6909,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
          sellMultiplier += p.effect.value * p.count;
        }
      });
+     sellMultiplier *= runMods.sell;
      
      setResources(prev => {
           const needed = activeParagonBonuses.nodeConversionDataCost * amount;
@@ -6903,7 +6929,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
          updateContractProgress('sell_data', needed);
          return next;
      });
-  }, [playSound, checkAchievements, resources.data.perSecond, prestigeUpgrades, activeParagonBonuses.nodeConversionDataCost]);
+  }, [playSound, checkAchievements, resources.data.perSecond, prestigeUpgrades, activeParagonBonuses.nodeConversionDataCost, runMods.sell]);
 
   const sellAllResource = useCallback((type: ResourceType) => {
     // Calculate sell boost from prestige upgrades
@@ -6913,6 +6939,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
         sellMultiplier += p.effect.value * p.count;
       }
     });
+    sellMultiplier *= runMods.sell;
     
     setResources(prev => {
         const conversionCost = activeParagonBonuses.nodeConversionDataCost;
@@ -6933,7 +6960,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
         updateContractProgress('sell_data', sellable * conversionCost);
         return next;
     });
-  }, [playSound, checkAchievements, resources.data.perSecond, prestigeUpgrades, activeParagonBonuses.nodeConversionDataCost]);
+  }, [playSound, checkAchievements, resources.data.perSecond, prestigeUpgrades, activeParagonBonuses.nodeConversionDataCost, runMods.sell]);
 
   const buyUpgrade = useCallback((upgradeId: string, quantity: number = 1, options?: { silent?: boolean }) => {
     let totalBought = 0;
@@ -7268,6 +7295,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     });
 
     challengeAscendRef.current();
+    runVarietyAscendRef.current();
     setStats(s => {
       const updated = incrementDailyAscensionStats({
         ...s,
@@ -7371,6 +7399,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     const localizedLootName = selectedLoot ? getLocalizedLootCandidateName(selectedLoot) : null;
 
     challengeAscendRef.current();
+    runVarietyAscendRef.current();
     setStats(s => {
       const updated = incrementDailyAscensionStats({
         ...s,
@@ -7463,6 +7492,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     });
 
     challengeAscendRef.current();
+    runVarietyAscendRef.current();
     setStats(s => {
       const updated = incrementDailyAscensionStats({
         ...s,
@@ -9110,6 +9140,14 @@ useEffect(() => {
     }
   };
 
+  // v1.04 run variety: a new run starts calm (first Network Event after 90-150 s).
+  const runVarietyAscendRef = useRef<() => void>(() => {});
+  runVarietyAscendRef.current = () => {
+    nextNetworkEventInRef.current = -1;
+    networkEventRef.current = null;
+    setNetworkEvent(null);
+  };
+
   // Restart the current run (prestige, cosmetics and stats are kept) to enter or leave a challenge.
   const restartRunForChallenge = useCallback(() => {
     setResources(prev => ({
@@ -9204,6 +9242,118 @@ useEffect(() => {
     const intervalId = setInterval(() => automationTickRef.current(), 500);
     return () => clearInterval(intervalId);
   }, []);
+
+  // ---- v1.04 Network Events ----
+  // A short random event every few minutes of visible play (see runVariety.ts). One event at a time; the
+  // countdown only runs while the window is visible and no boss fight is open, so idle time isn't wasted.
+  const nextNetworkEventInRef = useRef<number>(-1);
+  // Test builds only: start a given event on the next tick.
+  const debugForcedNetworkEventRef = useRef<NetworkEventId | null>(null);
+  const forceDebugNetworkEvent = useCallback((id: NetworkEventId) => {
+    if (!IS_TEST_BUILD) return;
+    debugForcedNetworkEventRef.current = id;
+    nextNetworkEventInRef.current = 1;
+  }, []);
+  const lastNetworkEventIdRef = useRef<NetworkEventId | null>(null);
+  const setNetworkEventNow = useCallback((next: ActiveNetworkEvent | null) => {
+    networkEventRef.current = next;
+    setNetworkEvent(next);
+  }, []);
+  const networkEventTickRef = useRef<() => void>(() => {});
+  networkEventTickRef.current = () => {
+    if (!loadReadyRef.current) return;
+    const now = Date.now();
+    const ev = networkEventRef.current;
+    if (ev) {
+      // A boss fight ends any running event (the fight scales to click power anyway).
+      if (pickupSpawningPaused && ev.phase !== 'done') { setNetworkEventNow(null); return; }
+      if (now < ev.endsAt) return;
+      if (ev.phase === 'active' && ev.id === 'encrypted_cache') {
+        setNetworkEventNow({ ...ev, phase: 'done', result: 'fail', endsAt: now + 3000 });
+      } else {
+        setNetworkEventNow(null);
+      }
+      return;
+    }
+    if (pickupSpawningPaused || (typeof document !== 'undefined' && document.hidden)) return;
+    if (stats.totalUpgradesPurchased < EVENTS_MIN_UPGRADES) return;
+    if (nextNetworkEventInRef.current < 0) nextNetworkEventInRef.current = rollNextEventDelaySec(true, runMods.eventRate);
+    nextNetworkEventInRef.current -= 1;
+    if (nextNetworkEventInRef.current > 0) return;
+    nextNetworkEventInRef.current = rollNextEventDelaySec(false, runMods.eventRate);
+
+    const forced = debugForcedNetworkEventRef.current;
+    debugForcedNetworkEventRef.current = null;
+    const id = forced ?? pickNetworkEvent({
+      cryptoUnlocked: (upgrades.find(u => u.id === 'unlock_crypto_mining')?.count ?? 0) > 0 && productionRates.crypto > 0,
+      clicksAllowed: challenges.active !== 'no_clicks',
+      hasCredits: resources.credits.amount >= 100,
+      previous: lastNetworkEventIdRef.current,
+    });
+    lastNetworkEventIdRef.current = id;
+    const def = getNetworkEvent(id);
+    const power = runMods.eventPower;
+    const base = { id, startedAt: now, mods: {} };
+    if (def.kind === 'buff') {
+      setNetworkEventNow({ ...base, phase: 'active', endsAt: now + def.durationSec * 1000, mods: scaleEventMods(def.mods, power) });
+    } else if (def.kind === 'instant') {
+      spawnComboChainPickups();
+      // Signal Storm: a second wave a moment later.
+      if (power > 1) setTimeout(() => spawnComboChainPickups(), 1500);
+      setNetworkEventNow({ ...base, phase: 'done', result: 'success', endsAt: now + def.durationSec * 1000 });
+    } else if (def.kind === 'cache') {
+      setNetworkEventNow({ ...base, phase: 'active', endsAt: now + def.durationSec * 1000, progress: 0, goal: ENCRYPTED_CACHE_CLICKS });
+    } else {
+      setNetworkEventNow({ ...base, phase: 'offer', endsAt: now + CHOICE_DECIDE_SECONDS * 1000 });
+    }
+    playSound('shop_unlock');
+  };
+  useEffect(() => {
+    const intervalId = setInterval(() => networkEventTickRef.current(), 1000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Encrypted Cache: manual clicks on the data core crack it.
+  const networkEventClickRef = useRef<() => void>(() => {});
+  networkEventClickRef.current = () => {
+    const ev = networkEventRef.current;
+    if (!ev || ev.id !== 'encrypted_cache' || ev.phase !== 'active') return;
+    const progress = (ev.progress ?? 0) + 1;
+    if (progress < (ev.goal ?? ENCRYPTED_CACHE_CLICKS)) { setNetworkEventNow({ ...ev, progress }); return; }
+    const power = runMods.eventPower;
+    const dataReward = Math.floor(Math.max(productionRates.data * ENCRYPTED_CACHE_DATA_SECONDS, currentDataPerClick * 50) * power);
+    const cryptoReward = Math.floor(productionRates.crypto * ENCRYPTED_CACHE_CRYPTO_SECONDS * power);
+    setResources(prev => ({
+      ...prev,
+      data: { ...prev.data, amount: prev.data.amount + dataReward },
+      crypto: { ...prev.crypto, amount: prev.crypto.amount + cryptoReward },
+    }));
+    setStats(s => ({ ...s, totalDataCollected: s.totalDataCollected + dataReward, totalCryptoMined: s.totalCryptoMined + cryptoReward }));
+    const rewardText = `+${formatNumber(dataReward)} ${getResourceLabel('data', language)}`
+      + (cryptoReward > 0 ? `, +${formatNumber(cryptoReward)} ${getResourceLabel('crypto', language)}` : '');
+    setNetworkEventNow({ ...ev, progress, phase: 'done', result: 'success', endsAt: Date.now() + 3500, rewardText });
+    playSound('job_claim');
+  };
+
+  // Answer a choice event: 'accept' / 'decline' (Rogue Broker) or 'idle' / 'active' (Signal Fork).
+  const respondToNetworkEvent = useCallback((answer: 'accept' | 'decline' | 'idle' | 'active') => {
+    const ev = networkEventRef.current;
+    if (!ev || ev.phase !== 'offer') return;
+    const now = Date.now();
+    if (answer === 'decline') { setNetworkEventNow(null); return; }
+    const power = runMods.eventPower;
+    if (ev.id === 'signal_fork' && (answer === 'idle' || answer === 'active')) {
+      const option = SIGNAL_FORK_OPTIONS[answer];
+      setNetworkEventNow({ ...ev, phase: 'active', startedAt: now, endsAt: now + option.durationSec * 1000, mods: scaleEventMods(option.mods, power), chosen: answer });
+    } else if (ev.id === 'rogue_broker' && answer === 'accept') {
+      setResources(prev => ({ ...prev, credits: { ...prev.credits, amount: prev.credits.amount * (1 - ROGUE_BROKER_COST_SHARE) } }));
+      const def = getNetworkEvent('rogue_broker');
+      setNetworkEventNow({ ...ev, phase: 'active', startedAt: now, endsAt: now + def.durationSec * 1000, mods: scaleEventMods(def.mods, power) });
+    } else {
+      return;
+    }
+    playSound('buy_fab');
+  }, [runMods.eventPower, playSound, setNetworkEventNow]);
 
   const saveGame = useCallback(async () => {
 		if (!loadReadyRef.current) return;
@@ -9314,6 +9464,6 @@ useEffect(() => {
   const getLocalizedActiveLootBoxSkin = useCallback(() => localizeCatalogEntry(getActiveLootBoxSkin(), language), [getActiveLootBoxSkin, language]);
   const getLocalizedActiveMachineBoxSkin = useCallback(() => localizeCatalogEntry(getActiveMachineBoxSkin(), language), [getActiveMachineBoxSkin, language]);
 
-  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
+  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder, networkEvent, respondToNetworkEvent, runMods, forceDebugNetworkEvent };
 };
 

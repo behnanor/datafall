@@ -1206,7 +1206,8 @@ export default function GamePage() {
       case 'sell_boost':
         return `+${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.dataConversion')}`;
       case 'starting_bonus':
-        return `+${formatNumber(Math.floor(totalValue / 60))} ${unitMin} ${t('prestigePanel.startingData')}`;
+        // v1.04: 12 s per level, so show tenths of a minute (1 level = 0.2 min).
+        return `+${Number((totalValue / 60).toFixed(1))} ${unitMin} ${t('prestigePanel.startingData')}`;
       case 'cost_reduction':
         return `-${(totalValue * 100).toFixed(0)}% ${t('prestigePanel.upgradeCost')}`;
       case 'checkpoint_speed':

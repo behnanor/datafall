@@ -148,7 +148,7 @@ const GAME_TEXT_ZH_CN_TEXTS: Record<string, string> = {
   "Legacy Production": "传承生产",
   "+10% production per level.": "每级生产 +10%。",
   "Head Start": "领先开局",
-  "Start each run with 1 minute of your last run's data production per level.": "每级让每轮开局获得上一轮 1 分钟的数据产量。",
+  "Start each run with 12 seconds of your last run's data production per level.": "每级让每轮开局获得上一轮 12 秒的数据产量。",
   "Cursed Fate": "诅咒命运",
   "+1% crit chance per level.": "每级 +1% 暴击率。",
   "Lethal Precision": "致命精度",

@@ -1112,12 +1112,17 @@ export interface PrestigeUpgrade {
   count: number;
 }
 
-// Ascension cost: 600 x (ascensions + 1)^2.65 crypto. For the first 10 ascensions it blends in from the
+// Ascension cost: 600 x (ascensions + 1)^2.65 crypto (x1.06 per ascension past 15). For the first 10 ascensions it blends in from the
 // pre-v1.03 curve (1000 x 1.45^n), so existing low-ascension saves do not see their next cost jump ~10x.
 const ASCENSION_COST_BLEND_BELOW = 10;
+const ASCENSION_LATE_GROWTH_START = 15;
+const ASCENSION_LATE_GROWTH = 1.06;
 export const getAscensionCost = (ascensionCount: number): number => {
   const n = Math.max(0, ascensionCount);
-  const powerCurve = ASCENSION_BASE_COST * Math.pow(1 + n, ASCENSION_COST_POWER);
+  // v1.04: from ascension 15 each ascension also costs 6% more than the curve alone (compounding). Once the
+  // prestige shop fills up, permanent bonuses grew faster than the n^2.65 curve and late runs (and Endless)
+  // shrank to 1-3 minutes in the pacing sim (tools/sim/run-full-sim.ts).
+  const powerCurve = ASCENSION_BASE_COST * Math.pow(1 + n, ASCENSION_COST_POWER) * Math.pow(ASCENSION_LATE_GROWTH, Math.max(0, n - ASCENSION_LATE_GROWTH_START));
   if (n >= ASCENSION_COST_BLEND_BELOW) return Math.floor(powerCurve);
   const weight = Math.pow(n / ASCENSION_COST_BLEND_BELOW, 2);
   const legacyCurve = 1000 * Math.pow(1.45, n);
@@ -1189,7 +1194,7 @@ export const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   { id: 'p_click', name: 'Eternal Strike', description: '+5% click power per level.', cost: 25, costMultiplier: 1.10, maxLevel: 40, effect: { type: 'click_boost', value: 0.05 }, count: 0 },
   // Quantum Forge (p_mega_prod) was merged into this one; old levels are converted on load.
   { id: 'p_prod', name: 'Legacy Production', description: '+10% production per level.', cost: 30, costMultiplier: 1.10, maxLevel: 60, effect: { type: 'production_boost', value: 0.10 }, count: 0 },
-  { id: 'p_starting', name: 'Head Start', description: 'Start each run with 1 minute of your last run\'s data production per level.', cost: 50, costMultiplier: 1.6, maxLevel: 10, effect: { type: 'starting_bonus', value: 60 }, count: 0 },
+  { id: 'p_starting', name: 'Head Start', description: 'Start each run with 12 seconds of your last run\'s data production per level.', cost: 50, costMultiplier: 1.6, maxLevel: 10, effect: { type: 'starting_bonus', value: 12 }, count: 0 },
 
   { id: 'p_crit', name: 'Cursed Fate', description: '+1% crit chance per level.', cost: 50, costMultiplier: 1.12, maxLevel: 30, effect: { type: 'crit_chance_boost', value: 0.01 }, count: 0 },
   { id: 'p_crit_mult', name: 'Lethal Precision', description: '+12% crit damage per level.', cost: 60, costMultiplier: 1.12, maxLevel: 25, effect: { type: 'crit_mult_boost', value: 0.12 }, count: 0 },

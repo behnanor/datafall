@@ -227,7 +227,7 @@ const GAME_TEXT_RU_TEXTS: Record<string, string> = {
   "Legacy Production": "Наследное производство",
   "+10% production per level.": "+10% к производству за уровень.",
   "Head Start": "Фора на старте",
-  "Start each run with 1 minute of your last run's data production per level.": "Начинайте каждый забег с 1 минутой производства данных прошлого забега за уровень.",
+  "Start each run with 12 seconds of your last run's data production per level.": "Начинайте каждый забег с 12 секундами производства данных прошлого забега за уровень.",
   "Cursed Fate": "Проклятая судьба",
   "+1% crit chance per level.": "+1% шанса крита за уровень.",
   "Lethal Precision": "Смертельная точность",

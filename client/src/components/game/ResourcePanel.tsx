@@ -5,6 +5,7 @@ import { getBoostLines } from "@/lib/gameLocale";
 // v1.04: cheapest Nodes cosmetic; above this the Ascend window reminds players to spend their Nodes first.
 const COSMETIC_MIN_PRICE = RARITY_ECONOMY.common.price;
 import { NextGoal } from "./NextGoal";
+import { CurrencyHelp, getCurrencyHelpText } from "./CurrencyHelp";
 import { getEndlessTitle, getNextEndlessRewardDepth, getUnlockedAbyssVariants, ABYSS_VARIANT_NAMES, ABYSS_VARIANT_HUES } from "@/lib/endless";
 import { ECHO_EVERY_DEPTHS, pick6 } from "@/lib/bossVariants";
 
@@ -232,6 +233,7 @@ export const ResourcePanel = memo(function ResourcePanel({
             size="sm"
             className={`flex-1 text-xs h-8 px-3 font-mono bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20 ${tutorialHighlight === 'prestige_button' ? 'tutorial-highlight' : ''}`}
             onClick={onOpenPrestige}
+            title={`${pick6(language, ['Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж', '声望'])}: ${getCurrencyHelpText('prestige', language)}`}
             data-testid="button-prestige-menu"
           >
             <Crown className="w-5 h-5" />
@@ -274,7 +276,7 @@ export const ResourcePanel = memo(function ResourcePanel({
       <div className={`p-4 rounded-lg bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-500/50 transition-colors ${tutorialHighlight === 'data_display' ? 'tutorial-highlight' : ''}`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-            <Database className="w-4 h-4" /> {t('common.data')}
+            <Database className="w-4 h-4" /> {t('common.data')} <CurrencyHelp kind="data" language={language} />
           </h3>
         </div>
         <div className="text-3xl font-mono font-bold text-cyan-300 transition-all duration-300 ease-out tabular-nums">
@@ -531,6 +533,7 @@ export const ResourcePanel = memo(function ResourcePanel({
           <h3 className="text-[11px] font-bold text-yellow-400 uppercase tracking-widest flex items-center gap-1">
             <CurrencyIcon kind="credits" className="w-3.5 h-3.5" />
             {t('common.nodes')}
+            <CurrencyHelp kind="credits" language={language} />
           </h3>
           <div className="mt-2 text-2xl font-mono font-bold text-yellow-300 tabular-nums">
             {formatNumber(Math.floor(resources.credits.amount))}
@@ -541,6 +544,7 @@ export const ResourcePanel = memo(function ResourcePanel({
           <h3 className="text-[11px] font-bold text-red-300 uppercase tracking-widest flex items-center gap-1">
             <CurrencyIcon kind="crypto" className="w-3.5 h-3.5" />
             {t('common.crypto')}
+            <CurrencyHelp kind="crypto" language={language} />
           </h3>
           <div className="mt-2 text-2xl font-mono font-bold text-red-200 tabular-nums">
             {formatNumber(resources.crypto.amount)}

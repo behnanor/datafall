@@ -481,7 +481,9 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       if (usesShields) {
         const shield = Math.max(flatShield, phaseShields ? phaseShields[getFinalePhaseIndex(prev, maxHealth)] : 0);
         const pierces = !!hitWeakSpot || isFinaleCrit;
-        damage *= (isFinaleCrit ? FINALE_CRIT_MULTIPLIER : 1) * (pierces ? 1 : 1 - shield);
+        // Crits always pierce, but the x2.5 crit bonus is for the phase-shield fights (Signal, Core, Echo) only.
+        // On Armored bosses it made the modifier an advantage once crit chance passed ~15%.
+        damage *= (isFinaleCrit && phaseShields ? FINALE_CRIT_MULTIPLIER : 1) * (pierces ? 1 : 1 - shield);
       }
       const newHealth = prev - damage;
       if (newHealth <= 0) {

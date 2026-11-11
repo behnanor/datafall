@@ -3057,12 +3057,16 @@ export type ParagonUpgradeId =
   | 'singularity_tap'
   | 'critical_cascade'
   | 'breach_driver'
-  | 'chrono_siege';
+  | 'chrono_siege'
+  | 'abyss_core';
 
 export interface ParagonUpgrade {
   id: ParagonUpgradeId;
   // v1.03 Paragon II modules unlock later than the lab itself.
   requiredAscensions?: number;
+  // v1.04 Endless: only buyable after the Core is broken, and has no level cap (a prestige sink for Endless).
+  requiresFinale?: boolean;
+  uncapped?: boolean;
   name: string;
   description: string;
   baseCost: number;
@@ -3223,6 +3227,19 @@ export const PARAGON_UPGRADES: ParagonUpgrade[] = [
     maxLevel: 5,
     requiredAscensions: PARAGON_III_SECOND_UNLOCK_ASCENSION,
     effect: { type: 'boss_time_seconds', value: 1 },
+  },
+  // v1.04 Endless: after the Core falls, prestige had nothing left to buy. The Abyss Core has no cap; each
+  // level costs 12% more, so it keeps giving a reason to push deeper.
+  {
+    id: 'abyss_core',
+    name: 'Abyss Core',
+    description: '+5% production per level, no level cap. Endless only: unlocks after you break the Core.',
+    baseCost: 4000,
+    costMultiplier: 1.12,
+    maxLevel: 9999,
+    requiresFinale: true,
+    uncapped: true,
+    effect: { type: 'production_boost_pct', value: 5 },
   },
 ];
 export const getParagonTierLabel = (requiredAscensions: number | undefined): string =>
@@ -8236,6 +8253,7 @@ useEffect(() => {
     if (!upgrade) return false;
     if (stats.totalAscensions < PARAGON_LAB_UNLOCK_ASCENSION) return false;
     if (stats.totalAscensions < (upgrade.requiredAscensions ?? 0)) return false;
+    if (upgrade.requiresFinale && !finale.completed) return false;
 
     const currentLevel = getParagonUpgradeLevel(upgradeId);
     if (currentLevel >= upgrade.maxLevel) return false;
@@ -8258,11 +8276,11 @@ useEffect(() => {
 
     setLastUpgradeInfo({
       name: l('PARAGON LAB', 'PARAGON LABORATUVARI', 'LABORATÓRIO PARAGON'),
-      effect: `${upgrade.name} Lv.${currentLevel + 1}/${upgrade.maxLevel}`,
+      effect: upgrade.uncapped ? `${upgrade.name} Lv.${currentLevel + 1}` : `${upgrade.name} Lv.${currentLevel + 1}/${upgrade.maxLevel}`,
     });
     playSound('buy_black');
     return true;
-  }, [getParagonUpgradeLevel, language, playSound, resources.prestige.amount, stats.totalAscensions]);
+  }, [getParagonUpgradeLevel, language, playSound, resources.prestige.amount, stats.totalAscensions, finale.completed]);
 
   const equipCosmetic = useCallback((type: 'skin' | 'theme' | 'accessory' | 'cape' | 'wing' | 'headstyle' | 'pet' | 'clickeffect' | 'lootboxskin' | 'machineboxskin' | 'prestigepet', id: string) => {
     // Combine regular and ascension owned arrays for each type

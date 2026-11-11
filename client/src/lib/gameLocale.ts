@@ -927,6 +927,10 @@ Object.assign(GAME_ENTITY_TEXTS, {
     name: { en: "Singularity Tap", tr: "Tekillik Musluğu", "pt-BR": "Torneira da Singularidade", es: "Grifo de la Singularidad", ru: "Кран сингулярности", "zh-CN": "奇点汲取" },
     description: { en: "+8% data per click per level. Paragon II.", tr: "Seviye başına tık başına +%8 veri. Paragon II.", "pt-BR": "+8% de dados por clique por nível. Paragon II.", es: "+8% de datos por clic por nivel. Paragon II.", ru: "+8% данных за клик за уровень. Paragon II.", "zh-CN": "每级每次点击数据 +8%。Paragon II。" },
   },
+  abyss_core: {
+    name: { en: "Abyss Core", tr: "Uçurum Çekirdeği", "pt-BR": "Núcleo Abissal", es: "Núcleo Abisal", ru: "Ядро бездны", "zh-CN": "深渊核心" },
+    description: { en: "+5% production per level, no level cap. Endless only: unlocks after you break the Core.", tr: "Seviye başına +%5 üretim, seviye sınırı yok. Sadece Sonsuz mod: Çekirdeği kırınca açılır.", "pt-BR": "+5% de produção por nível, sem limite de nível. Só no Infinito: libera depois de quebrar o Núcleo.", es: "+5% de producción por nivel, sin límite de nivel. Solo Infinito: se desbloquea al romper el Núcleo.", ru: "+5% производства за уровень, без предела уровня. Только бесконечный режим: открывается после разрушения Ядра.", "zh-CN": "每级产量 +5%，无等级上限。仅限无尽模式：击破核心后解锁。" },
+  },
   breach_driver: {
     name: { en: "Breach Driver", tr: "Sızma Sürücüsü", "pt-BR": "Driver de Invasão", es: "Driver de Brecha", ru: "Драйвер взлома", "zh-CN": "突破驱动器" },
     description: { en: "+5% damage against every boss per level. Paragon III.", tr: "Seviye başına tüm bosslara +%5 hasar. Paragon III.", "pt-BR": "+5% de dano contra todos os chefes por nível. Paragon III.", es: "+5% de daño contra todos los jefes por nivel. Paragon III.", ru: "+5% урона по всем боссам за уровень. Paragon III.", "zh-CN": "每级对所有首领伤害 +5%。Paragon III。" },

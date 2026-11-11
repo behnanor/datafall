@@ -1033,11 +1033,11 @@ export default function GamePage() {
       .reduce((sum, u) => sum + (u.count || 0), 0)
   ), [upgrades]);
   const totalParagonLevels = useMemo(
-    () => PARAGON_UPGRADES.reduce((sum, upgrade) => sum + getParagonUpgradeLevel(upgrade.id), 0),
+    () => PARAGON_UPGRADES.filter(upgrade => !upgrade.uncapped).reduce((sum, upgrade) => sum + Math.min(upgrade.maxLevel, getParagonUpgradeLevel(upgrade.id)), 0),
     [getParagonUpgradeLevel, cosmetics.paragonLevels]
   );
   const totalParagonLevelCap = useMemo(
-    () => PARAGON_UPGRADES.reduce((sum, upgrade) => sum + upgrade.maxLevel, 0),
+    () => PARAGON_UPGRADES.filter(upgrade => !upgrade.uncapped).reduce((sum, upgrade) => sum + upgrade.maxLevel, 0),
     []
   );
   const paragonCompletionPercent = useMemo(
@@ -1048,13 +1048,13 @@ export default function GamePage() {
     const pendingCosts = PARAGON_UPGRADES
       .map(upgrade => {
         const currentLevel = getParagonUpgradeLevel(upgrade.id);
-        if (currentLevel >= upgrade.maxLevel || stats.totalAscensions < (upgrade.requiredAscensions ?? 0)) return null;
+        if (currentLevel >= upgrade.maxLevel || stats.totalAscensions < (upgrade.requiredAscensions ?? 0) || (upgrade.requiresFinale && !finale.completed)) return null;
         return Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, currentLevel));
       })
       .filter((cost): cost is number => cost !== null);
     if (pendingCosts.length === 0) return null;
     return Math.min(...pendingCosts);
-  }, [getParagonUpgradeLevel, cosmetics.paragonLevels, stats.totalAscensions]);
+  }, [getParagonUpgradeLevel, cosmetics.paragonLevels, stats.totalAscensions, finale.completed]);
 
   const cursorGlowTier = useMemo(() => {
     if (totalClickUpgradeLevels >= 120) return 5;
@@ -2012,6 +2012,7 @@ export default function GamePage() {
             l={l}
             language={language}
             totalAscensions={stats.totalAscensions}
+            finaleCompleted={finale.completed}
             prestigeAmount={resources.prestige.amount}
             localizedParagonUpgrades={localizedParagonUpgrades}
             totalParagonLevels={totalParagonLevels}

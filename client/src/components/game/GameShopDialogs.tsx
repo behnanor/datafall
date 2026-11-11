@@ -650,6 +650,7 @@ export function ParagonLabDialog({
   l,
   language,
   totalAscensions,
+  finaleCompleted = false,
   prestigeAmount,
   localizedParagonUpgrades,
   totalParagonLevels,
@@ -670,6 +671,7 @@ export function ParagonLabDialog({
   l: LocalizeFn;
   language: any;
   totalAscensions: number;
+  finaleCompleted?: boolean;
   prestigeAmount: number;
   localizedParagonUpgrades: any[];
   totalParagonLevels: number;
@@ -732,10 +734,12 @@ export function ParagonLabDialog({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {localizedParagonUpgrades.map((upgrade) => {
                   const level = getParagonUpgradeLevel(upgrade.id);
-                  const isMaxed = level >= upgrade.maxLevel;
+                  const uncapped = !!upgrade.uncapped;
+                  const isMaxed = !uncapped && level >= upgrade.maxLevel;
                   const currentCost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, level));
                   const lockedAt: number = upgrade.requiredAscensions ?? 0;
-                  const isLocked = totalAscensions < lockedAt;
+                  const needsFinale = !!upgrade.requiresFinale && !finaleCompleted;
+                  const isLocked = totalAscensions < lockedAt || needsFinale;
                   const canAfford = !isMaxed && !isLocked && prestigeAmount >= currentCost;
                   const totalBonus = upgrade.effect.value * level;
                   const effectLabel = getParagonEffectLabel(upgrade.effect.type, language);
@@ -750,10 +754,11 @@ export function ParagonLabDialog({
                         <span className="rounded border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 whitespace-nowrap">+{upgrade.effect.value}{unit}/{l('lv', 'sv', 'nv')}</span>
                       </div>
                       <p className="mt-2 text-[10px] text-cyan-200/90">{effectLabel}: +{Number.isInteger(totalBonus) ? totalBonus : totalBonus.toFixed(1)}{unit}</p>
-                      <p className="mt-1 text-[10px] text-slate-300/80">{l('Level', 'Seviye', 'Nível')} {level}/{upgrade.maxLevel}</p>
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-muted/20 overflow-hidden"><div className="h-full bg-amber-500" style={{ width: `${(level / upgrade.maxLevel) * 100}%` }} /></div>
+                      <p className="mt-1 text-[10px] text-slate-300/80">{l('Level', 'Seviye', 'Nível')} {uncapped ? `${level} (∞)` : `${level}/${upgrade.maxLevel}`}</p>
+                      {/* Uncapped modules fill the bar once per 10 levels. */}
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-muted/20 overflow-hidden"><div className={`h-full ${uncapped ? 'bg-orange-500' : 'bg-amber-500'}`} style={{ width: `${uncapped ? (level % 10) * 10 : (level / upgrade.maxLevel) * 100}%` }} /></div>
                       <div className="mt-3">
-                        {isLocked ? <div className="rounded border border-slate-600/50 bg-slate-800/60 px-2 py-1 text-center text-xs text-slate-300">{pick6(language, [`${tierLabel}: unlocks at ascension ${lockedAt}`, `${tierLabel}: yükseliş ${lockedAt} ile açılır`, `${tierLabel}: desbloqueia na ascensão ${lockedAt}`, `${tierLabel}: se desbloquea en la ascensión ${lockedAt}`, `${tierLabel}: открывается на вознесении ${lockedAt}`, `${tierLabel}：第 ${lockedAt} 次飞升解锁`])}</div> : isMaxed ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Maxed', 'Maksimum', 'Máximo')}</div> : <Button onClick={() => buyParagonUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Upgrade', 'Yükselt', 'Melhorar')} {formatNumber(currentCost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
+                        {isLocked && needsFinale ? <div className="rounded border border-orange-600/50 bg-orange-950/40 px-2 py-1 text-center text-xs text-orange-200">{pick6(language, ['Endless: unlocks after you break the Core', 'Sonsuz: Çekirdeği kırınca açılır', 'Infinito: libera depois de quebrar o Núcleo', 'Infinito: se desbloquea al romper el Núcleo', 'Бесконечный режим: откроется после разрушения Ядра', '无尽：击破核心后解锁'])}</div> : isLocked ? <div className="rounded border border-slate-600/50 bg-slate-800/60 px-2 py-1 text-center text-xs text-slate-300">{pick6(language, [`${tierLabel}: unlocks at ascension ${lockedAt}`, `${tierLabel}: yükseliş ${lockedAt} ile açılır`, `${tierLabel}: desbloqueia na ascensão ${lockedAt}`, `${tierLabel}: se desbloquea en la ascensión ${lockedAt}`, `${tierLabel}: открывается на вознесении ${lockedAt}`, `${tierLabel}：第 ${lockedAt} 次飞升解锁`])}</div> : isMaxed ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Maxed', 'Maksimum', 'Máximo')}</div> : <Button onClick={() => buyParagonUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Upgrade', 'Yükselt', 'Melhorar')} {formatNumber(currentCost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
                       </div>
                     </div>
                   );

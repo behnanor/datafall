@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from "react";
 import { Resource, ResourceType, formatNumber, Upgrade, getAscensionCost, type PrestigeGainBreakdown, type AutomationSettings, AUTO_BUY_MODES, AUTOMATION_UNLOCK_ASCENSION, AUTO_ASCEND_MULTIPLE_OPTIONS, type ChallengeId, type ChallengeState, CHALLENGES, CHALLENGE_UNLOCK_ASCENSION, CHALLENGE_SPRINT_LIMIT_SECONDS, FINALE_UNLOCK_ASCENSION, getEndlessDepth } from "@/lib/useGame";
 import { getBoostLines } from "@/lib/gameLocale";
 import { NextGoal } from "./NextGoal";
+import { getAbyssBoon, getAbyssBoonName, groupAbyssBoons, ABYSS_BOON_EVERY_DEPTHS, getAbyssBoonPicksEarned, type AbyssBoonId } from "@/lib/abyssBoons";
 import { getEndlessTitle, getNextEndlessRewardDepth, getUnlockedAbyssVariants, ABYSS_VARIANT_NAMES, ABYSS_VARIANT_HUES } from "@/lib/endless";
 import { ECHO_EVERY_DEPTHS, pick6 } from "@/lib/bossVariants";
 
@@ -41,6 +42,10 @@ interface ResourcePanelProps {
   finaleWeaken?: number;
   abyssVariant?: number;
   onSetAbyssVariant?: (variant: number) => void;
+  // v1.04 Endless: Abyss Boons owned / waiting to be picked.
+  abyssBoons?: AbyssBoonId[];
+  pendingAbyssBoons?: number;
+  onOpenAbyssBoons?: () => void;
   onStartFinale?: () => void;
   challenges?: ChallengeState;
   onStartChallenge?: (id: ChallengeId) => void;
@@ -131,6 +136,9 @@ export const ResourcePanel = memo(function ResourcePanel({
   finaleWeaken = 0,
   abyssVariant = 0,
   onSetAbyssVariant,
+  abyssBoons = [],
+  pendingAbyssBoons = 0,
+  onOpenAbyssBoons,
   onStartFinale,
   ascensionLevel,
   onOpenPrestige,
@@ -413,6 +421,22 @@ export const ResourcePanel = memo(function ResourcePanel({
                 <p className="text-[10px] font-mono text-orange-200/70">
                   {pick6(language, ['Next reward', 'Sıradaki ödül', 'Próxima recompensa', 'Siguiente recompensa', 'Следующая награда', '下一个奖励'])}: {getNextEndlessRewardDepth(depth)} · {pick6(language, ['Core Echo', 'Çekirdek Yankısı', 'Eco do Núcleo', 'Eco del Núcleo', 'Эхо Ядра', '核心回响'])}: {nextEcho}
                 </p>
+                {onOpenAbyssBoons && (pendingAbyssBoons > 0 ? (
+                  <button type="button" onClick={onOpenAbyssBoons} className="mt-1 w-full animate-pulse rounded border border-orange-400 bg-orange-500/25 px-2 py-1 text-[11px] font-bold text-orange-100 hover:bg-orange-500/40" data-testid="button-abyss-boon">
+                    {pick6(language, ['Choose an Abyss Boon', 'Uçurum Lütfu seç', 'Escolher Bênção Abissal', 'Elegir Bendición Abisal', 'Выбрать дар бездны', '选择深渊恩赐'])}{pendingAbyssBoons > 1 ? ` (${pendingAbyssBoons})` : ''}
+                  </button>
+                ) : (
+                  <p className="text-[10px] font-mono text-orange-200/70">
+                    {pick6(language, ['Next Abyss Boon', 'Sıradaki Uçurum Lütfu', 'Próxima Bênção Abissal', 'Siguiente Bendición Abisal', 'Следующий дар бездны', '下一项深渊恩赐'])}: {(getAbyssBoonPicksEarned(depth) + 1) * ABYSS_BOON_EVERY_DEPTHS}
+                  </p>
+                ))}
+                {abyssBoons.length > 0 && (
+                  <p className="text-[10px] leading-snug text-slate-300" data-testid="abyss-boon-summary">
+                    {groupAbyssBoons(abyssBoons).map((g, i) => (
+                      <span key={g.id}>{i > 0 ? ' · ' : ''}<span style={{ color: getAbyssBoon(g.id).color }}>{getAbyssBoonName(g.id, language)}</span>{g.count > 1 ? ` x${g.count}` : ''}</span>
+                    ))}
+                  </p>
+                )}
                 {unlocked > 0 && onSetAbyssVariant && (
                   <div className="flex flex-wrap justify-center gap-1 pt-1" data-testid="abyss-variants">
                     <button type="button" onClick={() => onSetAbyssVariant(0)} className={`h-5 px-1.5 rounded border text-[9px] font-mono ${abyssVariant === 0 ? 'border-orange-300 text-orange-100' : 'border-slate-600 text-slate-400'}`}>{pick6(language, ['off', 'kapalı', 'desl.', 'apag.', 'выкл', '关'])}</button>

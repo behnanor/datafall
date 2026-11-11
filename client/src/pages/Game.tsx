@@ -4,6 +4,8 @@ import { Celebration, type CelebrationKind } from '@/components/game/Celebration
 import { shiftThemeColorsForEra } from '@/lib/colorEra';
 import { useGame, formatNumber, getPrestigeGainBreakdown, getEndlessDepth, getFinaleWeaken, IS_TEST_BUILD, type ResourceType, type LootBoxReward, type TutorialReward, type FloatingPickupItem, CHARACTER_SKINS, ROOM_THEMES, CHARACTER_ACCESSORIES, CHARACTER_HEAD_STYLES, CHARACTER_PETS, ASCENSION_PETS, ASCENSION_SKINS, ASCENSION_HEAD_STYLES, ASCENSION_ACCESSORIES, ASCENSION_ROOM_THEMES, CLICK_EFFECTS, LOOT_BOX_SKINS, MACHINE_BOX_SKINS, CRYPTO_RELIC_TREE, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_CAPES, BLACK_MARKET_WINGS, BLACK_MARKET_UPGRADES, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, PARAGON_UPGRADES, computeParagonBonuses } from '@/lib/useGame';
 import { ABYSS_VARIANT_HUES } from '@/lib/endless';
+import { computeAbyssBoonTotals, getAbyssBoonOffer, getPendingAbyssBoonPicks, getAbyssBoonName, type AbyssBoonId } from '@/lib/abyssBoons';
+import { AbyssBoonDialog } from '@/components/game/AbyssBoonDialog';
 import { DemoEndScreen } from '@/components/game/DemoEndScreen';
 import { SaveLoadErrorScreen } from '@/components/game/SaveLoadErrorScreen';
 import { DemoPrompts } from '@/components/game/DemoPrompts';
@@ -153,7 +155,7 @@ export default function GamePage() {
       spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, 
       toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, 
       toggleMusic, skipTrack, elapsedTime, floatingPickups, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, 
-      getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, setAbyssVariant, whatsNew, markWhatsNewSeen, claimWelcomeGift, onPickupClick, prestigeUpgrades, onCritPickupClick, removeFloatingPickup,
+      getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, chooseAbyssBoon, setAbyssVariant, whatsNew, markWhatsNewSeen, claimWelcomeGift, onPickupClick, prestigeUpgrades, onCritPickupClick, removeFloatingPickup,
       achievements, stats, newlyUnlockedAchievement, newlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, 
       unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, 
       buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin, getActiveTheme, getActiveAccessory, getActiveCape, getActiveWing, getActiveHeadStyle, 
@@ -403,18 +405,35 @@ export default function GamePage() {
     const prestigeClick = prestigeUpgrades.reduce((sum, upgrade) => (upgrade.effect.type === 'click_boost' ? sum + upgrade.effect.value * upgrade.count * 100 : sum), 0);
     return prestigeClick + computeParagonBonuses(cosmetics.paragonLevels).clickBoostPercent;
   }, [prestigeUpgrades, cosmetics.paragonLevels]);
-  // v1.04 Paragon III: boss damage and boss timer bonuses.
+  // v1.04 Endless: Abyss Boons (one pick per 5 depths).
+  const abyssBoonTotals = useMemo(() => computeAbyssBoonTotals(finale.boons), [finale.boons]);
+  const endlessDepth = finale.completed ? getEndlessDepth(stats.totalAscensions) : 0;
+  const pendingAbyssBoons = finale.completed ? getPendingAbyssBoonPicks(endlessDepth, finale.boons) : 0;
+  const [isAbyssBoonOpen, setIsAbyssBoonOpen] = useState(false);
+  const handleChooseAbyssBoon = useCallback((id: AbyssBoonId) => {
+    if (!chooseAbyssBoon(id)) return;
+    // More picks waiting: the next offer shows straight away. After the last one, close and celebrate.
+    if (pendingAbyssBoons > 1) return;
+    setIsAbyssBoonOpen(false);
+    celebrate('legendary', getAbyssBoonName(id, language), pick6(language, ['Abyss Boon taken', 'Uçurum Lütfu alındı', 'Bênção Abissal obtida', 'Bendición Abisal obtenida', 'Дар бездны получен', '已获得深渊恩赐']));
+  }, [chooseAbyssBoon, celebrate, language, pendingAbyssBoons]);
+  // v1.04 Paragon III (and Abyss Boons): boss damage and boss timer bonuses.
   const paragonBossBonuses = useMemo(() => {
     const bonuses = computeParagonBonuses(cosmetics.paragonLevels);
-    return { damageMultiplier: bonuses.bossDamageMultiplier, bonusSeconds: bonuses.bossTimeSeconds };
-  }, [cosmetics.paragonLevels]);
+    return {
+      damageMultiplier: bonuses.bossDamageMultiplier * abyssBoonTotals.bossDamageMultiplier,
+      bonusSeconds: bonuses.bossTimeSeconds + abyssBoonTotals.bossBonusSeconds,
+    };
+  }, [cosmetics.paragonLevels, abyssBoonTotals]);
   const handleAscendVictory = (variant: BossVariant) => {
-    const reward = ascendVictory(variant.kind === 'echo' ? ECHO_PRESTIGE_MULTIPLIER : 1);
+    // v1.04: Echo Hunter boons raise the Echo payout; Crown Harvest boons raise every boss victory.
+    const echoMultiplier = ECHO_PRESTIGE_MULTIPLIER + abyssBoonTotals.echoBonus;
+    const reward = ascendVictory((variant.kind === 'echo' ? echoMultiplier : 1) * abyssBoonTotals.prestigeMultiplier);
     if (variant.kind === 'signal') {
       clearCoreSignal();
       celebrate('legendary', pick6(language, ['CORE SIGNAL SILENCED', 'ÇEKİRDEK SİNYALİ SUSTURULDU', 'SINAL DO NÚCLEO SILENCIADO', 'SEÑAL DEL NÚCLEO SILENCIADA', 'СИГНАЛ ЯДРА ЗАГЛУШЕН', '核心信号已压制']), pick6(language, ['The final Core loses 15% HP', 'Son Çekirdek %15 can kaybeder', 'O Núcleo final perde 15% de vida', 'El Núcleo final pierde un 15% de vida', 'Финальное Ядро теряет 15% HP', '最终核心生命 -15%']));
     } else if (variant.kind === 'echo') {
-      celebrate('legendary', pick6(language, ['CORE ECHO SHATTERED', 'ÇEKİRDEK YANKISI KIRILDI', 'ECO DO NÚCLEO DESTRUÍDO', 'ECO DEL NÚCLEO DESTRUIDO', 'ЭХО ЯДРА РАЗБИТО', '核心回响已粉碎']), pick6(language, ['x1.5 prestige', 'x1.5 prestij', 'x1,5 prestígio', 'x1,5 prestigio', 'x1,5 престижа', 'x1.5 声望']));
+      celebrate('legendary', pick6(language, ['CORE ECHO SHATTERED', 'ÇEKİRDEK YANKISI KIRILDI', 'ECO DO NÚCLEO DESTRUÍDO', 'ECO DEL NÚCLEO DESTRUIDO', 'ЭХО ЯДРА РАЗБИТО', '核心回响已粉碎']), pick6(language, [`x${echoMultiplier} prestige`, `x${echoMultiplier} prestij`, `x${echoMultiplier} prestígio`, `x${echoMultiplier} prestigio`, `x${echoMultiplier} престижа`, `x${echoMultiplier} 声望`]));
     } else {
       celebrate('ascend', l('ASCENDED', 'YÜKSELDİN', 'ASCENDEU', 'ASCENDISTE'));
     }
@@ -2086,6 +2105,17 @@ export default function GamePage() {
       )}
       {saveLoadError !== null && <SaveLoadErrorScreen language={language} reason={saveLoadError} onRetry={retrySaveLoad} onOpenFolder={openSaveFolder} onContinueWithout={continueWithoutUnreadableSave} />}
       {showDemoEnd && !isBossEncounterActive && <DemoEndScreen language={language} ascensions={stats.totalAscensions} onQuit={() => { void saveGame(); setTimeout(() => window.close(), 300); }} />}
+      {isAbyssBoonOpen && pendingAbyssBoons > 0 && !isBossEncounterActive && (
+        <AbyssBoonDialog
+          language={language}
+          depth={endlessDepth}
+          offer={getAbyssBoonOffer(finale.boons.length)}
+          owned={finale.boons}
+          pending={pendingAbyssBoons}
+          onChoose={handleChooseAbyssBoon}
+          onClose={() => setIsAbyssBoonOpen(false)}
+        />
+      )}
       {showFinaleCredits && (
         <FinaleCredits totalAscensions={stats.totalAscensions} onContinue={() => setShowFinaleCredits(false)} />
       )}
@@ -2200,6 +2230,9 @@ export default function GamePage() {
             finaleWeaken={getFinaleWeaken(finale)}
             abyssVariant={finale.abyssVariant}
             onSetAbyssVariant={setAbyssVariant}
+            abyssBoons={finale.boons}
+            pendingAbyssBoons={pendingAbyssBoons}
+            onOpenAbyssBoons={() => setIsAbyssBoonOpen(true)}
             onStartFinale={() => { setIsFinaleEncounter(true); setIsBossEncounterActive(true); }}
             onAbandonChallenge={abandonChallenge}
             upgrades={upgrades}

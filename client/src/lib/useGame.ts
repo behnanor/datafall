@@ -1,5 +1,6 @@
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
+import { type AbyssBoonId, isAbyssBoonId, computeAbyssBoonTotals, getAbyssBoonOffer, getPendingAbyssBoonPicks } from './abyssBoons';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { unlockSteamAchievement, isSteamAvailable } from './steamIntegration';
 import { localizeInlineText, useI18n } from './i18n';
@@ -4784,8 +4785,10 @@ export interface FinaleState {
   signalCleared: boolean;
   // v1.03 Endless: selected abyss click-burst palette (0 = off).
   abyssVariant: number;
+  // v1.04 Endless: Abyss Boons picked so far (one pick per 5 depths; repeats stack).
+  boons: AbyssBoonId[];
 }
-const INITIAL_FINALE: FinaleState = { completed: false, completedAt: null, failedAttempts: 0, signalCleared: false, abyssVariant: 0 };
+const INITIAL_FINALE: FinaleState = { completed: false, completedAt: null, failedAttempts: 0, signalCleared: false, abyssVariant: 0, boons: [] };
 export const CORE_SIGNAL_WEAKEN = 0.15;
 export const getFinaleWeaken = (finale: FinaleState): number =>
   Math.min(0.6, Math.min(0.5, 0.1 * Math.max(0, finale.failedAttempts)) + (finale.signalCleared ? CORE_SIGNAL_WEAKEN : 0));
@@ -4797,6 +4800,7 @@ const migrateFinale = (saved: unknown): FinaleState => {
     failedAttempts: Number.isFinite(s.failedAttempts) ? Math.max(0, Math.floor(s.failedAttempts as number)) : 0,
     signalCleared: !!s.signalCleared,
     abyssVariant: Number.isFinite(s.abyssVariant) ? Math.max(0, Math.floor(s.abyssVariant as number)) : 0,
+    boons: Array.isArray(s.boons) ? s.boons.filter(isAbyssBoonId) : [],
   };
 };
 export const getEndlessDepth = (totalAscensions: number): number => Math.max(0, totalAscensions - FINALE_UNLOCK_ASCENSION);
@@ -4833,17 +4837,19 @@ export const computeChallengeRewardBoost = (completed: ChallengeId[]): Required<
   return total;
 };
 // Cosmetic boosts as they apply during a run: Bare Metal disables them, completed challenges always add.
-export const computeRunBoosts = (cosmetics: CosmeticsState, challenges: ChallengeState): Required<PetBoost> => {
+// v1.04: Abyss Boons (Endless) also add here; like challenge rewards they stay on during Bare Metal.
+export const computeRunBoosts = (cosmetics: CosmeticsState, challenges: ChallengeState, boons: AbyssBoonId[] = []): Required<PetBoost> => {
   const base = challenges.active === 'bare_metal'
     ? { productionBoost: 0, clickBoost: 0, critBoost: 0, cryptoBoost: 0, critDamageBoost: 0 }
     : computeCosmeticBoosts(cosmetics);
   const rewards = computeChallengeRewardBoost(challenges.completed);
+  const abyss = computeAbyssBoonTotals(boons);
   return {
-    productionBoost: base.productionBoost + rewards.productionBoost,
-    clickBoost: base.clickBoost + rewards.clickBoost,
-    critBoost: base.critBoost + rewards.critBoost,
-    cryptoBoost: base.cryptoBoost + rewards.cryptoBoost,
-    critDamageBoost: base.critDamageBoost + rewards.critDamageBoost,
+    productionBoost: base.productionBoost + rewards.productionBoost + abyss.productionBoost,
+    clickBoost: base.clickBoost + rewards.clickBoost + abyss.clickBoost,
+    critBoost: base.critBoost + rewards.critBoost + abyss.critBoost,
+    cryptoBoost: base.cryptoBoost + rewards.cryptoBoost + abyss.cryptoBoost,
+    critDamageBoost: base.critDamageBoost + rewards.critDamageBoost + abyss.critDamageBoost,
   };
 };
 
@@ -5084,8 +5090,9 @@ export const useGame = () => {
     return adjacencyFormation.luckBoostPercent;
   }, [cosmetics.blackMarketAdjacencyPurchased, adjacencyFormation.luckBoostPercent]);
 
-  const activeCosmeticBoosts = useMemo<Required<PetBoost>>(() => computeRunBoosts(cosmetics, challenges), [
+  const activeCosmeticBoosts = useMemo<Required<PetBoost>>(() => computeRunBoosts(cosmetics, challenges, finale.boons), [
     challenges,
+    finale.boons,
     cosmetics.activeSkinId,
     cosmetics.activeThemeId,
     cosmetics.activeAccessoryId,
@@ -5197,7 +5204,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
           const rates = computeProductionRates({
             upgrades: offlineUpgrades,
             prestigeUpgrades: offlinePrestigeUpgrades,
-            cosmeticBoosts: computeRunBoosts(offlineCosmetics, migrateChallenges(base.challenges)),
+            cosmeticBoosts: computeRunBoosts(offlineCosmetics, migrateChallenges(base.challenges), migrateFinale(base.finale).boons),
             cryptoChallengeMultiplier: migrateChallenges(base.challenges).active === 'half_crypto' ? 0.5 : 1,
             paragonProductionMultiplier: offlineParagon.productionMultiplier,
             paragonCryptoMultiplier: offlineParagon.cryptoMultiplier,
@@ -9094,6 +9101,15 @@ useEffect(() => {
     setResources(prev => ({ ...prev, credits: { ...prev.credits, amount: prev.credits.amount + credits } }));
     return { kind: 'fallback', data: 0, credits, crypto: 0, source: 'welcome' };
   }, [whatsNew.giftClaimed, cosmetics, stats.totalAscensions]);
+  // v1.04 Endless: take one of the three offered Abyss Boons (only while a pick is pending).
+  const chooseAbyssBoon = useCallback((id: AbyssBoonId): boolean => {
+    if (!finale.completed) return false;
+    if (getPendingAbyssBoonPicks(getEndlessDepth(stats.totalAscensions), finale.boons) <= 0) return false;
+    if (!getAbyssBoonOffer(finale.boons.length).includes(id)) return false;
+    setFinale(prev => (prev.boons.length !== finale.boons.length ? prev : { ...prev, boons: [...prev.boons, id] }));
+    playSound('legendary');
+    return true;
+  }, [finale.completed, finale.boons, stats.totalAscensions, playSound]);
   const clearCoreSignal = useCallback(() => {
     setFinale(prev => (prev.signalCleared ? prev : { ...prev, signalCleared: true }));
   }, []);
@@ -9369,6 +9385,6 @@ useEffect(() => {
   const getLocalizedActiveLootBoxSkin = useCallback(() => localizeCatalogEntry(getActiveLootBoxSkin(), language), [getActiveLootBoxSkin, language]);
   const getLocalizedActiveMachineBoxSkin = useCallback(() => localizeCatalogEntry(getActiveMachineBoxSkin(), language), [getActiveMachineBoxSkin, language]);
 
-  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
+  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, chooseAbyssBoon, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
 };
 

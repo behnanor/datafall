@@ -200,6 +200,24 @@ const ASCENSION_OVERSHOOT_PER_DOUBLING = 0.5;
 const ASCENSION_OVERSHOOT_MAX_MULTIPLIER = 3;
 // Passive credit (Node) income as a share of data production, online and offline.
 export const CREDIT_TRICKLE_RATE = 0.01;
+// v1.04 "pay with data": after the first ascension, buying something you are short on Nodes for
+// sells just enough data for the missing Nodes (same rate as the Convert button). Selling by hand
+// before every rig was a chore with no decision in it; the tutorial still teaches Convert first.
+export const AUTO_SELL_UNLOCK_ASCENSION = 1;
+export interface NodeSaleRate { dataPerNode: number; nodesPerSale: number }
+export const getAutoSellPlan = (
+  cost: Partial<Record<string, number>>,
+  have: { data: number; credits: number },
+  rate: NodeSaleRate | null | undefined,
+): { dataToSell: number; nodesGained: number } | null => {
+  const missingNodes = (cost.credits ?? 0) - have.credits;
+  if (!rate || missingNodes <= 0 || rate.dataPerNode <= 0 || rate.nodesPerSale <= 0) return null;
+  let sales = Math.ceil(missingNodes / rate.nodesPerSale);
+  if (Math.floor(sales * rate.nodesPerSale) < missingNodes) sales += 1;
+  const dataToSell = sales * rate.dataPerNode;
+  if (have.data - (cost.data ?? 0) < dataToSell) return null;
+  return { dataToSell, nodesGained: Math.floor(sales * rate.nodesPerSale) };
+};
 // Save-data marker for the v1.03 economy migration (prestige merges/refunds). Saves stay v11.
 const ECONOMY_VERSION = 103;
 // Test builds (VITE_TEST_BUILD=true) save separately and start from a read-only copy of the live save.
@@ -5067,6 +5085,17 @@ export const useGame = () => {
     return computeParagonBonuses(cosmetics.paragonLevels);
   }, [cosmetics.paragonLevels]);
 
+  // Data -> Node rate for "pay with data" (same as the Convert button: Node Compression + Market Arbitrage).
+  const nodeSaleRate = useMemo<NodeSaleRate>(() => {
+    let nodesPerSale = 1;
+    prestigeUpgrades.forEach(p => {
+      if (p.count > 0 && p.effect.type === 'sell_boost') nodesPerSale += p.effect.value * p.count;
+    });
+    return { dataPerNode: activeParagonBonuses.nodeConversionDataCost, nodesPerSale };
+  }, [prestigeUpgrades, activeParagonBonuses.nodeConversionDataCost]);
+  const nodeSaleRateRef = useRef(nodeSaleRate);
+  nodeSaleRateRef.current = nodeSaleRate;
+
   const activePickupBoosts = useMemo(() => {
     let spawnRateBonus = 0;
     let timeWarpChanceBonus = 0;
@@ -6978,8 +7007,19 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
         currentCost[k] = Math.floor(v * Math.pow(upgrade.costMultiplier, upgrade.count));
       }
       let currentCount = upgrade.count;
+      let autoSoldData = 0;
+      let autoSoldNodes = 0;
+      const saleRate = statsRef.current.totalAscensions >= AUTO_SELL_UNLOCK_ASCENSION ? nodeSaleRateRef.current : null;
       
       for (let i = 0; i < effectiveQuantity; i++) {
+        // Pay with data: sell just enough data for the missing Nodes (after the first ascension).
+        const autoSell = getAutoSellPlan(currentCost, { data: nextRes.data.amount, credits: nextRes.credits.amount }, saleRate);
+        if (autoSell) {
+          nextRes.data = { ...nextRes.data, amount: nextRes.data.amount - autoSell.dataToSell };
+          nextRes.credits = { ...nextRes.credits, amount: nextRes.credits.amount + autoSell.nodesGained };
+          autoSoldData += autoSell.dataToSell;
+          autoSoldNodes += autoSell.nodesGained;
+        }
         let canAfford = true;
         for (const [res, amount] of Object.entries(currentCost) as Array<[string, unknown]>) {
           const r = res as ResourceType;
@@ -7080,6 +7120,14 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
           updateContractProgress('spend_credits', totalCreditsSpent);
         }
         updateContractProgress('upgrade_single', totalBought);
+        if (autoSoldNodes > 0) {
+          setStats(s => ({ ...s, totalCreditsEarned: s.totalCreditsEarned + autoSoldNodes }));
+          updateContractProgress('sell_data', autoSoldData);
+          if (!options?.silent) playSound('sell');
+        }
+      } else if (autoSoldNodes > 0) {
+        // Nothing was bought (should not happen, the plan checks the data first): undo the sale.
+        return currentResources;
       }
       return nextRes;
     });
@@ -9336,6 +9384,6 @@ useEffect(() => {
   const getLocalizedActiveLootBoxSkin = useCallback(() => localizeCatalogEntry(getActiveLootBoxSkin(), language), [getActiveLootBoxSkin, language]);
   const getLocalizedActiveMachineBoxSkin = useCallback(() => localizeCatalogEntry(getActiveMachineBoxSkin(), language), [getActiveMachineBoxSkin, language]);
 
-  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, productionMultipliers, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
+  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, productionMultipliers, autoSellRate: stats.totalAscensions >= AUTO_SELL_UNLOCK_ASCENSION ? nodeSaleRate : null, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
 };
 

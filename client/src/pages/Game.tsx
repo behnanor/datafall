@@ -150,7 +150,7 @@ export default function GamePage() {
       resources, upgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, 
       lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, 
       addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, 
-      spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, productionMultipliers, masterVolume, 
+      spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, productionMultipliers, autoSellRate, masterVolume, 
       toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, 
       toggleMusic, skipTrack, elapsedTime, floatingPickups, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, 
       getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, setAbyssVariant, whatsNew, markWhatsNewSeen, claimWelcomeGift, onPickupClick, prestigeUpgrades, onCritPickupClick, removeFloatingPickup,
@@ -2391,6 +2391,7 @@ export default function GamePage() {
             getUpgradePreview={getUpgradePreview}
             getBulkProductionGain={getBulkProductionGain}
             productionMultipliers={productionMultipliers}
+            autoSellRate={autoSellRate}
             selectedBulkOption={selectedBulkOption}
             onBulkOptionChange={setSelectedBulkOption}
             contracts={contracts}

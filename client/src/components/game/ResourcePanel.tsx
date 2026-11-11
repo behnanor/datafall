@@ -1,6 +1,9 @@
 import { memo, useEffect, useState } from "react";
-import { Resource, ResourceType, formatNumber, Upgrade, getAscensionCost, type PrestigeGainBreakdown, type AutomationSettings, AUTO_BUY_MODES, AUTOMATION_UNLOCK_ASCENSION, AUTO_ASCEND_MULTIPLE_OPTIONS, type ChallengeId, type ChallengeState, CHALLENGES, CHALLENGE_UNLOCK_ASCENSION, CHALLENGE_SPRINT_LIMIT_SECONDS, FINALE_UNLOCK_ASCENSION, getEndlessDepth } from "@/lib/useGame";
+import { Resource, ResourceType, formatNumber, Upgrade, getAscensionCost, type PrestigeGainBreakdown, type AutomationSettings, AUTO_BUY_MODES, AUTOMATION_UNLOCK_ASCENSION, AUTO_ASCEND_MULTIPLE_OPTIONS, type ChallengeId, type ChallengeState, CHALLENGES, RARITY_ECONOMY, CHALLENGE_UNLOCK_ASCENSION, CHALLENGE_SPRINT_LIMIT_SECONDS, FINALE_UNLOCK_ASCENSION, getEndlessDepth } from "@/lib/useGame";
 import { getBoostLines } from "@/lib/gameLocale";
+
+// v1.04: cheapest Nodes cosmetic; above this the Ascend window reminds players to spend their Nodes first.
+const COSMETIC_MIN_PRICE = RARITY_ECONOMY.common.price;
 import { NextGoal } from "./NextGoal";
 import { getEndlessTitle, getNextEndlessRewardDepth, getUnlockedAbyssVariants, ABYSS_VARIANT_NAMES, ABYSS_VARIANT_HUES } from "@/lib/endless";
 import { ECHO_EVERY_DEPTHS, pick6 } from "@/lib/bossVariants";
@@ -826,6 +829,25 @@ export const ResourcePanel = memo(function ResourcePanel({
               </div>
             </div>
             
+            {canAscend && onCosmeticsClick && resources.credits.amount >= COSMETIC_MIN_PRICE && (
+              <div className="flex items-center gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-2.5" data-testid="ascend-spend-nodes">
+                <CurrencyIcon kind="credits" className="h-4 w-4 shrink-0" />
+                <p className="flex-1 text-[11px] text-yellow-100">
+                  {pick6(language, [
+                    `You still have ${formatNumber(Math.floor(resources.credits.amount))} Nodes. They reset now, but cosmetics you buy with them stay forever.`,
+                    `Hâlâ ${formatNumber(Math.floor(resources.credits.amount))} Dizin'in var. Şimdi sıfırlanacak, ama onlarla aldığın kozmetikler kalıcı.`,
+                    `Você ainda tem ${formatNumber(Math.floor(resources.credits.amount))} Nodes. Eles zeram agora, mas cosméticos comprados com eles ficam para sempre.`,
+                    `Aún tienes ${formatNumber(Math.floor(resources.credits.amount))} Nodos. Se reinician ahora, pero los cosméticos que compres con ellos son permanentes.`,
+                    `У вас ещё ${formatNumber(Math.floor(resources.credits.amount))} узлов. Сейчас они сгорят, а купленная на них косметика останется навсегда.`,
+                    `你还有 ${formatNumber(Math.floor(resources.credits.amount))} 节点。它们将被清零，但用它们购买的装扮会永久保留。`,
+                  ])}
+                </p>
+                <Button size="sm" variant="outline" className="h-7 shrink-0 border-yellow-500/50 px-2 text-[11px] text-yellow-200 hover:bg-yellow-500/20" onClick={() => { setIsAscendDialogOpen(false); onCosmeticsClick(); }} data-testid="ascend-open-cosmetics">
+                  {pick6(language, ['Spend first', 'Önce harca', 'Gastar antes', 'Gastar antes', 'Сначала потратить', '先去花掉'])}
+                </Button>
+              </div>
+            )}
+
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
               <p className="text-xs text-amber-300 font-medium mb-1">{t('resourcePanel.warningReset')}</p>
               <ul className="text-[10px] text-muted-foreground space-y-1">
@@ -834,6 +856,7 @@ export const ResourcePanel = memo(function ResourcePanel({
                 <li>- {t('resourcePanel.resetTimer')}</li>
               </ul>
               <p className="text-xs text-emerald-400 mt-2">{t('resourcePanel.keptPrestige')}</p>
+              <p className="text-[10px] text-emerald-300/80 mt-1" data-testid="ascend-kept-cosmetics">{pick6(language, ['Also kept: all cosmetics, relics and achievements.', 'Ayrıca kalanlar: tüm kozmetikler, relikler ve başarımlar.', 'Também mantidos: todos os cosméticos, relíquias e conquistas.', 'También se conservan: cosméticos, reliquias y logros.', 'Также сохраняются: вся косметика, реликвии и достижения.', '同样保留：所有装扮、遗物与成就。'])}</p>
               <p className="text-[10px] text-cyan-400/70 mt-1">{t('resourcePanel.moreCryptoTip')}</p>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { shakeElement } from '@/lib/juice';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -141,6 +142,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const weakSpotIdRef = useRef(0);
   const breachSequenceIdRef = useRef(0);
   const battleAreaRef = useRef<HTMLDivElement>(null);
+  const encounterContentRef = useRef<HTMLDivElement>(null);
   const weakSpotsRef = useRef<WeakSpot[]>([]);
   const breachFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const damageFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -442,6 +444,9 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       setWeakSpots(prev => prev.filter(s => s.id !== hitWeakSpot.id));
     }
 
+    // Game feel: weak-spot hits jolt the arena.
+    if (hitWeakSpot) shakeElement(battleAreaRef.current, overclockActive ? 1.5 : 1);
+
     // Play appropriate sound
     if (playSound) {
       if (hitWeakSpot) {
@@ -487,6 +492,11 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       setDamageFlash(false);
     }, 50);
   }, [phase, damagePerClick, checkWeakSpotHit, overclockUntil, playSound, usesShields, flatShield, phaseShields, critChance, maxHealth]);
+
+  // Game feel: the killing blow gives a big shake.
+  useEffect(() => {
+    if (phase === 'victory') shakeElement(encounterContentRef.current, 2.5);
+  }, [phase]);
 
   const handleBattlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (phase !== 'battle') return;
@@ -620,6 +630,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
         )}
         
         <motion.div
+          ref={encounterContentRef}
           className={contentClass}
           style={{ borderColor: currentBoss.color }}
           initial={{ scale: 0.8, y: 50 }}

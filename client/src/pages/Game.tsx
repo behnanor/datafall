@@ -1,6 +1,7 @@
 import React, { startTransition, useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { FinaleCredits } from '@/components/game/FinaleCredits';
 import { Celebration, type CelebrationKind } from '@/components/game/Celebration';
+import { JuiceBanners } from '@/components/game/JuiceBanners';
 import { shiftThemeColorsForEra } from '@/lib/colorEra';
 import { useGame, formatNumber, getPrestigeGainBreakdown, getEndlessDepth, getFinaleWeaken, IS_TEST_BUILD, type ResourceType, type LootBoxReward, type TutorialReward, type FloatingPickupItem, CHARACTER_SKINS, ROOM_THEMES, CHARACTER_ACCESSORIES, CHARACTER_HEAD_STYLES, CHARACTER_PETS, ASCENSION_PETS, ASCENSION_SKINS, ASCENSION_HEAD_STYLES, ASCENSION_ACCESSORIES, ASCENSION_ROOM_THEMES, CLICK_EFFECTS, LOOT_BOX_SKINS, MACHINE_BOX_SKINS, CRYPTO_RELIC_TREE, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_CAPES, BLACK_MARKET_WINGS, BLACK_MARKET_UPGRADES, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, PARAGON_UPGRADES, computeParagonBonuses } from '@/lib/useGame';
 import { ABYSS_VARIANT_HUES } from '@/lib/endless';
@@ -152,7 +153,7 @@ export default function GamePage() {
       resources, upgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, 
       lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, 
       addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, 
-      spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, 
+      spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, productionMultipliers, autoSellRate, masterVolume, 
       toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, 
       toggleMusic, skipTrack, elapsedTime, floatingPickups, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, 
       getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, chooseAbyssBoon, setAbyssVariant, whatsNew, markWhatsNewSeen, claimWelcomeGift, onPickupClick, prestigeUpgrades, onCritPickupClick, removeFloatingPickup,
@@ -2076,6 +2077,7 @@ export default function GamePage() {
           />
         </Suspense>
       )}
+      <JuiceBanners language={language} reduced={reduceSceneGlow} playSound={playSound} />
       {celebration && (
         <Celebration
           key={celebration.key}
@@ -2435,6 +2437,8 @@ export default function GamePage() {
             playSound={playSound}
             getUpgradePreview={getUpgradePreview}
             getBulkProductionGain={getBulkProductionGain}
+            productionMultipliers={productionMultipliers}
+            autoSellRate={autoSellRate}
             selectedBulkOption={selectedBulkOption}
             onBulkOptionChange={setSelectedBulkOption}
             contracts={contracts}

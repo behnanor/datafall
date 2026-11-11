@@ -1,3 +1,4 @@
+import { emitJuiceBanner } from './juice';
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
 import { type AbyssBoonId, isAbyssBoonId, computeAbyssBoonTotals, getAbyssBoonOffer, getPendingAbyssBoonPicks } from './abyssBoons';
@@ -201,6 +202,24 @@ const ASCENSION_OVERSHOOT_PER_DOUBLING = 0.5;
 const ASCENSION_OVERSHOOT_MAX_MULTIPLIER = 3;
 // Passive credit (Node) income as a share of data production, online and offline.
 export const CREDIT_TRICKLE_RATE = 0.01;
+// v1.04 "pay with data": after the first ascension, buying something you are short on Nodes for
+// sells just enough data for the missing Nodes (same rate as the Convert button). Selling by hand
+// before every rig was a chore with no decision in it; the tutorial still teaches Convert first.
+export const AUTO_SELL_UNLOCK_ASCENSION = 1;
+export interface NodeSaleRate { dataPerNode: number; nodesPerSale: number }
+export const getAutoSellPlan = (
+  cost: Partial<Record<string, number>>,
+  have: { data: number; credits: number },
+  rate: NodeSaleRate | null | undefined,
+): { dataToSell: number; nodesGained: number } | null => {
+  const missingNodes = (cost.credits ?? 0) - have.credits;
+  if (!rate || missingNodes <= 0 || rate.dataPerNode <= 0 || rate.nodesPerSale <= 0) return null;
+  let sales = Math.ceil(missingNodes / rate.nodesPerSale);
+  if (Math.floor(sales * rate.nodesPerSale) < missingNodes) sales += 1;
+  const dataToSell = sales * rate.dataPerNode;
+  if (have.data - (cost.data ?? 0) < dataToSell) return null;
+  return { dataToSell, nodesGained: Math.floor(sales * rate.nodesPerSale) };
+};
 // Save-data marker for the v1.03 economy migration (prestige merges/refunds). Saves stay v11.
 const ECONOMY_VERSION = 103;
 // Test builds (VITE_TEST_BUILD=true) save separately and start from a read-only copy of the live save.
@@ -441,7 +460,7 @@ const migratePrestigeUpgrades = (saved: unknown): PrestigeUpgrade[] => {
   }));
 };
 
-const INITIAL_STATE = {
+export const INITIAL_STATE = {
   resources: {
     credits: { amount: 0, perSecond: 0, unlocked: true },
     data: { amount: 0, perSecond: 0, unlocked: true },
@@ -675,7 +694,7 @@ const INITIAL_STATE = {
 };
 
 // Calculate checkpoint multiplier
-const getCheckpointMultiplier = (count: number, category?: string): number => {
+export const getCheckpointMultiplier = (count: number, category?: string): number => {
   // Crypto mining uses 25-level checkpoints
   if (category === 'crypto_mining') {
     if (count >= 100) return 8; // Was 4
@@ -953,7 +972,7 @@ export const getCheckpointProgress = (count: number, category: string): { curren
 // - Production: First level is base value, then each level adds 10% of base value
 // - Click / crit chance / crit multiplier: Linear progression by level count
 // - Every checkpoint applies the global checkpoint multiplier
-const getEffectiveValue = (upgrade: Upgrade): number => {
+export const getEffectiveValue = (upgrade: Upgrade): number => {
   if (upgrade.count === 0) return 0;
   const baseValue = upgrade.effect.value;
   const interval = getCheckpointInterval(upgrade.category);
@@ -982,11 +1001,14 @@ const getEffectiveValue = (upgrade: Upgrade): number => {
 
 // Ascension reset rules:
 // - Keep click upgrades category unlocked after first ascension.
+// - v1.04: keep Mining Protocol Access unlocked too. Re-buying the same unlock every run was a
+//   1-2 minute chore at the start of each run (sell data, wait for 60 Nodes) with no decision in it.
 // - Reset Zero-Day Payload to level 1 so crit chance bonus is recalculated from low baseline.
 const buildAscendedUpgrades = (): Upgrade[] => {
   return (INITIAL_STATE.upgrades as Upgrade[]).map(upgrade => {
     const count =
       upgrade.id === 'unlock_click_upgrades' ? 1 :
+      upgrade.id === 'unlock_crypto_mining' ? 1 :
       upgrade.id === 'zero_day' ? 1 :
       0;
     const nextCost: Partial<Record<ResourceType, number>> = {};
@@ -1158,15 +1180,18 @@ export const getPrestigeGainBreakdown = (
 export const calculatePrestigeGain = (crypto: number, ascensionCount: number = 0): number =>
   getPrestigeGainBreakdown(crypto, ascensionCount).total;
 
-const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
+// v1.04: Cursed Fate (+0.5% -> +1% crit chance), Lethal Precision (+8% -> +12% crit damage) and
+// Market Arbitrage (+4% -> +6% Nodes) gave too little to notice per level. Only counts are saved, so
+// existing levels get the new values on load.
+export const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   // v1.03: costs re-targeted so the whole shop (~300k) is affordable by about ascension 50.
   { id: 'p_click', name: 'Eternal Strike', description: '+5% click power per level.', cost: 25, costMultiplier: 1.10, maxLevel: 40, effect: { type: 'click_boost', value: 0.05 }, count: 0 },
   // Quantum Forge (p_mega_prod) was merged into this one; old levels are converted on load.
   { id: 'p_prod', name: 'Legacy Production', description: '+10% production per level.', cost: 30, costMultiplier: 1.10, maxLevel: 60, effect: { type: 'production_boost', value: 0.10 }, count: 0 },
   { id: 'p_starting', name: 'Head Start', description: 'Start each run with 1 minute of your last run\'s data production per level.', cost: 50, costMultiplier: 1.6, maxLevel: 10, effect: { type: 'starting_bonus', value: 60 }, count: 0 },
 
-  { id: 'p_crit', name: 'Cursed Fate', description: '+0.5% crit chance per level.', cost: 50, costMultiplier: 1.12, maxLevel: 30, effect: { type: 'crit_chance_boost', value: 0.005 }, count: 0 },
-  { id: 'p_crit_mult', name: 'Lethal Precision', description: '+8% crit damage per level.', cost: 60, costMultiplier: 1.12, maxLevel: 25, effect: { type: 'crit_mult_boost', value: 0.08 }, count: 0 },
+  { id: 'p_crit', name: 'Cursed Fate', description: '+1% crit chance per level.', cost: 50, costMultiplier: 1.12, maxLevel: 30, effect: { type: 'crit_chance_boost', value: 0.01 }, count: 0 },
+  { id: 'p_crit_mult', name: 'Lethal Precision', description: '+12% crit damage per level.', cost: 60, costMultiplier: 1.12, maxLevel: 25, effect: { type: 'crit_mult_boost', value: 0.12 }, count: 0 },
   // Capped where the click drop chance reaches 100% (30% base + 24 x 3%).
   { id: 'p_luck', name: 'Fortune Protocol', description: '+3% chance per level that a click drops a pickup.', cost: 45, costMultiplier: 1.15, maxLevel: 24, effect: { type: 'luck_boost', value: 0.03 }, count: 0 },
   { id: 'p_pickup', name: 'Scavenger Network', description: '+10% pickup value per level.', cost: 48, costMultiplier: 1.12, maxLevel: 30, effect: { type: 'pickup_value', value: 0.1 }, count: 0 },
@@ -1175,7 +1200,7 @@ const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   { id: 'p_timewarp_power', name: 'Chrono Compression', description: '+90s production burst per Time Warp trigger.', cost: 260, costMultiplier: 1.25, maxLevel: 14, effect: { type: 'time_warp_seconds', value: 90 }, count: 0 },
   { id: 'p_timewarp_sync', name: 'Phase Lock', description: '-6s Time Warp cooldown per level (min 30s).', cost: 300, costMultiplier: 1.25, maxLevel: 10, effect: { type: 'time_warp_cooldown', value: 6 }, count: 0 },
 
-  { id: 'p_sell', name: 'Market Arbitrage', description: '+4% more Nodes when selling data, per level.', cost: 110, costMultiplier: 1.18, maxLevel: 20, effect: { type: 'sell_boost', value: 0.04 }, count: 0 },
+  { id: 'p_sell', name: 'Market Arbitrage', description: '+6% more Nodes when selling data, per level.', cost: 110, costMultiplier: 1.18, maxLevel: 20, effect: { type: 'sell_boost', value: 0.06 }, count: 0 },
   { id: 'p_prestige', name: 'Ascension Catalyst', description: '+4% prestige gain per level.', cost: 150, costMultiplier: 1.25, maxLevel: 15, effect: { type: 'prestige_mult', value: 0.04 }, count: 0 },
   { id: 'p_offline', name: 'Passive Matrix', description: '+5% offline earnings per level.', cost: 90, costMultiplier: 1.18, maxLevel: 20, effect: { type: 'offline_boost', value: 0.05 }, count: 0 },
 
@@ -1436,6 +1461,9 @@ const INITIAL_STATS: PlayerStats = {
 };
 
 // Contract NPCs - Cyberpunk characters that give missions
+// Minimum contract reward as a share of the next ascension's crypto cost / minimum prestige reward.
+const CONTRACT_REWARD_SHARE: Record<'easy' | 'medium' | 'hard', number> = { easy: 0.01, medium: 0.02, hard: 0.04 };
+
 export const CONTRACT_NPCS: ContractNPC[] = [
   { id: 'ghost', name: 'Ghost', title: 'Data Broker', avatar: 'ghost', color: '#22d3ee' },
   { id: 'cipher', name: 'Cipher', title: 'Crypto Dealer', avatar: 'key', color: '#f59e0b' },
@@ -4727,9 +4755,7 @@ export const computeParagonBonuses = (paragonLevels: Record<string, number> | un
   };
 };
 
-// Per-second production for every resource. Used by the live tick AND offline progress, so both
-// apply exactly the same per-level sum and multipliers (prestige, cosmetics/relics, Paragon, adjacency).
-export const computeProductionRates = (input: {
+type ProductionInput = {
   upgrades: Upgrade[];
   prestigeUpgrades: Array<Pick<PrestigeUpgrade, 'count' | 'effect'>>;
   cosmeticBoosts: Required<PetBoost>;
@@ -4739,7 +4765,11 @@ export const computeProductionRates = (input: {
   adjacencyCryptoBoost: number;
   // Challenge handicap (Crypto Drought halves crypto).
   cryptoChallengeMultiplier?: number;
-}): Record<'data' | 'credits' | 'crypto', number> => {
+};
+
+// Every global multiplier on machine output: data machines get `data`, crypto rigs get `crypto`.
+// Shared by the production tick and the upgrade cards, so a card shows what the machine really adds.
+export const computeProductionMultipliers = (input: Omit<ProductionInput, 'upgrades'>): { data: number; crypto: number } => {
   let productionMultiplier = 1;
   let cryptoMultiplier = 1;
   input.prestigeUpgrades.forEach(p => {
@@ -4753,7 +4783,13 @@ export const computeProductionRates = (input: {
   if (input.adjacencyProductionBoost > 0) productionMultiplier *= (1 + input.adjacencyProductionBoost);
   if (input.adjacencyCryptoBoost > 0) cryptoMultiplier *= (1 + input.adjacencyCryptoBoost);
   cryptoMultiplier *= input.cryptoChallengeMultiplier ?? 1;
+  return { data: productionMultiplier, crypto: productionMultiplier * cryptoMultiplier };
+};
 
+// Per-second production for every resource. Used by the live tick AND offline progress, so both
+// apply exactly the same per-level sum and multipliers (prestige, cosmetics/relics, Paragon, adjacency).
+export const computeProductionRates = (input: ProductionInput): Record<'data' | 'credits' | 'crypto', number> => {
+  const multipliers = computeProductionMultipliers(input);
   const rates = { data: 0, credits: 0, crypto: 0 };
   input.upgrades.forEach(u => {
     if (u.effect.type !== 'production' || !u.effect.resource) return;
@@ -4764,7 +4800,7 @@ export const computeProductionRates = (input: {
     for (let i = 1; i <= u.count; i++) {
       totalProduction += getEffectiveValue({ ...u, count: i });
     }
-    rates[resource] += totalProduction * (resource === 'crypto' ? productionMultiplier * cryptoMultiplier : productionMultiplier);
+    rates[resource] += totalProduction * (resource === 'crypto' ? multipliers.crypto : multipliers.data);
   });
   // Passive Node income: a small share of data production arrives as credits without selling.
   rates.credits += rates.data * CREDIT_TRICKLE_RATE;
@@ -5117,6 +5153,17 @@ export const useGame = () => {
     return computeParagonBonuses(cosmetics.paragonLevels);
   }, [cosmetics.paragonLevels]);
 
+  // Data -> Node rate for "pay with data" (same as the Convert button: Node Compression + Market Arbitrage).
+  const nodeSaleRate = useMemo<NodeSaleRate>(() => {
+    let nodesPerSale = 1;
+    prestigeUpgrades.forEach(p => {
+      if (p.count > 0 && p.effect.type === 'sell_boost') nodesPerSale += p.effect.value * p.count;
+    });
+    return { dataPerNode: activeParagonBonuses.nodeConversionDataCost, nodesPerSale };
+  }, [prestigeUpgrades, activeParagonBonuses.nodeConversionDataCost]);
+  const nodeSaleRateRef = useRef(nodeSaleRate);
+  nodeSaleRateRef.current = nodeSaleRate;
+
   const activePickupBoosts = useMemo(() => {
     let spawnRateBonus = 0;
     let timeWarpChanceBonus = 0;
@@ -5350,6 +5397,21 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     }
   }, []);
 
+  // Game feel: fast manual clicking raises the click pitch a little (up to +6 semitones),
+  // and every click gets a tiny random detune so long sessions don't sound like one repeated beep.
+  const clickStreakRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
+  const noteManualClickForSound = useCallback((now: number) => {
+    const streak = clickStreakRef.current;
+    streak.count = now - streak.last < 400 ? streak.count + 1 : 0;
+    streak.last = now;
+  }, []);
+  const getClickPitchFactor = () => {
+    const streak = clickStreakRef.current;
+    const active = Date.now() - streak.last < 400 ? streak.count : 0;
+    const semitones = Math.min(24, active) * 0.25;
+    return Math.pow(2, semitones / 12) * (1 + (Math.random() - 0.5) * 0.06);
+  };
+
   // Cyberpunk-themed sounds
   const playSound = useCallback((type: 'click' | 'buy_fab' | 'buy_black' | 'sell' | 'crit' | 'checkpoint' | 'achievement' | 'pickup' | 'job_claim' | 'boss_hit' | 'weakspot_hit' | 'ascend_available' | 'prestige_realm' | 'loot_open' | 'loot_reveal_rare' | 'loot_reveal_epic' | 'loot_reveal_legendary' | 'loot_reveal_fallback' | 'timewarp_open' | 'timewarp_close' | 'open_cosmetics' | 'celebrate' | 'shop_unlock' | 'legendary' | 'finale') => {
     const ctx = getAudioContext();
@@ -5394,14 +5456,15 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
 
     if (type === 'click') {
       // Sharp digital click - two quick beeps
+      const pitch = getClickPitchFactor();
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
       
       osc1.type = 'square';
-      osc1.frequency.setValueAtTime(1200, ctx.currentTime);
-      osc1.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.06);
+      osc1.frequency.setValueAtTime(1200 * pitch, ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(800 * pitch, ctx.currentTime + 0.06);
       gain1.gain.setValueAtTime(0.12 * vol, ctx.currentTime);
       gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
       osc1.start();
@@ -5414,8 +5477,8 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
       gain2.connect(ctx.destination);
       
       osc2.type = 'square';
-      osc2.frequency.setValueAtTime(900, ctx.currentTime + 0.08);
-      osc2.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.13);
+      osc2.frequency.setValueAtTime(900 * pitch, ctx.currentTime + 0.08);
+      osc2.frequency.exponentialRampToValueAtTime(600 * pitch, ctx.currentTime + 0.13);
       gain2.gain.setValueAtTime(0.08 * vol, ctx.currentTime + 0.08);
       gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.13);
       osc2.start(ctx.currentTime + 0.08);
@@ -5468,6 +5531,18 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
       osc.start();
       osc.stop(ctx.currentTime + 0.15);
+      // Game feel: a short low "thump" under the crit chime so crits feel like an impact.
+      const thump = ctx.createOscillator();
+      const thumpGain = ctx.createGain();
+      thump.connect(thumpGain);
+      thumpGain.connect(ctx.destination);
+      thump.type = 'sine';
+      thump.frequency.setValueAtTime(150, ctx.currentTime);
+      thump.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.12);
+      thumpGain.gain.setValueAtTime(0.22 * vol, ctx.currentTime);
+      thumpGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+      thump.start();
+      thump.stop(ctx.currentTime + 0.15);
     } else if (type === 'buy_fab') {
       // Fabrication buy sound
       const osc = ctx.createOscillator();
@@ -6203,6 +6278,15 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
   // v1.04 CPU: production rates only change when upgrades/boosts change, so compute them once per change
   // instead of on every tick. The loop runs at 4 Hz (was 10 Hz): every resources update re-renders the
   // whole game screen, and production is time-based (delta), so the totals are identical.
+  const productionMultipliers = useMemo(() => computeProductionMultipliers({
+    cryptoChallengeMultiplier: challenges.active === 'half_crypto' ? 0.5 : 1,
+    prestigeUpgrades,
+    cosmeticBoosts: activeCosmeticBoosts,
+    paragonProductionMultiplier: activeParagonBonuses.productionMultiplier,
+    paragonCryptoMultiplier: activeParagonBonuses.cryptoMultiplier,
+    adjacencyProductionBoost: activeAdjacencyProductionBoost,
+    adjacencyCryptoBoost: activeAdjacencyCryptoBoost,
+  }), [prestigeUpgrades, activeCosmeticBoosts, activeAdjacencyProductionBoost, activeAdjacencyCryptoBoost, activeParagonBonuses.productionMultiplier, activeParagonBonuses.cryptoMultiplier, challenges.active]);
   const productionRates = useMemo(() => computeProductionRates({
     upgrades,
     cryptoChallengeMultiplier: challenges.active === 'half_crypto' ? 0.5 : 1,
@@ -6814,6 +6898,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
 
     const { value: finalValue, isCrit } = getClickOutcome(now);
 
+    if (source === 'manual') noteManualClickForSound(now);
     playSound(isCrit ? 'crit' : 'click');
 
     setResources(prev => {
@@ -6864,7 +6949,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     }
 
     return { value: finalValue, isCrit };
-  }, [checkAchievements, clickTuning.dropChance, getClickOutcome, getScaledNodeFloaterValue, playSound, queueContractProgress, resources.data.perSecond, scheduleFloatingPickupRemoval, clearFloatingPickupRemovalTimeout, stats.totalAscensions]);
+  }, [checkAchievements, clickTuning.dropChance, getClickOutcome, getScaledNodeFloaterValue, noteManualClickForSound, playSound, queueContractProgress, resources.data.perSecond, scheduleFloatingPickupRemoval, clearFloatingPickupRemovalTimeout, stats.totalAscensions]);
 
   const clickResourceBurst = useCallback((type: ResourceType, count: number, options?: { timestamp?: number; source?: 'manual' | 'autoclick'; intervalMs?: number }) => {
     if (count <= 0) {
@@ -7019,8 +7104,19 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
         currentCost[k] = Math.floor(v * Math.pow(upgrade.costMultiplier, upgrade.count));
       }
       let currentCount = upgrade.count;
+      let autoSoldData = 0;
+      let autoSoldNodes = 0;
+      const saleRate = statsRef.current.totalAscensions >= AUTO_SELL_UNLOCK_ASCENSION ? nodeSaleRateRef.current : null;
       
       for (let i = 0; i < effectiveQuantity; i++) {
+        // Pay with data: sell just enough data for the missing Nodes (after the first ascension).
+        const autoSell = getAutoSellPlan(currentCost, { data: nextRes.data.amount, credits: nextRes.credits.amount }, saleRate);
+        if (autoSell) {
+          nextRes.data = { ...nextRes.data, amount: nextRes.data.amount - autoSell.dataToSell };
+          nextRes.credits = { ...nextRes.credits, amount: nextRes.credits.amount + autoSell.nodesGained };
+          autoSoldData += autoSell.dataToSell;
+          autoSoldNodes += autoSell.nodesGained;
+        }
         let canAfford = true;
         for (const [res, amount] of Object.entries(currentCost) as Array<[string, unknown]>) {
           const r = res as ResourceType;
@@ -7081,6 +7177,15 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
             // Play checkpoint sound if we passed a checkpoint
             if (newCheckpoints > oldCheckpoints) {
               playSound('checkpoint');
+              // Game feel: big "CHECKPOINT!" banner (JuiceBanners in Game.tsx) instead of only the small toast.
+              if (!options?.silent) {
+                emitJuiceBanner({
+                  kind: 'checkpoint',
+                  upgradeName: localizeUpgradeText(u, language).name,
+                  level: newCheckpoints * interval,
+                  multiplier: getCheckpointMultiplier(newCount, u.category),
+                });
+              }
               // Unlock checkpoint achievement
               unlockAchievement('checkpoint_hit');
               // Track checkpoint milestones
@@ -7121,6 +7226,14 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
           updateContractProgress('spend_credits', totalCreditsSpent);
         }
         updateContractProgress('upgrade_single', totalBought);
+        if (autoSoldNodes > 0) {
+          setStats(s => ({ ...s, totalCreditsEarned: s.totalCreditsEarned + autoSoldNodes }));
+          updateContractProgress('sell_data', autoSoldData);
+          if (!options?.silent) playSound('sell');
+        }
+      } else if (autoSoldNodes > 0) {
+        // Nothing was bought (should not happen, the plan checks the data first): undo the sale.
+        return currentResources;
       }
       return nextRes;
     });
@@ -7141,7 +7254,9 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     
     if (upgrade.effect.type === 'production') {
       const previewResource = getResourceLabel(String(upgrade.effect.resource || ''), language);
-      return t('useGame.preview.production', { value: formatNumber(nextValue), resource: previewResource });
+      // v1.04: include prestige/cosmetic/Paragon multipliers, so the card shows what you really get.
+      const multiplier = upgrade.effect.resource === 'crypto' ? productionMultipliers.crypto : productionMultipliers.data;
+      return t('useGame.preview.production', { value: formatNumber(nextValue * multiplier), resource: previewResource });
     } else if (upgrade.effect.type === 'click') {
       return t('useGame.preview.click', { value: formatNumber(nextValue) });
     } else if (upgrade.effect.type === 'click_multiplier') {
@@ -7192,8 +7307,8 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
       const tempUpgrade = { ...upgrade, count: levelAfterBuy };
       totalProduction += getEffectiveValue(tempUpgrade);
     }
-    return totalProduction;
-  }, []);
+    return totalProduction * (upgrade.effect.resource === 'crypto' ? productionMultipliers.crypto : productionMultipliers.data);
+  }, [productionMultipliers]);
 
   const addDebugData = useCallback((amount: number = 5000000) => {
     setResources(prev => ({
@@ -8729,6 +8844,18 @@ useEffect(() => {
         rewards[key as keyof typeof rewards] = Math.floor(rewards[key as keyof typeof rewards]! * 3);
       });
     }
+
+    // v1.04: crypto and prestige rewards were log-scaled, so after the first few ascensions a contract
+    // paid a handful of crypto while the next ascension cost millions. They now pay at least a share of
+    // the next ascension (crypto) and of its minimum prestige reward. A run has at most 4 contract sets
+    // (1 + 3 refreshes), so contracts help noticeably without replacing mining.
+    const rewardShare = CONTRACT_REWARD_SHARE[difficulty];
+    const nextAscensionCost = getAscensionCost(stats.totalAscensions);
+    if (rewards.crypto) rewards.crypto = Math.max(rewards.crypto, Math.floor(nextAscensionCost * rewardShare));
+    if (rewards.prestige) {
+      const minimumAscensionReward = getPrestigeGainBreakdown(nextAscensionCost, stats.totalAscensions).total;
+      rewards.prestige = Math.max(rewards.prestige, Math.floor(minimumAscensionReward * rewardShare));
+    }
     
     return {
       id: `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -8749,6 +8876,7 @@ useEffect(() => {
     resources.data.amount,
     resources.data.perSecond,
     resources.prestige.amount,
+    stats.totalAscensions,
   ]);
 
   // Refresh contracts (generates new set of 5 contracts)
@@ -9385,6 +9513,6 @@ useEffect(() => {
   const getLocalizedActiveLootBoxSkin = useCallback(() => localizeCatalogEntry(getActiveLootBoxSkin(), language), [getActiveLootBoxSkin, language]);
   const getLocalizedActiveMachineBoxSkin = useCallback(() => localizeCatalogEntry(getActiveMachineBoxSkin(), language), [getActiveMachineBoxSkin, language]);
 
-  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, chooseAbyssBoon, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
+  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, productionMultipliers, autoSellRate: stats.totalAscensions >= AUTO_SELL_UNLOCK_ASCENSION ? nodeSaleRate : null, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, chooseAbyssBoon, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
 };
 

@@ -29,7 +29,7 @@ const costOf = (u: Upgrade) => {
 };
 
 function oneRun() {
-  const ups: Upgrade[] = (INITIAL_STATE.upgrades as Upgrade[]).map(u => ({ ...u, count: asc > 0 && (u.id === 'unlock_click_upgrades' || u.id === 'zero_day') ? 1 : 0 }));
+  const ups: Upgrade[] = (INITIAL_STATE.upgrades as Upgrade[]).map(u => ({ ...u, count: asc > 0 && (u.id === 'unlock_click_upgrades' || u.id === 'unlock_crypto_mining' || u.id === 'zero_day') ? 1 : 0 }));
   const get = (id: string) => ups.find(u => u.id === id)!;
   const head = prestige.find(p => p.effect.type === 'starting_bonus')!;
   let data = head.count * head.effect.value * lastDps, credits = 0, crypto = 0;

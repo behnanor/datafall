@@ -981,11 +981,14 @@ export const getEffectiveValue = (upgrade: Upgrade): number => {
 
 // Ascension reset rules:
 // - Keep click upgrades category unlocked after first ascension.
+// - v1.04: keep Mining Protocol Access unlocked too. Re-buying the same unlock every run was a
+//   1-2 minute chore at the start of each run (sell data, wait for 60 Nodes) with no decision in it.
 // - Reset Zero-Day Payload to level 1 so crit chance bonus is recalculated from low baseline.
 const buildAscendedUpgrades = (): Upgrade[] => {
   return (INITIAL_STATE.upgrades as Upgrade[]).map(upgrade => {
     const count =
       upgrade.id === 'unlock_click_upgrades' ? 1 :
+      upgrade.id === 'unlock_crypto_mining' ? 1 :
       upgrade.id === 'zero_day' ? 1 :
       0;
     const nextCost: Partial<Record<ResourceType, number>> = {};

@@ -2,13 +2,22 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Cpu, Crown, Sparkles } from 'lucide-react';
 
-import { formatNumber, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION } from '@/lib/useGame';
+import { formatNumber, CRYPTO_RELIC_SHOP_UNLOCK_ASCENSION, getCryptoRelicUpgradeCost, BLACK_MARKET_UNLOCK_ASCENSION, PARAGON_LAB_UNLOCK_ASCENSION, getParagonTierLabel } from '@/lib/useGame';
+import { pick6 } from '@/lib/bossVariants';
 import { getBoostLines, getCurrencyLabel, getParagonEffectLabel, getRarityLabel, getRelicSlotLabel } from '@/lib/gameLocale';
 import { Button } from '@/components/ui/button';
 import { CurrencyIcon } from '@/components/game/CurrencyIcon';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { upperForLanguage } from "@/lib/i18n";
+import { upperForLanguage, useI18n } from "@/lib/i18n";
+import { progressionText } from "@/lib/progressionText";
+import { getBestValuePrestigeUpgradeId, getPrestigePlaystyle, type PrestigePlaystyle } from "@/lib/prestigeAdvice";
+
+const PLAYSTYLE_CHIP: Record<PrestigePlaystyle, { key: 'tagEveryone' | 'tagActive' | 'tagIdle'; tone: string }> = {
+  everyone: { key: 'tagEveryone', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
+  active: { key: 'tagActive', tone: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200' },
+  idle: { key: 'tagIdle', tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' },
+};
 
 type LocalizeFn = (...args: any[]) => string;
 type TranslateFn = (...args: any[]) => string;
@@ -159,6 +168,15 @@ export function PrestigeShopDialog({
   buyPrestigeUpgrade: (upgradeId: any) => void;
   buyPrestigeUpgradeMax?: (upgradeId: any) => void;
 }) {
+  const { language } = useI18n();
+  const [playstyleFilter, setPlaystyleFilter] = React.useState<PrestigePlaystyle | 'all'>('all');
+  const bestValueId = React.useMemo(
+    () => getBestValuePrestigeUpgradeId(prestigeUpgrades, prestigeAmount),
+    [prestigeUpgrades, prestigeAmount]
+  );
+  const visibleUpgrades = playstyleFilter === 'all'
+    ? prestigeUpgrades
+    : prestigeUpgrades.filter((upgrade) => getPrestigePlaystyle(upgrade.id) === playstyleFilter);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-card/95 border-cyan-500/30 z-[50]">
@@ -189,11 +207,29 @@ export function PrestigeShopDialog({
             <p className="text-[11px] text-cyan-200/80 mt-2">
               {t('prestigePanel.totalPurchasedLevels', { total: prestigeShopSummary.totalLevels })}
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group">
+              {(['all', 'everyone', 'active', 'idle'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setPlaystyleFilter(filter)}
+                  className={`rounded border px-2 py-0.5 text-[10px] font-mono ${playstyleFilter === filter ? 'border-yellow-400/70 bg-yellow-500/20 text-yellow-100' : 'border-muted/40 bg-black/20 text-muted-foreground hover:text-cyan-100'}`}
+                  data-testid={`prestige-filter-${filter}`}
+                >
+                  {filter === 'all' ? progressionText(language, 'filterAll') : progressionText(language, PLAYSTYLE_CHIP[filter].key)}
+                </button>
+              ))}
+            </div>
+            {bestValueId && (
+              <p className="text-[10px] text-amber-200/80 mt-1.5">{progressionText(language, 'bestValueHint')}</p>
+            )}
           </div>
-          {prestigeUpgrades.map((upgrade) => {
+          {visibleUpgrades.map((upgrade) => {
             const currentCost = Math.floor(upgrade.cost * Math.pow(upgrade.costMultiplier, upgrade.count));
             const isMaxed = upgrade.count >= upgrade.maxLevel;
             const canAfford = !isMaxed && prestigeAmount >= currentCost;
+            const playstyle = PLAYSTYLE_CHIP[getPrestigePlaystyle(upgrade.id)];
+            const isBestValue = upgrade.id === bestValueId;
             return (
               <motion.div
                 key={upgrade.id}
@@ -210,9 +246,17 @@ export function PrestigeShopDialog({
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className={`font-bold ${isMaxed ? 'text-emerald-400' : 'text-yellow-400'}`}>{upgrade.name}</p>
                       {isMaxed && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">{upperForLanguage(t('prestigePanel.maxed'))}</span>}
+                      {isBestValue && (
+                        <span className="text-[10px] border border-amber-400/60 bg-amber-500/20 text-amber-200 px-1.5 py-0.5 rounded font-mono" data-testid="prestige-best-value">
+                          ★ {progressionText(language, 'bestValue')}
+                        </span>
+                      )}
+                      <span className={`text-[9px] border px-1.5 py-0.5 rounded font-mono ${playstyle.tone}`}>
+                        {progressionText(language, playstyle.key)}
+                      </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{upgrade.description}</p>
                     <p className="text-[11px] text-cyan-200/80 mt-1">
@@ -649,6 +693,7 @@ export function ParagonLabDialog({
   l,
   language,
   totalAscensions,
+  finaleCompleted = false,
   prestigeAmount,
   localizedParagonUpgrades,
   totalParagonLevels,
@@ -669,6 +714,7 @@ export function ParagonLabDialog({
   l: LocalizeFn;
   language: any;
   totalAscensions: number;
+  finaleCompleted?: boolean;
   prestigeAmount: number;
   localizedParagonUpgrades: any[];
   totalParagonLevels: number;
@@ -731,25 +777,31 @@ export function ParagonLabDialog({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {localizedParagonUpgrades.map((upgrade) => {
                   const level = getParagonUpgradeLevel(upgrade.id);
-                  const isMaxed = level >= upgrade.maxLevel;
+                  const uncapped = !!upgrade.uncapped;
+                  const isMaxed = !uncapped && level >= upgrade.maxLevel;
                   const currentCost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, level));
                   const lockedAt: number = upgrade.requiredAscensions ?? 0;
-                  const isLocked = totalAscensions < lockedAt;
+                  const needsFinale = !!upgrade.requiresFinale && !finaleCompleted;
+                  const isLocked = totalAscensions < lockedAt || needsFinale;
                   const canAfford = !isMaxed && !isLocked && prestigeAmount >= currentCost;
                   const totalBonus = upgrade.effect.value * level;
                   const effectLabel = getParagonEffectLabel(upgrade.effect.type, language);
+                  // v1.04 Paragon III: Chrono Siege counts seconds, every other module counts percent.
+                  const unit = upgrade.effect.type === 'boss_time_seconds' ? 's' : '%';
+                  const tierLabel = getParagonTierLabel(lockedAt);
 
                   return (
                     <div key={upgrade.id} className={`rounded-lg border p-3 ${isMaxed ? 'border-emerald-500/45 bg-emerald-500/10' : canAfford ? 'border-amber-500/45 bg-amber-500/10' : 'border-slate-600/40 bg-slate-900/55'}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div><p className="text-sm font-semibold text-amber-100">{upgrade.name}</p><p className="mt-1 text-[11px] text-slate-300/85">{upgrade.description}</p></div>
-                        <span className="rounded border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 whitespace-nowrap">+{upgrade.effect.value}%/{l('lv', 'sv', 'nv')}</span>
+                        <span className="rounded border border-cyan-500/35 bg-cyan-500/10 px-2 py-0.5 text-[10px] text-cyan-200 whitespace-nowrap">+{upgrade.effect.value}{unit}/{l('lv', 'sv', 'nv')}</span>
                       </div>
-                      <p className="mt-2 text-[10px] text-cyan-200/90">{effectLabel}: +{Number.isInteger(totalBonus) ? totalBonus : totalBonus.toFixed(1)}%</p>
-                      <p className="mt-1 text-[10px] text-slate-300/80">{l('Level', 'Seviye', 'Nível')} {level}/{upgrade.maxLevel}</p>
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-muted/20 overflow-hidden"><div className="h-full bg-amber-500" style={{ width: `${(level / upgrade.maxLevel) * 100}%` }} /></div>
+                      <p className="mt-2 text-[10px] text-cyan-200/90">{effectLabel}: +{Number.isInteger(totalBonus) ? totalBonus : totalBonus.toFixed(1)}{unit}</p>
+                      <p className="mt-1 text-[10px] text-slate-300/80">{l('Level', 'Seviye', 'Nível')} {uncapped ? `${level} (∞)` : `${level}/${upgrade.maxLevel}`}</p>
+                      {/* Uncapped modules fill the bar once per 10 levels. */}
+                      <div className="mt-2 h-1.5 w-full rounded-full bg-muted/20 overflow-hidden"><div className={`h-full ${uncapped ? 'bg-orange-500' : 'bg-amber-500'}`} style={{ width: `${uncapped ? (level % 10) * 10 : (level / upgrade.maxLevel) * 100}%` }} /></div>
                       <div className="mt-3">
-                        {isLocked ? <div className="rounded border border-slate-600/50 bg-slate-800/60 px-2 py-1 text-center text-xs text-slate-300">{l(`Paragon II: unlocks at ascension ${lockedAt}`, `Paragon II: yükseliş ${lockedAt} ile açılır`, `Paragon II: desbloqueia na ascensão ${lockedAt}`, `Paragon II: se desbloquea en la ascensión ${lockedAt}`)}</div> : isMaxed ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Maxed', 'Maksimum', 'Máximo')}</div> : <Button onClick={() => buyParagonUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Upgrade', 'Yükselt', 'Melhorar')} {formatNumber(currentCost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
+                        {isLocked && needsFinale ? <div className="rounded border border-orange-600/50 bg-orange-950/40 px-2 py-1 text-center text-xs text-orange-200">{pick6(language, ['Endless: unlocks after you break the Core', 'Sonsuz: Çekirdeği kırınca açılır', 'Infinito: libera depois de quebrar o Núcleo', 'Infinito: se desbloquea al romper el Núcleo', 'Бесконечный режим: откроется после разрушения Ядра', '无尽：击破核心后解锁'])}</div> : isLocked ? <div className="rounded border border-slate-600/50 bg-slate-800/60 px-2 py-1 text-center text-xs text-slate-300">{pick6(language, [`${tierLabel}: unlocks at ascension ${lockedAt}`, `${tierLabel}: yükseliş ${lockedAt} ile açılır`, `${tierLabel}: desbloqueia na ascensão ${lockedAt}`, `${tierLabel}: se desbloquea en la ascensión ${lockedAt}`, `${tierLabel}: открывается на вознесении ${lockedAt}`, `${tierLabel}：第 ${lockedAt} 次飞升解锁`])}</div> : isMaxed ? <div className="rounded border border-emerald-500/45 bg-emerald-500/10 px-2 py-1 text-center text-xs text-emerald-200">{l('Maxed', 'Maksimum', 'Máximo')}</div> : <Button onClick={() => buyParagonUpgrade(upgrade.id)} disabled={!canAfford} className="h-8 w-full bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-400 text-xs"><span className="inline-flex items-center gap-1">{l('Upgrade', 'Yükselt', 'Melhorar')} {formatNumber(currentCost)}<CurrencyIcon kind="ascension" className="w-3.5 h-3.5 text-amber-300" /></span></Button>}
                       </div>
                     </div>
                   );

@@ -66,6 +66,18 @@ export const BOUNTY_PRESTIGE_MULTIPLIER = 1.25;
 // Phasing: out of phase for the last PHASING_OFF_MS of every PHASING_CYCLE_MS.
 export const PHASING_CYCLE_MS = 4000;
 export const PHASING_OFF_MS = 1200;
+// v1.04: each deeper Echo pays more (+0.25x per tier: x1.5 at depth 10, x1.75 at 20 ... max x3 at 70),
+// matching its +15% HP per tier, so the deeper fights are worth chasing.
+export const ECHO_PRESTIGE_STEP = 0.25;
+export const ECHO_PRESTIGE_MAX = 3;
+export const getEchoTier = (depth: number): number => Math.max(1, Math.floor(Math.max(0, depth) / ECHO_EVERY_DEPTHS));
+export const getEchoPrestigeMultiplier = (depth: number): number =>
+  Math.min(ECHO_PRESTIGE_MAX, ECHO_PRESTIGE_MULTIPLIER + ECHO_PRESTIGE_STEP * (getEchoTier(depth) - 1));
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+export const getEchoTierLabel = (depth: number): string => {
+  const tier = getEchoTier(depth);
+  return tier <= ROMAN.length ? ROMAN[tier - 1] : String(tier);
+};
 
 // Deterministic per ascension, so a lost fight cannot be re-rolled into an easier one.
 // v1.04: mulberry32. The old LCG gave nearly the same first number for neighbouring seeds, so the same

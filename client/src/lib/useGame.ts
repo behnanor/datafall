@@ -4675,9 +4675,7 @@ export const computeParagonBonuses = (paragonLevels: Record<string, number> | un
   };
 };
 
-// Per-second production for every resource. Used by the live tick AND offline progress, so both
-// apply exactly the same per-level sum and multipliers (prestige, cosmetics/relics, Paragon, adjacency).
-export const computeProductionRates = (input: {
+type ProductionInput = {
   upgrades: Upgrade[];
   prestigeUpgrades: Array<Pick<PrestigeUpgrade, 'count' | 'effect'>>;
   cosmeticBoosts: Required<PetBoost>;
@@ -4687,7 +4685,11 @@ export const computeProductionRates = (input: {
   adjacencyCryptoBoost: number;
   // Challenge handicap (Crypto Drought halves crypto).
   cryptoChallengeMultiplier?: number;
-}): Record<'data' | 'credits' | 'crypto', number> => {
+};
+
+// Every global multiplier on machine output: data machines get `data`, crypto rigs get `crypto`.
+// Shared by the production tick and the upgrade cards, so a card shows what the machine really adds.
+export const computeProductionMultipliers = (input: Omit<ProductionInput, 'upgrades'>): { data: number; crypto: number } => {
   let productionMultiplier = 1;
   let cryptoMultiplier = 1;
   input.prestigeUpgrades.forEach(p => {
@@ -4701,7 +4703,13 @@ export const computeProductionRates = (input: {
   if (input.adjacencyProductionBoost > 0) productionMultiplier *= (1 + input.adjacencyProductionBoost);
   if (input.adjacencyCryptoBoost > 0) cryptoMultiplier *= (1 + input.adjacencyCryptoBoost);
   cryptoMultiplier *= input.cryptoChallengeMultiplier ?? 1;
+  return { data: productionMultiplier, crypto: productionMultiplier * cryptoMultiplier };
+};
 
+// Per-second production for every resource. Used by the live tick AND offline progress, so both
+// apply exactly the same per-level sum and multipliers (prestige, cosmetics/relics, Paragon, adjacency).
+export const computeProductionRates = (input: ProductionInput): Record<'data' | 'credits' | 'crypto', number> => {
+  const multipliers = computeProductionMultipliers(input);
   const rates = { data: 0, credits: 0, crypto: 0 };
   input.upgrades.forEach(u => {
     if (u.effect.type !== 'production' || !u.effect.resource) return;
@@ -4712,7 +4720,7 @@ export const computeProductionRates = (input: {
     for (let i = 1; i <= u.count; i++) {
       totalProduction += getEffectiveValue({ ...u, count: i });
     }
-    rates[resource] += totalProduction * (resource === 'crypto' ? productionMultiplier * cryptoMultiplier : productionMultiplier);
+    rates[resource] += totalProduction * (resource === 'crypto' ? multipliers.crypto : multipliers.data);
   });
   // Passive Node income: a small share of data production arrives as credits without selling.
   rates.credits += rates.data * CREDIT_TRICKLE_RATE;
@@ -6145,6 +6153,15 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
   // v1.04 CPU: production rates only change when upgrades/boosts change, so compute them once per change
   // instead of on every tick. The loop runs at 4 Hz (was 10 Hz): every resources update re-renders the
   // whole game screen, and production is time-based (delta), so the totals are identical.
+  const productionMultipliers = useMemo(() => computeProductionMultipliers({
+    cryptoChallengeMultiplier: challenges.active === 'half_crypto' ? 0.5 : 1,
+    prestigeUpgrades,
+    cosmeticBoosts: activeCosmeticBoosts,
+    paragonProductionMultiplier: activeParagonBonuses.productionMultiplier,
+    paragonCryptoMultiplier: activeParagonBonuses.cryptoMultiplier,
+    adjacencyProductionBoost: activeAdjacencyProductionBoost,
+    adjacencyCryptoBoost: activeAdjacencyCryptoBoost,
+  }), [prestigeUpgrades, activeCosmeticBoosts, activeAdjacencyProductionBoost, activeAdjacencyCryptoBoost, activeParagonBonuses.productionMultiplier, activeParagonBonuses.cryptoMultiplier, challenges.active]);
   const productionRates = useMemo(() => computeProductionRates({
     upgrades,
     cryptoChallengeMultiplier: challenges.active === 'half_crypto' ? 0.5 : 1,
@@ -7083,7 +7100,9 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     
     if (upgrade.effect.type === 'production') {
       const previewResource = getResourceLabel(String(upgrade.effect.resource || ''), language);
-      return t('useGame.preview.production', { value: formatNumber(nextValue), resource: previewResource });
+      // v1.04: include prestige/cosmetic/Paragon multipliers, so the card shows what you really get.
+      const multiplier = upgrade.effect.resource === 'crypto' ? productionMultipliers.crypto : productionMultipliers.data;
+      return t('useGame.preview.production', { value: formatNumber(nextValue * multiplier), resource: previewResource });
     } else if (upgrade.effect.type === 'click') {
       return t('useGame.preview.click', { value: formatNumber(nextValue) });
     } else if (upgrade.effect.type === 'click_multiplier') {
@@ -7134,8 +7153,8 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
       const tempUpgrade = { ...upgrade, count: levelAfterBuy };
       totalProduction += getEffectiveValue(tempUpgrade);
     }
-    return totalProduction;
-  }, []);
+    return totalProduction * (upgrade.effect.resource === 'crypto' ? productionMultipliers.crypto : productionMultipliers.data);
+  }, [productionMultipliers]);
 
   const addDebugData = useCallback((amount: number = 5000000) => {
     setResources(prev => ({
@@ -9317,6 +9336,6 @@ useEffect(() => {
   const getLocalizedActiveLootBoxSkin = useCallback(() => localizeCatalogEntry(getActiveLootBoxSkin(), language), [getActiveLootBoxSkin, language]);
   const getLocalizedActiveMachineBoxSkin = useCallback(() => localizeCatalogEntry(getActiveMachineBoxSkin(), language), [getActiveMachineBoxSkin, language]);
 
-  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
+  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, productionMultipliers, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder };
 };
 

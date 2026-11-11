@@ -1459,6 +1459,9 @@ const INITIAL_STATS: PlayerStats = {
 };
 
 // Contract NPCs - Cyberpunk characters that give missions
+// Minimum contract reward as a share of the next ascension's crypto cost / minimum prestige reward.
+const CONTRACT_REWARD_SHARE: Record<'easy' | 'medium' | 'hard', number> = { easy: 0.01, medium: 0.02, hard: 0.04 };
+
 export const CONTRACT_NPCS: ContractNPC[] = [
   { id: 'ghost', name: 'Ghost', title: 'Data Broker', avatar: 'ghost', color: '#22d3ee' },
   { id: 'cipher', name: 'Cipher', title: 'Crypto Dealer', avatar: 'key', color: '#f59e0b' },
@@ -8740,6 +8743,18 @@ useEffect(() => {
         rewards[key as keyof typeof rewards] = Math.floor(rewards[key as keyof typeof rewards]! * 3);
       });
     }
+
+    // v1.04: crypto and prestige rewards were log-scaled, so after the first few ascensions a contract
+    // paid a handful of crypto while the next ascension cost millions. They now pay at least a share of
+    // the next ascension (crypto) and of its minimum prestige reward. A run has at most 4 contract sets
+    // (1 + 3 refreshes), so contracts help noticeably without replacing mining.
+    const rewardShare = CONTRACT_REWARD_SHARE[difficulty];
+    const nextAscensionCost = getAscensionCost(stats.totalAscensions);
+    if (rewards.crypto) rewards.crypto = Math.max(rewards.crypto, Math.floor(nextAscensionCost * rewardShare));
+    if (rewards.prestige) {
+      const minimumAscensionReward = getPrestigeGainBreakdown(nextAscensionCost, stats.totalAscensions).total;
+      rewards.prestige = Math.max(rewards.prestige, Math.floor(minimumAscensionReward * rewardShare));
+    }
     
     return {
       id: `contract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -8760,6 +8775,7 @@ useEffect(() => {
     resources.data.amount,
     resources.data.perSecond,
     resources.prestige.amount,
+    stats.totalAscensions,
   ]);
 
   // Refresh contracts (generates new set of 5 contracts)

@@ -12,7 +12,7 @@ import { DemoPrompts } from '@/components/game/DemoPrompts';
 import { WhatsNewDialog } from '@/components/game/WhatsNewDialog';
 import { WHATS_NEW_VERSION } from '@/lib/useGame';
 import { IS_DEMO_BUILD, DEMO_ASCENSION_LIMIT } from '@/lib/useGame';
-import { getBossVariant, shouldSkipBossFight, ECHO_PRESTIGE_MULTIPLIER, pick6, type BossVariant } from '@/lib/bossVariants';
+import { getBossVariant, shouldSkipBossFight, getEchoPrestigeMultiplier, pick6, type BossVariant } from '@/lib/bossVariants';
 import { getSteamLeaderboardEntries, isSteamAvailable, setSteamLeaderboardScore, type SteamLeaderboardEntry } from '@/lib/steamIntegration';
 import { ResourcePanel } from '@/components/game/ResourcePanel';
 import { UpgradePanel } from '@/components/game/UpgradePanel';
@@ -427,7 +427,7 @@ export default function GamePage() {
   }, [cosmetics.paragonLevels, abyssBoonTotals]);
   const handleAscendVictory = (variant: BossVariant) => {
     // v1.04: Echo Hunter boons raise the Echo payout; Crown Harvest boons raise every boss victory.
-    const echoMultiplier = ECHO_PRESTIGE_MULTIPLIER + abyssBoonTotals.echoBonus;
+    const echoMultiplier = getEchoPrestigeMultiplier(variant.depth ?? 10) + abyssBoonTotals.echoBonus;
     const reward = ascendVictory((variant.kind === 'echo' ? echoMultiplier : 1) * abyssBoonTotals.prestigeMultiplier);
     if (variant.kind === 'signal') {
       clearCoreSignal();
@@ -2233,6 +2233,7 @@ export default function GamePage() {
             abyssBoons={finale.boons}
             pendingAbyssBoons={pendingAbyssBoons}
             onOpenAbyssBoons={() => setIsAbyssBoonOpen(true)}
+            echoBonus={abyssBoonTotals.echoBonus}
             onStartFinale={() => { setIsFinaleEncounter(true); setIsBossEncounterActive(true); }}
             onAbandonChallenge={abandonChallenge}
             upgrades={upgrades}
@@ -2336,6 +2337,8 @@ export default function GamePage() {
             ascensionLevel={stats.totalAscensions}
             dataPerClick={getDataPerClick()}
             permanentClickPercent={permanentClickPercent}
+            echoPrestigeMultiplier={getEchoPrestigeMultiplier(currentBossVariant.depth ?? 10) + abyssBoonTotals.echoBonus}
+            victoryPrestigeMultiplier={isFinaleEncounter ? 1 : abyssBoonTotals.prestigeMultiplier}
             bossDamageMultiplier={paragonBossBonuses.damageMultiplier}
             bonusTimeSeconds={paragonBossBonuses.bonusSeconds}
             isMainScreen={true}

@@ -4,7 +4,7 @@ import { getBoostLines } from "@/lib/gameLocale";
 import { NextGoal } from "./NextGoal";
 import { getAbyssBoon, getAbyssBoonName, groupAbyssBoons, ABYSS_BOON_EVERY_DEPTHS, getAbyssBoonPicksEarned, type AbyssBoonId } from "@/lib/abyssBoons";
 import { getEndlessTitle, getNextEndlessRewardDepth, getUnlockedAbyssVariants, ABYSS_VARIANT_NAMES, ABYSS_VARIANT_HUES } from "@/lib/endless";
-import { ECHO_EVERY_DEPTHS, pick6 } from "@/lib/bossVariants";
+import { ECHO_EVERY_DEPTHS, getEchoPrestigeMultiplier, pick6 } from "@/lib/bossVariants";
 
 type LocalizedTuple = [en: string, tr: string, pt: string, es: string, ru: string];
 const CHALLENGE_TEXT: Record<ChallengeId, { name: LocalizedTuple; rule: LocalizedTuple }> = {
@@ -46,6 +46,7 @@ interface ResourcePanelProps {
   abyssBoons?: AbyssBoonId[];
   pendingAbyssBoons?: number;
   onOpenAbyssBoons?: () => void;
+  echoBonus?: number;
   onStartFinale?: () => void;
   challenges?: ChallengeState;
   onStartChallenge?: (id: ChallengeId) => void;
@@ -139,6 +140,7 @@ export const ResourcePanel = memo(function ResourcePanel({
   abyssBoons = [],
   pendingAbyssBoons = 0,
   onOpenAbyssBoons,
+  echoBonus = 0,
   onStartFinale,
   ascensionLevel,
   onOpenPrestige,
@@ -419,7 +421,7 @@ export const ResourcePanel = memo(function ResourcePanel({
               <div className="mt-1 space-y-1" data-testid="endless-rewards">
                 {title && <p className="text-xs font-bold text-amber-200">{title}</p>}
                 <p className="text-[10px] font-mono text-orange-200/70">
-                  {pick6(language, ['Next reward', 'Sıradaki ödül', 'Próxima recompensa', 'Siguiente recompensa', 'Следующая награда', '下一个奖励'])}: {getNextEndlessRewardDepth(depth)} · {pick6(language, ['Core Echo', 'Çekirdek Yankısı', 'Eco do Núcleo', 'Eco del Núcleo', 'Эхо Ядра', '核心回响'])}: {nextEcho}
+                  {pick6(language, ['Next reward', 'Sıradaki ödül', 'Próxima recompensa', 'Siguiente recompensa', 'Следующая награда', '下一个奖励'])}: {getNextEndlessRewardDepth(depth)} · {pick6(language, ['Core Echo', 'Çekirdek Yankısı', 'Eco do Núcleo', 'Eco del Núcleo', 'Эхо Ядра', '核心回响'])}: {nextEcho} (x{getEchoPrestigeMultiplier(nextEcho) + echoBonus})
                 </p>
                 {onOpenAbyssBoons && (pendingAbyssBoons > 0 ? (
                   <button type="button" onClick={onOpenAbyssBoons} className="mt-1 w-full animate-pulse rounded border border-orange-400 bg-orange-500/25 px-2 py-1 text-[11px] font-bold text-orange-100 hover:bg-orange-500/40" data-testid="button-abyss-boon">

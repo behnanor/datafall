@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Shield, Zap, Skull, Trophy, AlertTriangle, Target, Keyboard } from "lucide-react";
 import { localizeInlineText, localizeText, useI18n, type LocalizedText } from "@/lib/i18n";
-import { BOSS_MODIFIERS, pick6, type BossVariant, type BossModifierId, BOSS_DEFEAT_PRESTIGE_SHARE, BOSS_RETRIES_PER_FIGHT, BOSS_ASSIST_TIME_MULTIPLIER, BOSS_ASSIST_HP_MULTIPLIER, readBossAssist, writeBossAssist, getBossPowerMultiplier } from "@/lib/bossVariants";
+import { BOSS_MODIFIERS, getEchoTierLabel, pick6, type BossVariant, type BossModifierId, BOSS_DEFEAT_PRESTIGE_SHARE, BOSS_RETRIES_PER_FIGHT, BOSS_ASSIST_TIME_MULTIPLIER, BOSS_ASSIST_HP_MULTIPLIER, readBossAssist, writeBossAssist, getBossPowerMultiplier } from "@/lib/bossVariants";
 
 interface BossEncounterProps {
   isOpen: boolean;
@@ -27,6 +27,10 @@ interface BossEncounterProps {
   // v1.04 endgame: extra damage and timer seconds from Paragon III (and Abyss Boons), for every boss kind.
   bossDamageMultiplier?: number;
   bonusTimeSeconds?: number;
+  // v1.04: Core Echo prestige multiplier (grows with depth and Echo Hunter boons).
+  echoPrestigeMultiplier?: number;
+  // v1.04: other victory-only prestige multipliers (Crown Harvest boons), so the shown reward matches the real one.
+  victoryPrestigeMultiplier?: number;
   playSound?: (type: 'click' | 'buy_fab' | 'buy_black' | 'sell' | 'crit' | 'checkpoint' | 'achievement' | 'pickup' | 'boss_hit' | 'weakspot_hit') => void;
 }
 
@@ -109,7 +113,7 @@ interface BreachSequence {
   progress: number;
 }
 
-export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound, isFinale = false, critChance = 0.05, finaleWeaken = 0, variant, permanentClickPercent = 0, bossDamageMultiplier = 1, bonusTimeSeconds = 0 }: BossEncounterProps) {
+export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound, isFinale = false, critChance = 0.05, finaleWeaken = 0, variant, permanentClickPercent = 0, bossDamageMultiplier = 1, bonusTimeSeconds = 0, echoPrestigeMultiplier = 1.5, victoryPrestigeMultiplier = 1 }: BossEncounterProps) {
   const kind = isFinale ? "finale" : variant?.kind ?? "normal";
   const modList: BossModifierId[] = isFinale ? [] : variant?.modifiers ?? [];
   const mods = new Set<BossModifierId>(modList);
@@ -154,7 +158,8 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const toggleAssist = () => setAssistOn(prev => { writeBossAssist(!prev); return !prev; });
   const timeLimit = Math.round(currentBoss.timeLimit * (mods.has("swift") ? 0.8 : 1) * (assistActive ? BOSS_ASSIST_TIME_MULTIPLIER : 1)) + Math.max(0, Math.floor(bonusTimeSeconds));
   const echoTier = kind === "echo" ? Math.max(1, Math.floor((variant?.depth ?? 10) / 10)) : 0;
-  const currentBossName = localizeText(currentBoss.name, language);
+  // v1.04: deeper Core Echoes carry a tier number (CORE ECHO II, III, ...).
+  const currentBossName = kind === "echo" && echoTier > 1 ? `${localizeText(currentBoss.name, language)} ${getEchoTierLabel(variant?.depth ?? 10)}` : localizeText(currentBoss.name, language);
   
   // Balanced difficulty scaling:
   // - logarithmic growth keeps late-game from exploding
@@ -544,6 +549,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const overclockActive = overclockRemaining > 0;
   const lowHealthDanger = healthPercent <= 30;
   const penaltyPrestige = Math.floor(prestigeGain * BOSS_DEFEAT_PRESTIGE_SHARE);
+  const victoryPrestige = Math.floor(prestigeGain * (kind === "echo" ? echoPrestigeMultiplier : 1) * Math.max(1, victoryPrestigeMultiplier));
   const keptPercent = Math.round(BOSS_DEFEAT_PRESTIGE_SHARE * 100);
   const assistToggle = assistAllowed ? (
     <button
@@ -634,7 +640,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                   {currentBossName}
                 </h2>
                 <p className="text-muted-foreground">
-                  {isFinale ? l('FINAL BREACH: break the Core', 'SON SIZMA: Çekirdeği kır', 'INVASÃO FINAL: quebre o Núcleo', 'BRECHA FINAL: rompe el Núcleo', 'ФИНАЛЬНЫЙ ВЗЛОМ: сломай Ядро') : kind === 'signal' ? pick6(language, ['The Core is calling. Silence its signal: the final Core loses 15% HP.', 'Çekirdek çağırıyor. Sinyalini sustur: son Çekirdek %15 can kaybeder.', 'O Núcleo está chamando. Cale o sinal: o Núcleo final perde 15% de vida.', 'El Núcleo llama. Silencia su señal: el Núcleo final pierde un 15% de vida.', 'Ядро зовёт. Заглуши сигнал: финальное Ядро теряет 15% HP.', '核心在呼唤。压制它的信号：最终核心生命 -15%。']) : kind === 'echo' ? pick6(language, [`Endless depth ${variant?.depth}: an echo of the Core. Win for x1.5 prestige.`, `Sonsuz derinlik ${variant?.depth}: Çekirdeğin yankısı. Kazanırsan x1.5 prestij.`, `Profundidade infinita ${variant?.depth}: um eco do Núcleo. Vença para x1,5 de prestígio.`, `Profundidad infinita ${variant?.depth}: un eco del Núcleo. Gana para x1,5 de prestigio.`, `Бесконечная глубина ${variant?.depth}: эхо Ядра. Победа даёт x1,5 престижа.`, `无尽深度 ${variant?.depth}：核心的回响。获胜可得 x1.5 声望。`]) : l(
+                  {isFinale ? l('FINAL BREACH: break the Core', 'SON SIZMA: Çekirdeği kır', 'INVASÃO FINAL: quebre o Núcleo', 'BRECHA FINAL: rompe el Núcleo', 'ФИНАЛЬНЫЙ ВЗЛОМ: сломай Ядро') : kind === 'signal' ? pick6(language, ['The Core is calling. Silence its signal: the final Core loses 15% HP.', 'Çekirdek çağırıyor. Sinyalini sustur: son Çekirdek %15 can kaybeder.', 'O Núcleo está chamando. Cale o sinal: o Núcleo final perde 15% de vida.', 'El Núcleo llama. Silencia su señal: el Núcleo final pierde un 15% de vida.', 'Ядро зовёт. Заглуши сигнал: финальное Ядро теряет 15% HP.', '核心在呼唤。压制它的信号：最终核心生命 -15%。']) : kind === 'echo' ? pick6(language, [`Endless depth ${variant?.depth}: an echo of the Core. Win for x${echoPrestigeMultiplier} prestige.`, `Sonsuz derinlik ${variant?.depth}: Çekirdeğin yankısı. Kazanırsan x${echoPrestigeMultiplier} prestij.`, `Profundidade infinita ${variant?.depth}: um eco do Núcleo. Vença para x${echoPrestigeMultiplier} de prestígio.`, `Profundidad infinita ${variant?.depth}: un eco del Núcleo. Gana para x${echoPrestigeMultiplier} de prestigio.`, `Бесконечная глубина ${variant?.depth}: эхо Ядра. Победа даёт x${echoPrestigeMultiplier} престижа.`, `无尽深度 ${variant?.depth}：核心的回响。获胜可得 x${echoPrestigeMultiplier} 声望。`]) : l(
                     `Ascension Level ${ascensionLevel + 1} Boss`,
                     `Yükseliş ${ascensionLevel + 1} Bossu`,
                     `Chefe da Ascensão ${ascensionLevel + 1}`,
@@ -703,7 +709,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
                   <Trophy className="w-5 h-5 mx-auto mb-1 text-emerald-400" />
                   <p className="text-emerald-400 font-bold">{l('Victory', 'Zafer', 'Vitória', 'Victoria', 'Победа')}</p>
-                  <p className="text-xs text-muted-foreground">+{prestigeGain} {l('Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж')}</p>
+                  <p className="text-xs text-muted-foreground">+{victoryPrestige} {l('Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж')}</p>
                   <p className="text-xs text-emerald-300">{l('Full Ascension', 'Tam Yükseliş', 'Ascensão Completa', 'Ascensión Completa', 'Полное вознесение')}</p>
                 </div>
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
@@ -1113,7 +1119,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 transition={{ delay: 0.3 }}
               >
                 <p className="text-sm text-muted-foreground mb-2">{l('Prestige Reward', 'Prestij Ödülü', 'Recompensa de Prestígio', 'Recompensa de Prestigio', 'Награда престижа')}</p>
-                <p className="text-4xl font-bold text-emerald-400">+{prestigeGain}</p>
+                <p className="text-4xl font-bold text-emerald-400">+{victoryPrestige}</p>
                 <p className="text-sm text-cyan-400 mt-2">
                   {l(
                     `Ascending to Level ${ascensionLevel + 2}!`,

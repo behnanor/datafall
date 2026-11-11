@@ -4414,7 +4414,8 @@ export interface SaveData {
 }
 
 // v1.03: returning players (saves from before v1.03) see a one-time "What's new" screen and get one loot box.
-export const WHATS_NEW_VERSION = '1.03';
+// v1.04: bumped so v1.03 players see the v1.04 notes once (text in lib/whatsNew.ts).
+export const WHATS_NEW_VERSION = '1.04';
 export interface WhatsNewState {
   seenVersion: string;
   giftClaimed: boolean;

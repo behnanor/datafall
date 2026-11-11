@@ -1,7 +1,11 @@
 import { memo, useEffect, useState } from "react";
-import { Resource, ResourceType, formatNumber, Upgrade, getAscensionCost, type PrestigeGainBreakdown, type AutomationSettings, AUTO_BUY_MODES, AUTOMATION_UNLOCK_ASCENSION, AUTO_ASCEND_MULTIPLE_OPTIONS, type ChallengeId, type ChallengeState, CHALLENGES, CHALLENGE_UNLOCK_ASCENSION, CHALLENGE_SPRINT_LIMIT_SECONDS, FINALE_UNLOCK_ASCENSION, getEndlessDepth } from "@/lib/useGame";
+import { Resource, ResourceType, formatNumber, Upgrade, getAscensionCost, type PrestigeGainBreakdown, type AutomationSettings, AUTO_BUY_MODES, AUTOMATION_UNLOCK_ASCENSION, AUTO_ASCEND_MULTIPLE_OPTIONS, type ChallengeId, type ChallengeState, CHALLENGES, RARITY_ECONOMY, CHALLENGE_UNLOCK_ASCENSION, CHALLENGE_SPRINT_LIMIT_SECONDS, FINALE_UNLOCK_ASCENSION, getEndlessDepth } from "@/lib/useGame";
 import { getBoostLines } from "@/lib/gameLocale";
+
+// v1.04: cheapest Nodes cosmetic; above this the Ascend window reminds players to spend their Nodes first.
+const COSMETIC_MIN_PRICE = RARITY_ECONOMY.common.price;
 import { NextGoal } from "./NextGoal";
+import { CurrencyHelp, getCurrencyHelpText } from "./CurrencyHelp";
 import { getAbyssBoon, getAbyssBoonName, groupAbyssBoons, ABYSS_BOON_EVERY_DEPTHS, getAbyssBoonPicksEarned, type AbyssBoonId } from "@/lib/abyssBoons";
 import { getEndlessTitle, getNextEndlessRewardDepth, getUnlockedAbyssVariants, ABYSS_VARIANT_NAMES, ABYSS_VARIANT_HUES } from "@/lib/endless";
 import { ECHO_EVERY_DEPTHS, getEchoPrestigeMultiplier, pick6 } from "@/lib/bossVariants";
@@ -239,6 +243,7 @@ export const ResourcePanel = memo(function ResourcePanel({
             size="sm"
             className={`flex-1 text-xs h-8 px-3 font-mono bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20 ${tutorialHighlight === 'prestige_button' ? 'tutorial-highlight' : ''}`}
             onClick={onOpenPrestige}
+            title={`${pick6(language, ['Prestige', 'Prestij', 'Prestígio', 'Prestigio', 'Престиж', '声望'])}: ${getCurrencyHelpText('prestige', language)}`}
             data-testid="button-prestige-menu"
           >
             <Crown className="w-5 h-5" />
@@ -281,7 +286,7 @@ export const ResourcePanel = memo(function ResourcePanel({
       <div className={`p-4 rounded-lg bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 hover:border-cyan-500/50 transition-colors ${tutorialHighlight === 'data_display' ? 'tutorial-highlight' : ''}`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
-            <Database className="w-4 h-4" /> {t('common.data')}
+            <Database className="w-4 h-4" /> {t('common.data')} <CurrencyHelp kind="data" language={language} />
           </h3>
         </div>
         <div className="text-3xl font-mono font-bold text-cyan-300 transition-all duration-300 ease-out tabular-nums">
@@ -554,6 +559,7 @@ export const ResourcePanel = memo(function ResourcePanel({
           <h3 className="text-[11px] font-bold text-yellow-400 uppercase tracking-widest flex items-center gap-1">
             <CurrencyIcon kind="credits" className="w-3.5 h-3.5" />
             {t('common.nodes')}
+            <CurrencyHelp kind="credits" language={language} />
           </h3>
           <div className="mt-2 text-2xl font-mono font-bold text-yellow-300 tabular-nums">
             {formatNumber(Math.floor(resources.credits.amount))}
@@ -564,6 +570,7 @@ export const ResourcePanel = memo(function ResourcePanel({
           <h3 className="text-[11px] font-bold text-red-300 uppercase tracking-widest flex items-center gap-1">
             <CurrencyIcon kind="crypto" className="w-3.5 h-3.5" />
             {t('common.crypto')}
+            <CurrencyHelp kind="crypto" language={language} />
           </h3>
           <div className="mt-2 text-2xl font-mono font-bold text-red-200 tabular-nums">
             {formatNumber(resources.crypto.amount)}
@@ -852,6 +859,25 @@ export const ResourcePanel = memo(function ResourcePanel({
               </div>
             </div>
             
+            {canAscend && onCosmeticsClick && resources.credits.amount >= COSMETIC_MIN_PRICE && (
+              <div className="flex items-center gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-2.5" data-testid="ascend-spend-nodes">
+                <CurrencyIcon kind="credits" className="h-4 w-4 shrink-0" />
+                <p className="flex-1 text-[11px] text-yellow-100">
+                  {pick6(language, [
+                    `You still have ${formatNumber(Math.floor(resources.credits.amount))} Nodes. They reset now, but cosmetics you buy with them stay forever.`,
+                    `Hâlâ ${formatNumber(Math.floor(resources.credits.amount))} Dizin'in var. Şimdi sıfırlanacak, ama onlarla aldığın kozmetikler kalıcı.`,
+                    `Você ainda tem ${formatNumber(Math.floor(resources.credits.amount))} Nodes. Eles zeram agora, mas cosméticos comprados com eles ficam para sempre.`,
+                    `Aún tienes ${formatNumber(Math.floor(resources.credits.amount))} Nodos. Se reinician ahora, pero los cosméticos que compres con ellos son permanentes.`,
+                    `У вас ещё ${formatNumber(Math.floor(resources.credits.amount))} узлов. Сейчас они сгорят, а купленная на них косметика останется навсегда.`,
+                    `你还有 ${formatNumber(Math.floor(resources.credits.amount))} 节点。它们将被清零，但用它们购买的装扮会永久保留。`,
+                  ])}
+                </p>
+                <Button size="sm" variant="outline" className="h-7 shrink-0 border-yellow-500/50 px-2 text-[11px] text-yellow-200 hover:bg-yellow-500/20" onClick={() => { setIsAscendDialogOpen(false); onCosmeticsClick(); }} data-testid="ascend-open-cosmetics">
+                  {pick6(language, ['Spend first', 'Önce harca', 'Gastar antes', 'Gastar antes', 'Сначала потратить', '先去花掉'])}
+                </Button>
+              </div>
+            )}
+
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
               <p className="text-xs text-amber-300 font-medium mb-1">{t('resourcePanel.warningReset')}</p>
               <ul className="text-[10px] text-muted-foreground space-y-1">
@@ -860,6 +886,7 @@ export const ResourcePanel = memo(function ResourcePanel({
                 <li>- {t('resourcePanel.resetTimer')}</li>
               </ul>
               <p className="text-xs text-emerald-400 mt-2">{t('resourcePanel.keptPrestige')}</p>
+              <p className="text-[10px] text-emerald-300/80 mt-1" data-testid="ascend-kept-cosmetics">{pick6(language, ['Also kept: all cosmetics, relics and achievements.', 'Ayrıca kalanlar: tüm kozmetikler, relikler ve başarımlar.', 'Também mantidos: todos os cosméticos, relíquias e conquistas.', 'También se conservan: cosméticos, reliquias y logros.', 'Также сохраняются: вся косметика, реликвии и достижения.', '同样保留：所有装扮、遗物与成就。'])}</p>
               <p className="text-[10px] text-cyan-400/70 mt-1">{t('resourcePanel.moreCryptoTip')}</p>
             </div>
           </div>

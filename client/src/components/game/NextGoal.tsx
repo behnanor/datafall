@@ -79,6 +79,19 @@ export const NextGoal = memo(function NextGoal({ language, resources, upgrades, 
     detail = `${formatNumber(Math.min(resources.crypto.amount, need))} / ${formatNumber(need)} ${getResourceLabel("crypto", language)}`;
   }
 
+  // v1.04: one plain "do this now" line, so the card says how to reach the goal, not only what it is.
+  const isAscensionGoal = !(clickUnlock && clickUnlock.count === 0) && !(unlock && unlock.count === 0);
+  let action: L6 | null = null;
+  if (progress >= 1) {
+    action = isAscensionGoal
+      ? ["Press ASCEND and beat the boss.", "YÜKSEL'e bas ve bossu yen.", "Aperte ASCENDER e vença o chefe.", "Pulsa ASCENDER y vence al jefe.", "Нажмите «Вознестись» и победите босса.", "点击飞升并击败首领。"]
+      : ["Buy it in the Upgrades panel.", "Yükseltmeler panelinden satın al.", "Compre no painel de Melhorias.", "Cómpralo en el panel de Mejoras.", "Купите в панели улучшений.", "在升级面板中购买。"];
+  } else if (sellHint) {
+    action = ["Sell Data for Nodes with the Convert buttons.", "Dönüştür butonlarıyla Veriyi Dizin'e sat.", "Venda Dados por Nodes com os botões de Converter.", "Vende Datos por Nodos con los botones de Convertir.", "Продайте данные за узлы кнопками обмена.", "用兑换按钮把数据换成节点。"];
+  } else if (isAscensionGoal && rate(resources.crypto) <= 0) {
+    action = ["Buy a crypto rig with Nodes (Mining tab).", "Dizin ile bir kripto makinesi al (Madencilik sekmesi).", "Compre uma máquina de cripto com Nodes (aba Mineração).", "Compra un equipo de cripto con Nodos (pestaña Minería).", "Купите крипто-ферму за узлы (вкладка майнинга).", "用节点购买加密矿机（加密挖矿标签）。"];
+  }
+
   const bossVariant = getBossVariant(ascensionLevel);
   const nextMilestone = milestones.filter(m => m.at > ascensionLevel).sort((a, b) => a.at - b.at)[0];
   const ready = progress >= 1;
@@ -104,6 +117,9 @@ export const NextGoal = memo(function NextGoal({ language, resources, upgrades, 
         <div className={`h-full ${ready ? "bg-emerald-400" : "bg-cyan-400"} transition-[width] duration-500`} style={{ width: `${pct}%` }} />
       </div>
       <div className="mt-1 text-[10px] text-slate-400 tabular-nums truncate">{detail}</div>
+      {action && (
+        <div className={`mt-1 text-[10px] ${ready ? "text-emerald-300" : "text-cyan-200/90"}`} data-testid="next-goal-action">▸ {pick(language, action)}</div>
+      )}
       {bossVariant.kind === "signal" && (
         <div className="mt-1 text-[10px] text-cyan-300 truncate">
           {pick(language, ["Boss: Core Signal (fight required)", "Boss: Çekirdek Sinyali (savaş gerekli)", "Chefe: Sinal do Núcleo (luta obrigatória)", "Jefe: Señal del Núcleo (combate obligatorio)", "Босс: Сигнал Ядра (бой обязателен)", "首领：核心信号（必须战斗）"])}

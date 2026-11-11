@@ -6,7 +6,7 @@ export type L6 = [en: string, tr: string, pt: string, es: string, ru: string, zh
 export const pick6 = (language: Language, t: L6): string =>
   language === "tr" ? t[1] : language === "pt-BR" ? t[2] : language === "es" ? t[3] : language === "ru" ? t[4] : language === "zh-CN" ? t[5] : t[0];
 
-export type BossModifierId = "armored" | "swift" | "regen" | "evasive" | "bulky" | "jammed";
+export type BossModifierId = "armored" | "swift" | "regen" | "evasive" | "bulky" | "jammed" | "phasing" | "bounty" | "volatile";
 export const BOSS_MODIFIERS: Record<BossModifierId, { name: L6; desc: L6 }> = {
   armored: {
     name: ["Armored", "Zırhlı", "Blindado", "Blindado", "Бронированный", "装甲"],
@@ -32,8 +32,21 @@ export const BOSS_MODIFIERS: Record<BossModifierId, { name: L6; desc: L6 }> = {
     name: ["Jammed", "Karışık Sinyal", "Interferido", "Interferido", "Помехи", "干扰"],
     desc: ["No breach sequences.", "Sızma dizileri yok.", "Sem sequências de invasão.", "Sin secuencias de brecha.", "Без последовательностей взлома.", "没有突破序列。"],
   },
+  // v1.04 run variety: three more modifiers so boss fights from ascension 10 on differ more.
+  phasing: {
+    name: ["Phasing", "Faz Kayması", "Em Fase", "Desfasado", "Фазовый", "相位"],
+    desc: ["Phases out for 1.2 s every 4 s: normal hits miss, weak spots still land.", "Her 4 sn'de 1.2 sn faz dışına çıkar: normal vuruşlar boşa gider, zayıf noktalar yine işler.", "Sai de fase 1,2 s a cada 4 s: golpes normais erram, pontos fracos ainda acertam.", "Se desfasa 1,2 s cada 4 s: los golpes normales fallan, los puntos débiles sí aciertan.", "Каждые 4 с уходит в фазу на 1,2 с: обычные удары мимо, слабые точки работают.", "每 4 秒相位隐匿 1.2 秒：普通攻击无效，弱点仍可命中。"],
+  },
+  bounty: {
+    name: ["Bounty", "Ödül Avı", "Recompensa", "Recompensa", "Награда", "悬赏"],
+    desc: ["+20% HP, but +25% prestige if you win the fight.", "+%20 can, ama dövüşü kazanırsan +%25 prestij.", "+20% de vida, mas +25% de prestígio se vencer a luta.", "+20% de vida, pero +25% de prestigio si ganas el combate.", "+20% HP, но +25% престижа за победу в бою.", "生命 +20%，但战斗获胜时声望 +25%。"],
+  },
+  volatile: {
+    name: ["Volatile", "Kararsız", "Volátil", "Volátil", "Нестабильный", "不稳定"],
+    desc: ["+20% HP. Weak spots appear twice as often.", "+%20 can. Zayıf noktalar iki kat sık çıkar.", "+20% de vida. Pontos fracos aparecem o dobro.", "+20% de vida. Los puntos débiles aparecen el doble.", "+20% HP. Слабые точки появляются вдвое чаще.", "生命 +20%。弱点出现频率翻倍。"],
+  },
 };
-const MODIFIER_ORDER: BossModifierId[] = ["armored", "swift", "regen", "evasive", "bulky", "jammed"];
+const MODIFIER_ORDER: BossModifierId[] = ["armored", "swift", "regen", "evasive", "bulky", "jammed", "phasing", "bounty", "volatile"];
 
 export type BossKind = "normal" | "signal" | "echo";
 export interface BossVariant {
@@ -48,6 +61,11 @@ const FINALE_ASCENSION = 50;
 export const ECHO_EVERY_DEPTHS = 10;
 // Reward multipliers on the ascension's prestige gain.
 export const ECHO_PRESTIGE_MULTIPLIER = 1.5;
+// v1.04: the Bounty modifier pays extra prestige when the fight is actually won (not for automation skips).
+export const BOUNTY_PRESTIGE_MULTIPLIER = 1.25;
+// Phasing: out of phase for the last PHASING_OFF_MS of every PHASING_CYCLE_MS.
+export const PHASING_CYCLE_MS = 4000;
+export const PHASING_OFF_MS = 1200;
 // v1.04: each deeper Echo pays more (+0.25x per tier: x1.5 at depth 10, x1.75 at 20 ... max x3 at 70),
 // matching its +15% HP per tier, so the deeper fights are worth chasing.
 export const ECHO_PRESTIGE_STEP = 0.25;
@@ -62,9 +80,17 @@ export const getEchoTierLabel = (depth: number): string => {
 };
 
 // Deterministic per ascension, so a lost fight cannot be re-rolled into an easier one.
+// v1.04: mulberry32. The old LCG gave nearly the same first number for neighbouring seeds, so the same
+// modifier came up 5 ascensions in a row (e.g. asc 19-23 all "Phasing").
 const seeded = (seed: number) => {
   let s = (seed * 2654435761) >>> 0;
-  return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 };
 const pickModifiers = (seed: number, count: number): BossModifierId[] => {
   const r = seeded(seed);

@@ -13,7 +13,7 @@ import { DemoPrompts } from '@/components/game/DemoPrompts';
 import { WhatsNewDialog } from '@/components/game/WhatsNewDialog';
 import { WHATS_NEW_VERSION } from '@/lib/useGame';
 import { IS_DEMO_BUILD, DEMO_ASCENSION_LIMIT } from '@/lib/useGame';
-import { getBossVariant, shouldSkipBossFight, getEchoPrestigeMultiplier, pick6, type BossVariant } from '@/lib/bossVariants';
+import { getBossVariant, shouldSkipBossFight, getEchoPrestigeMultiplier, BOUNTY_PRESTIGE_MULTIPLIER, pick6, type BossVariant } from '@/lib/bossVariants';
 import { getSteamLeaderboardEntries, isSteamAvailable, setSteamLeaderboardScore, type SteamLeaderboardEntry } from '@/lib/steamIntegration';
 import { ResourcePanel } from '@/components/game/ResourcePanel';
 import { UpgradePanel } from '@/components/game/UpgradePanel';
@@ -22,6 +22,7 @@ import { usePublishLiveResources } from '@/lib/liveResources';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { FloatingPickup } from '@/components/game/FloatingPickup';
 import { TutorialPanel } from '@/components/game/TutorialPanel';
+import { NetworkEventBanner, RunProtocolPicker, RunProtocolChip } from '@/components/game/RunVarietyHud';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
 import { CurrencyIcon } from '@/components/game/CurrencyIcon';
 import { toast } from '@/hooks/use-toast';
@@ -127,6 +128,9 @@ export default function GamePage() {
   const [endlessLeaderboardLoading, setEndlessLeaderboardLoading] = useState(false);
   const [endlessLeaderboardError, setEndlessLeaderboardError] = useState<string | null>(null);
   const [isFinaleEncounter, setIsFinaleEncounter] = useState(false);
+  // v1.04 Run Protocols: "Decide later" hides the picker until the player clicks the chip.
+  const [protocolPickerDismissed, setProtocolPickerDismissed] = useState(false);
+
   const [showFinaleCredits, setShowFinaleCredits] = useState(false);
   const lastSubmittedEndlessRef = React.useRef(-1);
   const [celebration, setCelebration] = useState<{ kind: CelebrationKind; title?: string; subtitle?: string; key: number } | null>(null);
@@ -163,6 +167,7 @@ export default function GamePage() {
       buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin, getActiveTheme, getActiveAccessory, getActiveCape, getActiveWing, getActiveHeadStyle, 
       getActivePet, getActiveAscensionPet, getActiveClickEffect, getActiveLootBoxSkin, getActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, 
       clearOfflineProgress, contracts, refreshContracts, updateContractProgress, 
+      networkEvent, respondToNetworkEvent, runMods, forceDebugNetworkEvent, runProtocol, chooseRunProtocol,
       claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, 
       getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, 
       completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, 
@@ -186,14 +191,19 @@ export default function GamePage() {
 
     return Math.max(40, Math.floor(100 * Math.max(0.4, 1 - nodeConversionPercent / 100)));
   }, [cosmetics.paragonLevels]);
+  const protocolOfferKey = runProtocol.offer.join(',');
+  // Keep the run-variety HUD centred on the play area when the side panels are open (320 px / 384 px).
+  const playAreaShiftX = ((leftPanelOpen ? 320 : 0) - (rightPanelOpen ? 384 : 0)) / 2;
+  useEffect(() => { setProtocolPickerDismissed(false); }, [protocolOfferKey]);
   const conversionNodeGain = useMemo(() => {
     const sellBoost = prestigeUpgrades.reduce((total, upgrade) => {
       if (upgrade.count <= 0 || upgrade.effect.type !== 'sell_boost') return total;
       return total + upgrade.effect.value * upgrade.count;
     }, 0);
 
-    return 1 + sellBoost;
-  }, [prestigeUpgrades]);
+    // v1.04: Run Protocol / Network Event sell modifiers.
+    return (1 + sellBoost) * runMods.sell;
+  }, [prestigeUpgrades, runMods.sell]);
   const activeTutorialObjectiveId = useMemo(() => {
     if (!currentTutorialPhase) return null;
     const activeObjective = currentTutorialPhase.objectives.find(obj => !obj.completed);
@@ -427,10 +437,12 @@ export default function GamePage() {
       bonusSeconds: bonuses.bossTimeSeconds + abyssBoonTotals.bossBonusSeconds,
     };
   }, [cosmetics.paragonLevels, abyssBoonTotals]);
-  const handleAscendVictory = (variant: BossVariant) => {
+  const handleAscendVictory = (variant: BossVariant, fought = true) => {
+    // v1.04: the Bounty modifier pays +25% prestige for a fight that was actually won.
+    const bounty = fought && variant.modifiers.includes('bounty') ? BOUNTY_PRESTIGE_MULTIPLIER : 1;
     // v1.04: Echo Hunter boons raise the Echo payout; Crown Harvest boons raise every boss victory.
     const echoMultiplier = getEchoPrestigeMultiplier(variant.depth ?? 10) + abyssBoonTotals.echoBonus;
-    const reward = ascendVictory((variant.kind === 'echo' ? echoMultiplier : 1) * abyssBoonTotals.prestigeMultiplier);
+    const reward = ascendVictory((variant.kind === 'echo' ? echoMultiplier : 1) * abyssBoonTotals.prestigeMultiplier * bounty);
     if (variant.kind === 'signal') {
       clearCoreSignal();
       celebrate('legendary', pick6(language, ['CORE SIGNAL SILENCED', 'ÇEKİRDEK SİNYALİ SUSTURULDU', 'SINAL DO NÚCLEO SILENCIADO', 'SEÑAL DEL NÚCLEO SILENCIADA', 'СИГНАЛ ЯДРА ЗАГЛУШЕН', '核心信号已压制']), pick6(language, ['The final Core loses 15% HP', 'Son Çekirdek %15 can kaybeder', 'O Núcleo final perde 15% de vida', 'El Núcleo final pierde un 15% de vida', 'Финальное Ядро теряет 15% HP', '最终核心生命 -15%']));
@@ -454,7 +466,7 @@ export default function GamePage() {
     // Demo: no ascension past the limit; show the end screen instead.
     if (IS_DEMO_BUILD && stats.totalAscensions >= DEMO_ASCENSION_LIMIT) { setShowDemoEnd(true); return true; }
     if (!shouldSkipBossFight(stats.totalAscensions, automation.autoBuy || automation.autoAscend)) return false;
-    handleAscendVictory(currentBossVariant);
+    handleAscendVictory(currentBossVariant, false);
     return true;
   };
 
@@ -478,6 +490,12 @@ export default function GamePage() {
     const reached = unlocks.filter(([level]) => previous < level && stats.totalAscensions >= level).pop();
     if (reached) celebrate('shop', reached[1]);
   }, [stats.totalAscensions, celebrate, l, language]);
+
+  // Test builds only: console hooks for checking Network Events quickly.
+  useEffect(() => {
+    if (!IS_TEST_BUILD) return;
+    (window as unknown as Record<string, unknown>).__datafallDebug = { forceDebugNetworkEvent, addDebugData, addDebugCredits, addDebugCrypto, addDebugAscensionCount, buyUpgrade, ascendVictory };
+  });
 
   // Test builds only: Ctrl+Shift+F9 toggles a popup-free room view for screenshots.
   useEffect(() => {
@@ -2456,6 +2474,21 @@ export default function GamePage() {
           />
         </div>
       </motion.div>
+
+      {/* v1.04 Network Events + Run Protocols */}
+      {!isBossEncounterActive && (
+        <NetworkEventBanner event={networkEvent} language={language} onRespond={respondToNetworkEvent} shiftX={playAreaShiftX} />
+      )}
+      {!isBossEncounterActive && !showDemoEnd && (
+        <RunProtocolChip state={runProtocol} language={language} onOpenPicker={() => setProtocolPickerDismissed(false)} shiftX={playAreaShiftX} />
+      )}
+      <RunProtocolPicker
+        open={runProtocol.pending && !protocolPickerDismissed && !isAbyssBoonOpen && !isBossEncounterActive && !isLootBoxDialogOpen && !offlineProgress && !showDemoEnd && whatsNew.seenVersion === WHATS_NEW_VERSION}
+        offer={runProtocol.offer}
+        language={language}
+        onChoose={(id) => { chooseRunProtocol(id); setProtocolPickerDismissed(false); }}
+        onLater={() => setProtocolPickerDismissed(true)}
+      />
 
       {/* Tutorial Panel */}
       <TutorialPanel

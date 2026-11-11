@@ -42,6 +42,22 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
         "Модули Paragon II теперь так же сильны, как Paragon I, и дешевле на старте.",
         "Paragon II 模块现在与 Paragon I 一样强，且起步更便宜。",
       ] },
+      { id: "paragon3", area: "boss", text: [
+        "Paragon III modules: Breach Driver (ascension 35) adds boss damage, Chrono Siege (ascension 45) adds boss time.",
+        "Paragon III modülleri: Breach Driver (yükseliş 35) boss hasarı, Chrono Siege (yükseliş 45) boss süresi ekliyor.",
+        "Módulos Paragon III: Breach Driver (ascensão 35) aumenta o dano no chefe, Chrono Siege (ascensão 45) dá mais tempo.",
+        "Módulos Paragon III: Breach Driver (ascensión 35) aumenta el daño al jefe, Chrono Siege (ascensión 45) da más tiempo.",
+        "Модули Paragon III: Breach Driver (35-е вознесение) усиливает урон по боссам, Chrono Siege (45-е) добавляет время.",
+        "Paragon III 模块：Breach Driver（第 35 次飞升）提升首领伤害，Chrono Siege（第 45 次飞升）增加首领战时间。",
+      ] },
+      { id: "abyss", area: "content", text: [
+        "After the Core: an uncapped Abyss Core module, a choice of 1 of 3 Abyss Boons every 5 Endless depths, and deeper Core Echoes pay more.",
+        "Çekirdekten sonra: sınırsız Abyss Core modülü, her 5 Sonsuz derinlikte 3 Abyss Boon'dan birini seçme ve daha derin Çekirdek Yankıları daha çok ödül veriyor.",
+        "Depois do Núcleo: o módulo Abyss Core sem limite, escolha 1 de 3 Abyss Boons a cada 5 níveis do Infinito, e Ecos do Núcleo mais fundos pagam mais.",
+        "Tras el Núcleo: el módulo Abyss Core sin límite, elige 1 de 3 Abyss Boons cada 5 niveles del Infinito, y los Ecos del Núcleo más profundos pagan más.",
+        "После Ядра: безлимитный модуль Abyss Core, выбор 1 из 3 даров Бездны каждые 5 уровней бесконечного режима, и глубокие Эхо Ядра платят больше.",
+        "击破核心之后：无上限的 Abyss Core 模块，无尽模式每 5 层三选一的深渊祝福，越深的核心回响奖励越多。",
+      ] },
       { id: "juice", area: "ui", text: [
         "More punch: crits shake the screen, bigger floating numbers, a click sound that rises as you speed up, and CHECKPOINT! and production milestone banners.",
         "Daha çok his: kritikler ekranı sallıyor, daha büyük uçan sayılar, hızlandıkça yükselen tıklama sesi, CHECKPOINT! ve üretim dönüm noktası afişleri.",

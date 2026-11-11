@@ -9366,7 +9366,11 @@ useEffect(() => {
     setNetworkEvent(null);
     // Run Protocols: offer 3 for the new run. With auto-ascend on, the last pick carries over silently.
     const newAscensions = stats.totalAscensions + 1;
-    if (newAscensions < RUN_PROTOCOL_UNLOCK_ASCENSION || IS_DEMO_BUILD) return;
+    if (newAscensions < RUN_PROTOCOL_UNLOCK_ASCENSION || IS_DEMO_BUILD) {
+      // Not unlocked yet: no protocol for the new run.
+      setRunProtocol(prev => (prev.active || prev.pending ? { ...prev, active: null, offer: [], pending: false } : prev));
+      return;
+    }
     const autoPick = automation.autoAscend && stats.totalAscensions >= AUTOMATION_UNLOCK_ASCENSION ? runProtocol.last : null;
     setRunProtocol(prev => {
       const offer = rollProtocolOffer(newAscensions, prev.active);

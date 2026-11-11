@@ -10,7 +10,7 @@ import { DemoPrompts } from '@/components/game/DemoPrompts';
 import { WhatsNewDialog } from '@/components/game/WhatsNewDialog';
 import { WHATS_NEW_VERSION } from '@/lib/useGame';
 import { IS_DEMO_BUILD, DEMO_ASCENSION_LIMIT } from '@/lib/useGame';
-import { getBossVariant, shouldSkipBossFight, ECHO_PRESTIGE_MULTIPLIER, pick6, type BossVariant } from '@/lib/bossVariants';
+import { getBossVariant, shouldSkipBossFight, ECHO_PRESTIGE_MULTIPLIER, BOUNTY_PRESTIGE_MULTIPLIER, pick6, type BossVariant } from '@/lib/bossVariants';
 import { getSteamLeaderboardEntries, isSteamAvailable, setSteamLeaderboardScore, type SteamLeaderboardEntry } from '@/lib/steamIntegration';
 import { ResourcePanel } from '@/components/game/ResourcePanel';
 import { UpgradePanel } from '@/components/game/UpgradePanel';
@@ -413,8 +413,10 @@ export default function GamePage() {
     const prestigeClick = prestigeUpgrades.reduce((sum, upgrade) => (upgrade.effect.type === 'click_boost' ? sum + upgrade.effect.value * upgrade.count * 100 : sum), 0);
     return prestigeClick + computeParagonBonuses(cosmetics.paragonLevels).clickBoostPercent;
   }, [prestigeUpgrades, cosmetics.paragonLevels]);
-  const handleAscendVictory = (variant: BossVariant) => {
-    const reward = ascendVictory(variant.kind === 'echo' ? ECHO_PRESTIGE_MULTIPLIER : 1);
+  const handleAscendVictory = (variant: BossVariant, fought = true) => {
+    // v1.04: the Bounty modifier pays +25% prestige for a fight that was actually won.
+    const bounty = fought && variant.modifiers.includes('bounty') ? BOUNTY_PRESTIGE_MULTIPLIER : 1;
+    const reward = ascendVictory((variant.kind === 'echo' ? ECHO_PRESTIGE_MULTIPLIER : 1) * bounty);
     if (variant.kind === 'signal') {
       clearCoreSignal();
       celebrate('legendary', pick6(language, ['CORE SIGNAL SILENCED', 'ÇEKİRDEK SİNYALİ SUSTURULDU', 'SINAL DO NÚCLEO SILENCIADO', 'SEÑAL DEL NÚCLEO SILENCIADA', 'СИГНАЛ ЯДРА ЗАГЛУШЕН', '核心信号已压制']), pick6(language, ['The final Core loses 15% HP', 'Son Çekirdek %15 can kaybeder', 'O Núcleo final perde 15% de vida', 'El Núcleo final pierde un 15% de vida', 'Финальное Ядро теряет 15% HP', '最终核心生命 -15%']));
@@ -438,7 +440,7 @@ export default function GamePage() {
     // Demo: no ascension past the limit; show the end screen instead.
     if (IS_DEMO_BUILD && stats.totalAscensions >= DEMO_ASCENSION_LIMIT) { setShowDemoEnd(true); return true; }
     if (!shouldSkipBossFight(stats.totalAscensions, automation.autoBuy || automation.autoAscend)) return false;
-    handleAscendVictory(currentBossVariant);
+    handleAscendVictory(currentBossVariant, false);
     return true;
   };
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Shield, Zap, Skull, Trophy, AlertTriangle, Target, Keyboard } from "lucide-react";
 import { localizeInlineText, localizeText, useI18n, type LocalizedText } from "@/lib/i18n";
-import { BOSS_MODIFIERS, pick6, type BossVariant, type BossModifierId, BOSS_DEFEAT_PRESTIGE_SHARE, BOSS_RETRIES_PER_FIGHT, BOSS_ASSIST_TIME_MULTIPLIER, BOSS_ASSIST_HP_MULTIPLIER, readBossAssist, writeBossAssist, getBossPowerMultiplier } from "@/lib/bossVariants";
+import { BOSS_MODIFIERS, PHASING_CYCLE_MS, PHASING_OFF_MS, pick6, type BossVariant, type BossModifierId, BOSS_DEFEAT_PRESTIGE_SHARE, BOSS_RETRIES_PER_FIGHT, BOSS_ASSIST_TIME_MULTIPLIER, BOSS_ASSIST_HP_MULTIPLIER, readBossAssist, writeBossAssist, getBossPowerMultiplier } from "@/lib/bossVariants";
 
 interface BossEncounterProps {
   isOpen: boolean;
@@ -138,6 +138,10 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const breachFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const damageFlashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const queuedWeakSpotTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const battleStartedAtRef = useRef(0);
+  const isPhasedAt = (time: number) =>
+    mods.has("phasing") && (time - battleStartedAtRef.current) % PHASING_CYCLE_MS >= PHASING_CYCLE_MS - PHASING_OFF_MS;
+  const bossPhased = phase === 'battle' && isPhasedAt(battleNow);
   
   const currentBoss = kind === "finale" ? FINAL_BOSS : kind === "signal" ? SIGNAL_BOSS : kind === "echo" ? ECHO_BOSS : getRegularBoss(ascensionLevel);
   const bossShape = BOSS_SHAPES[("shape" in currentBoss ? currentBoss.shape : "hexagon") as BossShape];
@@ -166,7 +170,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
     );
     const calculatedHealth = Math.max(
       75, // Prevent trivial early HP
-      Math.round(dataPerClick * currentBoss.baseClicks * currentBoss.bossMultiplier * ascensionFactor * (isFinale ? 1 - Math.min(0.5, Math.max(0, finaleWeaken)) : 1) * (mods.has("bulky") ? 1.25 : 1) * (kind === "echo" ? 1 + 0.15 * (echoTier - 1) : 1))
+      Math.round(dataPerClick * currentBoss.baseClicks * currentBoss.bossMultiplier * ascensionFactor * (isFinale ? 1 - Math.min(0.5, Math.max(0, finaleWeaken)) : 1) * (mods.has("bulky") ? 1.25 : 1) * (mods.has("bounty") ? 1.2 : 1) * (mods.has("volatile") ? 1.2 : 1) * (kind === "echo" ? 1 + 0.15 * (echoTier - 1) : 1))
     );
     return calculatedHealth;
   }, [dataPerClick, currentBoss, ascensionLevel, isFinale, finaleWeaken, variant]);
@@ -235,10 +239,11 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       });
       // Spawn new weak spot
       generateWeakSpot();
-    }, isFinale ? FINALE_WEAK_SPOT_INTERVAL_MS : 2500);
+    }, isFinale ? FINALE_WEAK_SPOT_INTERVAL_MS : mods.has("volatile") ? 1250 : 2500);
     
     return () => clearInterval(interval);
-  }, [phase, generateWeakSpot, isFinale, weakSpotLifetimeMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, generateWeakSpot, isFinale, weakSpotLifetimeMs, variant]);
 
   // Regenerating modifier: heals a share of max HP every second.
   useEffect(() => {
@@ -424,7 +429,10 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
 
     const hitWeakSpot = forcedWeakSpot ?? checkWeakSpotHit(x, y, rect.width, rect.height);
     const overclockActive = overclockUntil > Date.now();
+    // Phasing: while out of phase only weak-spot hits do damage.
+    const phasedMiss = !hitWeakSpot && isPhasedAt(Date.now());
     const damageMultiplier =
+      (phasedMiss ? 0 : 1) *
       (hitWeakSpot ? weakSpotMultiplier : 1) *
       (overclockActive ? OVERCLOCK_MULTIPLIER : 1);
 
@@ -478,7 +486,8 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
       damageFlashTimeoutRef.current = null;
       setDamageFlash(false);
     }, 50);
-  }, [phase, damagePerClick, checkWeakSpotHit, overclockUntil, playSound, usesShields, flatShield, phaseShields, critChance, maxHealth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, damagePerClick, checkWeakSpotHit, overclockUntil, playSound, usesShields, flatShield, phaseShields, critChance, maxHealth, variant]);
 
   const handleBattlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (phase !== 'battle') return;
@@ -502,6 +511,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   
   // Every fight (first try or retry) starts from full HP with the current Assist choice.
   const startBattle = () => {
+    battleStartedAtRef.current = Date.now();
     const health = getBattleHealth();
     setDamagePerClick(dataPerClick * powerMultiplier);
     setBossHealth(health);
@@ -835,7 +845,7 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                     }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <svg width="120" height="120" viewBox="0 0 100 100">
+                    <svg width="120" height="120" viewBox="0 0 100 100" style={{ opacity: bossPhased ? 0.2 : 1, transition: 'opacity 150ms' }}>
                       <defs>
                         <filter id="glow">
                           <feGaussianBlur stdDeviation="3" result="coloredBlur"/>

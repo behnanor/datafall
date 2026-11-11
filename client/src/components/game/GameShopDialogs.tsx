@@ -8,7 +8,15 @@ import { Button } from '@/components/ui/button';
 import { CurrencyIcon } from '@/components/game/CurrencyIcon';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { upperForLanguage } from "@/lib/i18n";
+import { upperForLanguage, useI18n } from "@/lib/i18n";
+import { progressionText } from "@/lib/progressionText";
+import { getBestValuePrestigeUpgradeId, getPrestigePlaystyle, type PrestigePlaystyle } from "@/lib/prestigeAdvice";
+
+const PLAYSTYLE_CHIP: Record<PrestigePlaystyle, { key: 'tagEveryone' | 'tagActive' | 'tagIdle'; tone: string }> = {
+  everyone: { key: 'tagEveryone', tone: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200' },
+  active: { key: 'tagActive', tone: 'border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200' },
+  idle: { key: 'tagIdle', tone: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' },
+};
 
 type LocalizeFn = (...args: any[]) => string;
 type TranslateFn = (...args: any[]) => string;
@@ -159,6 +167,15 @@ export function PrestigeShopDialog({
   buyPrestigeUpgrade: (upgradeId: any) => void;
   buyPrestigeUpgradeMax?: (upgradeId: any) => void;
 }) {
+  const { language } = useI18n();
+  const [playstyleFilter, setPlaystyleFilter] = React.useState<PrestigePlaystyle | 'all'>('all');
+  const bestValueId = React.useMemo(
+    () => getBestValuePrestigeUpgradeId(prestigeUpgrades, prestigeAmount),
+    [prestigeUpgrades, prestigeAmount]
+  );
+  const visibleUpgrades = playstyleFilter === 'all'
+    ? prestigeUpgrades
+    : prestigeUpgrades.filter((upgrade) => getPrestigePlaystyle(upgrade.id) === playstyleFilter);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-card/95 border-cyan-500/30 z-[50]">
@@ -189,11 +206,29 @@ export function PrestigeShopDialog({
             <p className="text-[11px] text-cyan-200/80 mt-2">
               {t('prestigePanel.totalPurchasedLevels', { total: prestigeShopSummary.totalLevels })}
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group">
+              {(['all', 'everyone', 'active', 'idle'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setPlaystyleFilter(filter)}
+                  className={`rounded border px-2 py-0.5 text-[10px] font-mono ${playstyleFilter === filter ? 'border-yellow-400/70 bg-yellow-500/20 text-yellow-100' : 'border-muted/40 bg-black/20 text-muted-foreground hover:text-cyan-100'}`}
+                  data-testid={`prestige-filter-${filter}`}
+                >
+                  {filter === 'all' ? progressionText(language, 'filterAll') : progressionText(language, PLAYSTYLE_CHIP[filter].key)}
+                </button>
+              ))}
+            </div>
+            {bestValueId && (
+              <p className="text-[10px] text-amber-200/80 mt-1.5">{progressionText(language, 'bestValueHint')}</p>
+            )}
           </div>
-          {prestigeUpgrades.map((upgrade) => {
+          {visibleUpgrades.map((upgrade) => {
             const currentCost = Math.floor(upgrade.cost * Math.pow(upgrade.costMultiplier, upgrade.count));
             const isMaxed = upgrade.count >= upgrade.maxLevel;
             const canAfford = !isMaxed && prestigeAmount >= currentCost;
+            const playstyle = PLAYSTYLE_CHIP[getPrestigePlaystyle(upgrade.id)];
+            const isBestValue = upgrade.id === bestValueId;
             return (
               <motion.div
                 key={upgrade.id}
@@ -210,9 +245,17 @@ export function PrestigeShopDialog({
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className={`font-bold ${isMaxed ? 'text-emerald-400' : 'text-yellow-400'}`}>{upgrade.name}</p>
                       {isMaxed && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">{upperForLanguage(t('prestigePanel.maxed'))}</span>}
+                      {isBestValue && (
+                        <span className="text-[10px] border border-amber-400/60 bg-amber-500/20 text-amber-200 px-1.5 py-0.5 rounded font-mono" data-testid="prestige-best-value">
+                          ★ {progressionText(language, 'bestValue')}
+                        </span>
+                      )}
+                      <span className={`text-[9px] border px-1.5 py-0.5 rounded font-mono ${playstyle.tone}`}>
+                        {progressionText(language, playstyle.key)}
+                      </span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{upgrade.description}</p>
                     <p className="text-[11px] text-cyan-200/80 mt-1">

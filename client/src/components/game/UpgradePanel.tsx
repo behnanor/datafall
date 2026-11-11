@@ -7,7 +7,8 @@ import { Lock, FileText, Zap, Database, Coins, Bitcoin } from "lucide-react";
 import { CurrencyIcon } from "@/components/game/CurrencyIcon";
 import { memo, useMemo, useRef, useState, useEffect } from "react";
 import { bumpElement, clickJuiceAllowed } from "@/lib/juice";
-import { getCheckpointProgress, getCheckpointMultiplier } from "@/lib/useGame";
+import { getCheckpointProgress, getCheckpointMultiplier, getEffectiveValue, getAutoSellPlan, type NodeSaleRate } from "@/lib/useGame";
+import { progressionText } from "@/lib/progressionText";
 import { ContractsTerminal } from "./ContractsTerminal";
 import { translate, useI18n, type Language } from "@/lib/i18n";
 import { getResourceLabel, getUpgradeCategoryLabel } from "@/lib/gameText";
@@ -19,6 +20,10 @@ interface UpgradePanelProps {
   playSound: (type: 'click' | 'buy_fab' | 'buy_black') => void;
   getUpgradePreview: (upgrade: Upgrade) => string;
   getBulkProductionGain: (upgrade: Upgrade, quantity: number) => number;
+  // Global multipliers on machine output (prestige, cosmetics, Paragon...). Cards show real totals with them.
+  productionMultipliers?: ProductionMultipliers;
+  // Set after the first ascension: buying with too few Nodes sells the missing data automatically.
+  autoSellRate?: NodeSaleRate | null;
   selectedBulkOption: 1 | 10 | 100 | 'max';
   onBulkOptionChange: (option: 1 | 10 | 100 | 'max') => void;
   contracts: ContractsState;
@@ -32,6 +37,8 @@ interface UpgradePanelProps {
 }
 
 type BuyMode = '1x' | '10x' | '100x' | 'MAX';
+type ProductionMultipliers = { data: number; crypto: number };
+const NO_MULTIPLIERS: ProductionMultipliers = { data: 1, crypto: 1 };
 
 type CategoryStyle = {
   accentText: string;
@@ -83,30 +90,19 @@ const getQuantityForMode = (upgrade: Upgrade, resources: Record<ResourceType, Re
   return calculateMaxAffordable(upgrade, resources);
 };
 
-const getCheckpointInterval = (_category: string): number => 25;
+// v1.04: use the game's own per-level value. The old copy here multiplied by 3 per checkpoint, so cards
+// promised x9 / x27 / x81 at levels 50 / 75 / 100 while the game gives x5 / x7.5 / x10.
+const getEffectiveUpgradeValue = (upgrade: Upgrade, count: number): number =>
+  count <= 0 ? 0 : getEffectiveValue({ ...upgrade, count });
 
-const getEffectiveUpgradeValue = (upgrade: Upgrade, count: number): number => {
-  if (count <= 0) return 0;
-
-  const baseValue = upgrade.effect.value;
-  const interval = getCheckpointInterval(upgrade.category);
-  const checkpointsPassed = Math.floor(count / interval);
-
-  let valuePerLevel: number;
-  if (
-    upgrade.effect.type === 'click' ||
-    upgrade.effect.type === 'crit_chance' ||
-    upgrade.effect.type === 'crit_multiplier'
-  ) {
-    valuePerLevel = baseValue * count;
-  } else {
-    valuePerLevel = baseValue * (1 + 0.1 * (count - 1));
-  }
-
-  return valuePerLevel * Math.pow(3, checkpointsPassed);
+// Production machines: every level adds its own output, so the machine's total is the sum of all levels.
+const getMachineTotal = (upgrade: Upgrade, count: number): number => {
+  let total = 0;
+  for (let level = 1; level <= count; level++) total += getEffectiveUpgradeValue(upgrade, level);
+  return total;
 };
 
-const formatUpgradeEffect = (upgrade: Upgrade, count: number, language: Language): string => {
+const formatUpgradeEffect = (upgrade: Upgrade, count: number, language: Language, multipliers: ProductionMultipliers = NO_MULTIPLIERS): string => {
   if (upgrade.effect.type === 'unlock') {
     return upgrade.count > 0
       ? translate(language, 'upgradePanel.unlocked')
@@ -117,7 +113,11 @@ const formatUpgradeEffect = (upgrade: Upgrade, count: number, language: Language
   if (count <= 0) return translate(language, 'upgradePanel.noBonus');
 
   const value = getEffectiveUpgradeValue(upgrade, count);
-  if (upgrade.effect.type === 'production' && upgrade.effect.resource) return `+${formatNumber(value)} ${toResourceLabel(upgrade.effect.resource, language)}/s`;
+  if (upgrade.effect.type === 'production' && upgrade.effect.resource) {
+    // Whole machine output with all bonuses (was: only the newest level, without bonuses).
+    const multiplier = upgrade.effect.resource === 'crypto' ? multipliers.crypto : multipliers.data;
+    return `+${formatNumber(getMachineTotal(upgrade, count) * multiplier)} ${toResourceLabel(upgrade.effect.resource, language)}/s`;
+  }
   if (upgrade.effect.type === 'click') return `+${formatNumber(value)} ${translate(language, 'upgradePanel.clickValue')}`;
   if (upgrade.effect.type === 'click_multiplier') return `+${(value * 100).toFixed(0)}% ${translate(language, 'upgradePanel.clickMultiplier')}`;
   if (upgrade.effect.type === 'crit_chance') return `+${(value * 100).toFixed(1)}% ${translate(language, 'upgradePanel.critChanceValue')}`;
@@ -179,7 +179,9 @@ const calculateUpgradeCost = (upgrade: Upgrade, quantity: number): Record<string
   return costs;
 };
 
-const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain, language }: {
+const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain, language, productionMultipliers = NO_MULTIPLIERS, autoSellRate = null }: {
+  productionMultipliers?: ProductionMultipliers;
+  autoSellRate?: NodeSaleRate | null;
   upgrade: Upgrade;
   category: string;
   resources: Record<ResourceType, Resource>;
@@ -198,13 +200,22 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
 
   const totalCost = useMemo(() => calculateUpgradeCost(upgrade, quantity), [upgrade, quantity]);
   
-  const canAfford = useMemo(() => Object.entries(totalCost).every(
+  const hasEnough = useMemo(() => Object.entries(totalCost).every(
     ([key, cost]) => resources[key as ResourceType].amount >= cost
   ), [totalCost, resources]);
+  // Short on Nodes only? The purchase sells the missing data itself (after the first ascension).
+  const autoSell = useMemo(
+    () => hasEnough ? null : getAutoSellPlan(totalCost, { data: resources.data.amount, credits: resources.credits.amount }, autoSellRate),
+    [hasEnough, totalCost, resources, autoSellRate]
+  );
+  const canAfford = hasEnough || autoSell !== null;
 
   const missingCostLine = useMemo(() => getMissingCostLine(totalCost, resources, language), [totalCost, resources, language]);
-  const currentEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count, language), [upgrade, language]);
-  const afterBuyEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count + quantity, language), [upgrade, quantity, language]);
+  const currentEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count, language, productionMultipliers), [upgrade, language, productionMultipliers]);
+  const afterBuyEffect = useMemo(() => formatUpgradeEffect(upgrade, upgrade.count + quantity, language, productionMultipliers), [upgrade, quantity, language, productionMultipliers]);
+  const bonusMultiplier = upgrade.effect.type === 'production'
+    ? (upgrade.effect.resource === 'crypto' ? productionMultipliers.crypto : productionMultipliers.data)
+    : 1;
 
   const checkpointProgress = useMemo(() => getCheckpointProgress(upgrade.count, category), [upgrade.count, category]);
   const progressPercent = (checkpointProgress.current / checkpointProgress.max) * 100;
@@ -274,6 +285,11 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
             <p className="text-muted-foreground uppercase tracking-wider">{translate(language, 'upgradePanel.afterBuy')}</p>
             <p className={`${styles.previewText} mt-0.5 font-semibold break-words whitespace-normal leading-snug`}>{afterBuyEffect}</p>
           </div>
+          {bonusMultiplier >= 1.01 && (
+            <p className="col-span-2 text-[9px] text-muted-foreground normal-case">
+              {progressionText(language, 'bonusIncluded', { mult: formatNumber(Number(bonusMultiplier.toFixed(2))) })}
+            </p>
+          )}
         </div>
 
         <p className="text-xs text-left text-muted-foreground leading-relaxed whitespace-normal break-words">
@@ -289,6 +305,11 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
           )}
           {!canAfford && missingCostLine && (
             <span className="block mt-1 text-rose-400/90">{missingCostLine}</span>
+          )}
+          {autoSell && (
+            <span className="block mt-1 text-amber-300/90 font-normal">
+              {progressionText(language, 'autoSell', { amount: formatNumber(autoSell.dataToSell) })}
+            </span>
           )}
         </div>
 
@@ -331,7 +352,9 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
 
 UpgradeCard.displayName = 'UpgradeCard';
 
-const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain, language }: { 
+const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePreview, buyMode, getBulkProductionGain, language, productionMultipliers, autoSellRate }: { 
+  productionMultipliers?: ProductionMultipliers;
+  autoSellRate?: NodeSaleRate | null;
   category: string;
   upgrades: Upgrade[];
   resources: Record<ResourceType, Resource>;
@@ -359,6 +382,8 @@ const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePrev
           buyMode={buyMode}
           getBulkProductionGain={getBulkProductionGain}
           language={language}
+          productionMultipliers={productionMultipliers}
+          autoSellRate={autoSellRate}
         />
       ))}
     </div>
@@ -367,7 +392,7 @@ const UpgradeList = memo(({ category, upgrades, resources, onBuy, getUpgradePrev
 
 UpgradeList.displayName = 'UpgradeList';
 
-export const UpgradePanel = memo(function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgradePreview, getBulkProductionGain, selectedBulkOption, onBulkOptionChange, contracts, onClaimContractReward, onRefreshContracts, totalCritChance = 0, ascensionLevel = 0, tutorialHighlight, activeUpgradeTab = 'fabrication', onSetActiveUpgradeTab }: UpgradePanelProps) {
+export const UpgradePanel = memo(function UpgradePanel({ upgrades, resources, onBuy, playSound, getUpgradePreview, getBulkProductionGain, productionMultipliers, autoSellRate, selectedBulkOption, onBulkOptionChange, contracts, onClaimContractReward, onRefreshContracts, totalCritChance = 0, ascensionLevel = 0, tutorialHighlight, activeUpgradeTab = 'fabrication', onSetActiveUpgradeTab }: UpgradePanelProps) {
   const { t, language } = useI18n();
   const buyMode: BuyMode = selectedBulkOption === 1 ? '1x' : selectedBulkOption === 10 ? '10x' : selectedBulkOption === 100 ? '100x' : 'MAX';
   const clickUnlocked = (upgrades.find(u => u.id === 'unlock_click_upgrades')?.count ?? 0) > 0;
@@ -550,19 +575,19 @@ export const UpgradePanel = memo(function UpgradePanel({ upgrades, resources, on
         <div className="flex-1 overflow-hidden relative">
           <TabsContent value="fabrication" className="h-full mt-0 absolute inset-0">
             <ScrollArea className="h-full">
-              <UpgradeList category="fabrication" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} />
+              <UpgradeList category="fabrication" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} productionMultipliers={productionMultipliers} autoSellRate={autoSellRate} />
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="click_upgrades" className="h-full mt-0 absolute inset-0">
             <ScrollArea className="h-full">
-              <UpgradeList category="click_upgrades" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} />
+              <UpgradeList category="click_upgrades" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} productionMultipliers={productionMultipliers} autoSellRate={autoSellRate} />
             </ScrollArea>
           </TabsContent>
           
           <TabsContent value="crypto_mining" className="h-full mt-0 absolute inset-0">
              <ScrollArea className="h-full">
-              <UpgradeList category="crypto_mining" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} />
+              <UpgradeList category="crypto_mining" upgrades={unlockedUpgrades} resources={resources} onBuy={onBuy} getUpgradePreview={getUpgradePreview} buyMode={buyMode} getBulkProductionGain={getBulkProductionGain} language={language} productionMultipliers={productionMultipliers} autoSellRate={autoSellRate} />
             </ScrollArea>
           </TabsContent>
 

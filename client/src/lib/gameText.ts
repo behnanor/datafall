@@ -95,7 +95,7 @@ const PRESTIGE_UPGRADE_TEXTS: Record<string, TextEntry> = {
   },
   p_starting: {
     name: { en: "Head Start", tr: "Önde Başlangıç", "pt-BR": "Largada Inicial", es: "Ventaja Inicial" },
-    description: { en: "Start each run with 1 minute of your last run's data production per level.", tr: "Her tura, seviye başına önceki turun 1 dakikalık veri üretimiyle başla.", "pt-BR": "Comece cada run com 1 minuto da produção de dados da run anterior por nível.", es: "Empieza cada partida con 1 minuto de la producción de datos de la anterior por nivel." },
+    description: { en: "Start each run with 12 seconds of your last run's data production per level.", tr: "Her tura, seviye başına önceki turun 12 saniyelik veri üretimiyle başla.", "pt-BR": "Comece cada run com 12 segundos da produção de dados da run anterior por nível.", es: "Empieza cada partida con 12 segundos de la producción de datos de la anterior por nivel." },
   },
   p_crit: {
     name: { en: "Cursed Fate", tr: "Lanetli Kader", "pt-BR": "Destino Amaldiçoado", es: "Destino Maldito" },

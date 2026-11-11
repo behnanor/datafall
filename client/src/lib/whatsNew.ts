@@ -114,6 +114,14 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
         "Магазин престижа: метки стиля игры и фильтр, значок «Лучшая цена», три слабых улучшения усилены. Контракты теперь дают достойные награды.",
         "声望商店：玩法标签与筛选、“最划算”标记，三项较弱的升级已加强。合约奖励现在物有所值。",
       ] },
+      { id: "late-pacing", area: "content", text: [
+        "Late runs no longer shrink to a minute: ascensions past 15 cost a bit more each time, and Head Start gives 12 seconds per level.",
+        "Geç turlar artık bir dakikaya inmiyor: 15'ten sonraki her yükseliş biraz daha pahalı, Önde Başlangıç seviye başına 12 saniye veriyor.",
+        "As runs finais não encolhem mais para um minuto: ascensões após a 15 custam um pouco mais a cada vez, e a Largada Inicial dá 12 segundos por nível.",
+        "Las partidas tardías ya no se reducen a un minuto: las ascensiones tras la 15 cuestan algo más cada vez, y Ventaja Inicial da 12 segundos por nivel.",
+        "Поздние забеги больше не сжимаются до минуты: вознесения после 15-го каждый раз немного дороже, а «Фора на старте» даёт 12 секунд за уровень.",
+        "后期轮次不再缩短到一分钟：第 15 次之后每次飞升都会更贵一些，领先开局每级提供 12 秒。",
+      ] },
       { id: "tutorial", area: "ui", text: [
         "A shorter tutorial that teaches the real loop: click, build, sell, mine, ascend, with a reward at every step.",
         "Gerçek döngüyü öğreten daha kısa bir öğretici: tıkla, kur, sat, kaz, yüksel; her adımda ödül.",

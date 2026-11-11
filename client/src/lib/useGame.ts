@@ -440,7 +440,7 @@ const migratePrestigeUpgrades = (saved: unknown): PrestigeUpgrade[] => {
   }));
 };
 
-const INITIAL_STATE = {
+export const INITIAL_STATE = {
   resources: {
     credits: { amount: 0, perSecond: 0, unlocked: true },
     data: { amount: 0, perSecond: 0, unlocked: true },
@@ -952,7 +952,7 @@ export const getCheckpointProgress = (count: number, category: string): { curren
 // - Production: First level is base value, then each level adds 10% of base value
 // - Click / crit chance / crit multiplier: Linear progression by level count
 // - Every checkpoint applies the global checkpoint multiplier
-const getEffectiveValue = (upgrade: Upgrade): number => {
+export const getEffectiveValue = (upgrade: Upgrade): number => {
   if (upgrade.count === 0) return 0;
   const baseValue = upgrade.effect.value;
   const interval = getCheckpointInterval(upgrade.category);
@@ -1157,7 +1157,7 @@ export const getPrestigeGainBreakdown = (
 export const calculatePrestigeGain = (crypto: number, ascensionCount: number = 0): number =>
   getPrestigeGainBreakdown(crypto, ascensionCount).total;
 
-const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
+export const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   // v1.03: costs re-targeted so the whole shop (~300k) is affordable by about ascension 50.
   { id: 'p_click', name: 'Eternal Strike', description: '+5% click power per level.', cost: 25, costMultiplier: 1.10, maxLevel: 40, effect: { type: 'click_boost', value: 0.05 }, count: 0 },
   // Quantum Forge (p_mega_prod) was merged into this one; old levels are converted on load.

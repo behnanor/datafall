@@ -38,7 +38,9 @@ export const combineRunMods = (...parts: Array<Partial<RunMods> | null | undefin
 // After every ascension (from the first one on) the player is offered 3 protocols and picks one for the
 // next run, or plays "Standard". Each protocol is a trade-off that favours one play style, so runs feel
 // different and idle and active players both get a good pick.
-export const RUN_PROTOCOL_UNLOCK_ASCENSION = 1;
+// From the 3rd ascension: right after the 1st one a new player already gets a loot box, a pet and the
+// Prestige hint at once, so the picker waits until the basics are known (Behnan, 2026-11-11).
+export const RUN_PROTOCOL_UNLOCK_ASCENSION = 3;
 export const RUN_PROTOCOL_OFFER_SIZE = 3;
 
 export type RunProtocolId =

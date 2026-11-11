@@ -67,12 +67,12 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
         "网络事件：每隔几分钟出现一次短暂惊喜，如数据涌流、市场暴涨、待破解的加密缓存或一笔交易。",
       ] },
       { id: "run-protocols", area: "content", text: [
-        "Run Protocols: after each ascension, pick 1 of 3 modifiers for the next run, built for idle or active play.",
-        "Tur Protokolleri: her yükselişten sonra bir sonraki tur için 3 değiştiriciden birini seç; boşta ya da aktif oynayışa göre.",
-        "Protocolos de Rodada: após cada ascensão, escolha 1 de 3 modificadores para a próxima rodada, para jogo ocioso ou ativo.",
-        "Protocolos de Partida: tras cada ascensión, elige 1 de 3 modificadores para la siguiente partida, para juego pasivo o activo.",
-        "Протоколы забега: после каждого вознесения выбери 1 из 3 модификаторов на следующий забег, для АФК или активной игры.",
-        "本轮协议：每次飞升后，为下一轮从 3 个修正中选 1 个，适合挂机或主动玩法。",
+        "Run Protocols: from ascension 3, after each ascension, pick 1 of 3 modifiers for the next run, built for idle or active play.",
+        "Tur Protokolleri: 3. yükselişten itibaren her yükselişten sonra bir sonraki tur için 3 değiştiriciden birini seç; boşta ya da aktif oynayışa göre.",
+        "Protocolos de Rodada: a partir da ascensão 3, após cada ascensão escolha 1 de 3 modificadores para a próxima rodada, para jogo ocioso ou ativo.",
+        "Protocolos de Partida: desde la ascensión 3, tras cada ascensión elige 1 de 3 modificadores para la siguiente partida, para juego pasivo o activo.",
+        "Протоколы забега: с 3-го вознесения после каждого вознесения выбери 1 из 3 модификаторов на следующий забег, для АФК или активной игры.",
+        "本轮协议：从第 3 次飞升起，每次飞升后，为下一轮从 3 个修正中选 1 个，适合挂机或主动玩法。",
       ] },
       { id: "boss-mods", area: "boss", text: [
         "Three new boss modifiers (Phasing, Bounty, Volatile), and the same modifier no longer repeats fight after fight.",

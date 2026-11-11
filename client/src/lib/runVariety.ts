@@ -86,7 +86,7 @@ export const RUN_PROTOCOLS: RunProtocol[] = [
     style: "mixed",
     mods: { sell: 2.5, crypto: 0.85 },
     name: ["Market Maker", "Piyasa Yapıcı", "Formador de Mercado", "Creador de Mercado", "Маркетмейкер", "做市商"],
-    desc: ["Selling data gives +150% Nodes. Crypto production -15%.", "Veri satışı +%150 Dizin verir. Kripto üretimi -%15.", "Vender dados dá +150% de Nós. Produção de cripto -15%.", "Vender datos da +150% de Nodos. Producción de cripto -15%.", "Продажа данных даёт +150% узлов. Добыча крипты -15%.", "出售数据获得 +150% 节点。加密货币产量 -15%。"],
+    desc: ["Selling data gives +150% Nodes. Crypto production -15%.", "Veri satışı +%150 Dizin verir. Kripto üretimi -%15.", "Vender dados dá +150% de Nodes. Produção de cripto -15%.", "Vender datos da +150% de Nodos. Producción de cripto -15%.", "Продажа данных даёт +150% узлов. Добыча крипты -15%.", "出售数据获得 +150% 节点。加密货币产量 -15%。"],
   },
   {
     id: "lucky_packets",
@@ -107,7 +107,7 @@ export const RUN_PROTOCOLS: RunProtocol[] = [
     style: "mixed",
     mods: { data: 1.35, crypto: 1.35, sell: 0.5 },
     name: ["Glass Cannon", "Cam Top", "Canhão de Vidro", "Cañón de Cristal", "Стеклянная пушка", "玻璃大炮"],
-    desc: ["Data and crypto production +35%. Selling data gives 50% fewer Nodes.", "Veri ve kripto üretimi +%35. Veri satışı %50 daha az Dizin verir.", "Produção de dados e cripto +35%. Vender dados dá 50% menos Nós.", "Producción de datos y cripto +35%. Vender datos da un 50% menos de Nodos.", "Производство данных и крипты +35%. Продажа данных даёт на 50% меньше узлов.", "数据和加密货币产量 +35%。出售数据获得的节点 -50%。"],
+    desc: ["Data and crypto production +35%. Selling data gives 50% fewer Nodes.", "Veri ve kripto üretimi +%35. Veri satışı %50 daha az Dizin verir.", "Produção de dados e cripto +35%. Vender dados dá 50% menos Nodes.", "Producción de datos y cripto +35%. Vender datos da un 50% menos de Nodos.", "Производство данных и крипты +35%. Продажа данных даёт на 50% меньше узлов.", "数据和加密货币产量 +35%。出售数据获得的节点 -50%。"],
   },
 ];
 
@@ -192,6 +192,8 @@ export interface NetworkEventDef {
   needsCredits?: boolean;
   name: L6;
   desc: L6;
+  // Shown instead of desc once a choice event was accepted.
+  activeDesc?: L6;
 }
 
 export const ENCRYPTED_CACHE_CLICKS = 30;
@@ -224,7 +226,7 @@ export const NETWORK_EVENTS: NetworkEventDef[] = [
   {
     id: "market_spike", kind: "buff", weight: 4, durationSec: 40, mods: { sell: 3 },
     name: ["Market Spike", "Piyasa Sıçraması", "Pico de Mercado", "Pico del Mercado", "Скачок рынка", "市场暴涨"],
-    desc: ["Selling data gives x3 Nodes. Sell now!", "Veri satışı x3 Dizin verir. Şimdi sat!", "Vender dados dá x3 Nós. Venda agora!", "Vender datos da x3 Nodos. ¡Vende ya!", "Продажа данных даёт x3 узлов. Продавай!", "出售数据获得 x3 节点。快卖！"],
+    desc: ["Selling data gives x3 Nodes. Sell now!", "Veri satışı x3 Dizin verir. Şimdi sat!", "Vender dados dá x3 Nodes. Venda agora!", "Vender datos da x3 Nodos. ¡Vende ya!", "Продажа данных даёт x3 узлов. Продавай!", "出售数据获得 x3 节点。快卖！"],
   },
   {
     id: "overclock_window", kind: "buff", weight: 4, durationSec: 20, mods: { click: 3, critChance: 0.15 }, needsClicks: true,
@@ -254,11 +256,12 @@ export const NETWORK_EVENTS: NetworkEventDef[] = [
     desc: [
       `Pay ${ROGUE_BROKER_COST_SHARE * 100}% of your Nodes for x3 crypto production for 60 s?`,
       `Dizinlerinin %${ROGUE_BROKER_COST_SHARE * 100}'ini öde, 60 sn boyunca kripto üretimi x3 olsun mu?`,
-      `Pagar ${ROGUE_BROKER_COST_SHARE * 100}% dos seus Nós por cripto x3 durante 60 s?`,
+      `Pagar ${ROGUE_BROKER_COST_SHARE * 100}% dos seus Nodes por cripto x3 durante 60 s?`,
       `¿Pagar el ${ROGUE_BROKER_COST_SHARE * 100}% de tus Nodos por cripto x3 durante 60 s?`,
       `Отдать ${ROGUE_BROKER_COST_SHARE * 100}% узлов за x3 добычи крипты на 60 с?`,
       `支付 ${ROGUE_BROKER_COST_SHARE * 100}% 的节点，换取 60 秒加密货币产量 x3？`,
     ],
+    activeDesc: ["Deal made: crypto production x3.", "Anlaşma tamam: kripto üretimi x3.", "Negócio fechado: produção de cripto x3.", "Trato hecho: producción de cripto x3.", "Сделка заключена: добыча крипты x3.", "交易达成：加密货币产量 x3。"],
   },
   {
     id: "signal_fork", kind: "choice", weight: 3, durationSec: 60,

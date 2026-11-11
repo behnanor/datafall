@@ -104,7 +104,9 @@ export function NetworkEventBanner({ event, language, onRespond, shiftX = 0 }: {
   const descText = event && def
     ? (event.phase === "active" && event.chosen
         ? pick6(language, SIGNAL_FORK_OPTIONS[event.chosen].label)
-        : pick6(language, def.desc))
+        : event.phase === "active" && def.activeDesc
+          ? pick6(language, def.activeDesc)
+          : pick6(language, def.desc))
     : null;
 
   return (

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Volume2, VolumeX, Music, LogOut, Settings, BookOpen, SkipForward, RotateCcw } from 'lucide-react';
+import { Volume2, VolumeX, Music, LogOut, Settings, BookOpen, SkipForward, RotateCcw, Sparkles } from 'lucide-react';
+import { pick6 } from '@/lib/bossVariants';
 import { Slider } from '@/components/ui/slider';
 import { useI18n, type Language } from '@/lib/i18n';
 import { FPS_CAP_OPTIONS, getFpsCap, setFpsCap, type FpsCap } from '@/lib/fpsLimiter';
@@ -41,6 +42,8 @@ interface SettingsModalProps {
   reduceSceneGlow?: boolean;
   onSetReduceSceneGlow?: (reduced: boolean) => void;
   onResetGame?: () => void;
+  /** v1.04: reopen the What's new screen. */
+  onOpenWhatsNew?: () => void;
 }
 
 export function SettingsModal({
@@ -65,6 +68,7 @@ export function SettingsModal({
   reduceSceneGlow = false,
   onSetReduceSceneGlow,
   onResetGame,
+  onOpenWhatsNew,
 }: SettingsModalProps) {
   const { language, setLanguage, t } = useI18n();
   const [resetArmed, setResetArmed] = useState(false);
@@ -347,6 +351,18 @@ export function SettingsModal({
                       {t('settings.restartTutorial')}
                     </Button>
                   </div>
+                )}
+                {onOpenWhatsNew && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onOpenWhatsNew}
+                    className="w-full text-xs h-8 bg-fuchsia-600/10 hover:bg-fuchsia-600/20 text-fuchsia-300 border border-fuchsia-500/40 hover:border-fuchsia-500/60 font-mono transition-all duration-200 flex items-center justify-center gap-1"
+                    data-testid="button-open-whats-new"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    {pick6(language, ["What's new in this version", "Bu sürümde neler yeni", "Novidades desta versão", "Novedades de esta versión", "Что нового в этой версии", "本版本更新内容"])}
+                  </Button>
                 )}
               </div>
 

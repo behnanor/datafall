@@ -97,8 +97,16 @@ export const getPendingAbyssBoonPicks = (depth: number, owned: AbyssBoonId[]): n
 
 /** Three different boons offered for the next pick. Seeded by the pick number, so it never re-rolls. */
 export const getAbyssBoonOffer = (ownedCount: number): AbyssBoonId[] => {
+  // mulberry32 (same fix as boss modifiers): the old LCG gave nearly the same offer for neighbouring picks
+  // (picks 5 and 6, 9 and 10 were identical).
   let s = ((ownedCount + 1) * 2654435761 + 97) >>> 0;
-  const r = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const r = () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
   const pool = ABYSS_BOONS.map(b => b.id);
   const out: AbyssBoonId[] = [];
   while (out.length < 3 && pool.length) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);

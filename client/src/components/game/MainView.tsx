@@ -1,5 +1,5 @@
 import { getClickEffectsEnabled } from '@/lib/displayPrefs';
-import { bumpElement, shakeElement } from '@/lib/juice';
+import { bumpElement, clickJuiceAllowed, shakeElement } from '@/lib/juice';
 import { shiftColorHue } from '@/lib/colorEra';
 import { memo, useRef, useState, useEffect, useMemo, useCallback, type RefObject } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -327,6 +327,8 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
   // Game feel: the room layer shakes on crits, the Total Data number bumps on clicks.
   const roomShakeRef = useRef<HTMLDivElement>(null);
   const dataCounterRef = useRef<HTMLDivElement>(null);
+  // Read on every render (cheap localStorage read) so the Settings toggle applies to the next click.
+  const popClickNumbers = clickJuiceAllowed();
   const blackMarketShipRef = useRef<HTMLButtonElement>(null);
   const cryptoRelicShipRef = useRef<HTMLButtonElement>(null);
   const paragonShipRef = useRef<HTMLButtonElement>(null);
@@ -1445,15 +1447,16 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
           <motion.div
             key={click.id}
             // Game feel: numbers pop in, overshoot, then drift up and fade (crits pop harder).
-            initial={{ opacity: 0, scale: 0.5, x: 0, y: 0 }}
-            animate={{
+            // Click effects off (or OS reduce motion): the plain v1.03 float-up, no pop.
+            initial={popClickNumbers ? { opacity: 0, scale: 0.5, x: 0, y: 0 } : { opacity: 1, scale: click.isCrit ? 1.3 : 1 }}
+            animate={popClickNumbers ? {
               opacity: [0, 1, 1, 0],
               scale: click.isCrit ? [0.5, 1.75, 1.3, 1.2] : [0.5, 1.2, 1, 0.95],
               x: [0, (click.dx ?? 0) * 0.3, click.dx ?? 0, (click.dx ?? 0) * 1.2],
               y: [0, -14, -80, -120],
-            }}
+            } : { opacity: 0, y: -120 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.2, times: [0, 0.1, 0.65, 1], ease: 'easeOut' }}
+            transition={popClickNumbers ? { duration: 1.2, times: [0, 0.1, 0.65, 1], ease: 'easeOut' } : { duration: 1.2, ease: 'linear' }}
             className={`absolute pointer-events-none font-mono font-bold z-50 whitespace-nowrap ${
               click.isCrit 
                 ? 'text-red-400 text-2xl drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]' 

@@ -37,9 +37,12 @@ const EVENT_COLORS: Record<string, string> = {
   signal_fork: "#60a5fa",
 };
 
-export function NetworkEventBanner({ event, language, onRespond, shiftX = 0 }: {
+export function NetworkEventBanner({ event, language, onRespond, shiftX = 0, sideInset = 0, reduceGlow = false }: {
   event: ActiveNetworkEvent | null;
   shiftX?: number;
+  // Width taken by the open side panels: the banner stays inside the play area (large text size / small window).
+  sideInset?: number;
+  reduceGlow?: boolean;
   language: Language;
   onRespond: (answer: "accept" | "decline" | "idle" | "active") => void;
 }) {
@@ -118,8 +121,8 @@ export function NetworkEventBanner({ event, language, onRespond, shiftX = 0 }: {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 24 }}
           transition={{ duration: 0.25 }}
-          className="pointer-events-auto fixed bottom-44 z-[30] transition-[left] duration-300 w-[380px] max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-lg border bg-slate-950/90 px-3 py-2 shadow-lg backdrop-blur-sm"
-          style={{ left: `calc(50% + ${shiftX}px)`, borderColor: `${color}80`, boxShadow: `0 0 18px ${color}33` }}
+          className="pointer-events-auto fixed bottom-44 z-[30] transition-[left] duration-300 w-[380px] -translate-x-1/2 rounded-lg border bg-slate-950/90 px-3 py-2 shadow-lg backdrop-blur-sm"
+          style={{ left: `calc(50% + ${shiftX}px)`, maxWidth: `max(240px, calc(100vw - ${sideInset + 72}px))`, borderColor: `${color}80`, boxShadow: reduceGlow ? 'none' : `0 0 18px ${color}33` }}
           data-testid="network-event-banner"
           role="status"
         >

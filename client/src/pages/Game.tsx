@@ -2362,7 +2362,7 @@ export default function GamePage() {
             dataPerClick={getDataPerClick()}
             permanentClickPercent={permanentClickPercent}
             echoPrestigeMultiplier={getEchoPrestigeMultiplier(currentBossVariant.depth ?? 10) + abyssBoonTotals.echoBonus}
-            victoryPrestigeMultiplier={isFinaleEncounter ? 1 : abyssBoonTotals.prestigeMultiplier}
+            victoryPrestigeMultiplier={isFinaleEncounter ? 1 : abyssBoonTotals.prestigeMultiplier * (currentBossVariant.modifiers.includes('bounty') ? BOUNTY_PRESTIGE_MULTIPLIER : 1)}
             bossDamageMultiplier={paragonBossBonuses.damageMultiplier}
             bonusTimeSeconds={paragonBossBonuses.bonusSeconds}
             isMainScreen={true}
@@ -2477,7 +2477,7 @@ export default function GamePage() {
 
       {/* v1.04 Network Events + Run Protocols */}
       {!isBossEncounterActive && (
-        <NetworkEventBanner event={networkEvent} language={language} onRespond={respondToNetworkEvent} shiftX={playAreaShiftX} />
+        <NetworkEventBanner event={networkEvent} language={language} onRespond={respondToNetworkEvent} shiftX={playAreaShiftX} sideInset={(leftPanelOpen ? 320 : 0) + (rightPanelOpen ? 384 : 0)} reduceGlow={reduceSceneGlow} />
       )}
       {!isBossEncounterActive && !showDemoEnd && (
         <RunProtocolChip state={runProtocol} language={language} onOpenPicker={() => setProtocolPickerDismissed(false)} shiftX={playAreaShiftX} />

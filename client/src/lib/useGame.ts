@@ -1,7 +1,7 @@
 import { emitJuiceBanner } from './juice';
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
-import { combineRunMods, getRunProtocol, migrateRunProtocol, rollProtocolOffer, INITIAL_RUN_PROTOCOL, RUN_PROTOCOL_UNLOCK_ASCENSION, type RunProtocolId, type RunProtocolState, scaleEventMods, rollNextEventDelaySec, pickNetworkEvent, getNetworkEvent, SIGNAL_FORK_OPTIONS, ENCRYPTED_CACHE_CLICKS, ENCRYPTED_CACHE_DATA_SECONDS, ENCRYPTED_CACHE_CRYPTO_SECONDS, ROGUE_BROKER_COST_SHARE, CHOICE_DECIDE_SECONDS, EVENTS_MIN_UPGRADES, type ActiveNetworkEvent, type NetworkEventId, type RunMods } from './runVariety';
+import { combineRunMods, getRunProtocol, migrateRunProtocol, rollProtocolOffer, INITIAL_RUN_PROTOCOL, RUN_PROTOCOL_UNLOCK_ASCENSION, type RunProtocolId, type RunProtocolState, scaleEventMods, rollNextEventDelaySec, pickNetworkEvent, getNetworkEvent, SIGNAL_FORK_OPTIONS, ENCRYPTED_CACHE_CLICKS, ENCRYPTED_CACHE_DATA_SECONDS, ENCRYPTED_CACHE_CRYPTO_SECONDS, ROGUE_BROKER_COST_SHARE, CHOICE_DECIDE_SECONDS, EVENTS_MIN_UPGRADES, NETWORK_EVENT_BLOCKING_SELECTOR, type ActiveNetworkEvent, type NetworkEventId, type RunMods } from './runVariety';
 import { type AbyssBoonId, isAbyssBoonId, computeAbyssBoonTotals, getAbyssBoonOffer, getPendingAbyssBoonPicks } from './abyssBoons';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { unlockSteamAchievement, isSteamAvailable } from './steamIntegration';
@@ -9521,6 +9521,9 @@ useEffect(() => {
       return;
     }
     if (pickupSpawningPaused || (typeof document !== 'undefined' && document.hidden)) return;
+    // Don't start an event under a full-screen window (shops, loot box, protocol picker, What's New, Abyss Boons,
+    // offline report): the player can't see the banner there, and choice/cache events would just time out.
+    if (typeof document !== 'undefined' && document.querySelector(NETWORK_EVENT_BLOCKING_SELECTOR)) return;
     if (stats.totalUpgradesPurchased < EVENTS_MIN_UPGRADES) return;
     if (nextNetworkEventInRef.current < 0) nextNetworkEventInRef.current = rollNextEventDelaySec(true, runMods.eventRate);
     nextNetworkEventInRef.current -= 1;

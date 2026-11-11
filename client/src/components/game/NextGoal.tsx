@@ -19,6 +19,7 @@ export const ASCENSION_MILESTONES: AscensionMilestone[] = [
   { at: PARAGON_LAB_UNLOCK_ASCENSION, label: ["Paragon Lab", "Paragon Laboratuvarı", "Laboratório Paragon", "Laboratorio Paragon", "Лаборатория Paragon", "Paragon 实验室"] },
   { at: 25, label: ["Paragon II modules", "Paragon II modülleri", "Módulos Paragon II", "Módulos Paragon II", "Модули Paragon II", "Paragon II 模块"] },
   { at: CHALLENGE_UNLOCK_ASCENSION, label: ["Challenges", "Meydan Okumalar", "Desafios", "Desafíos", "Испытания", "挑战"] },
+  { at: 35, label: ["Paragon III: boss damage", "Paragon III: boss hasarı", "Paragon III: dano em chefes", "Paragon III: daño a jefes", "Paragon III: урон по боссам", "Paragon III：首领伤害"] },
   { at: 40, label: ["Overclock upgrades", "Hız aşırtma yükseltmeleri", "Melhorias de Overclock", "Mejoras de Overclock", "Разгонные улучшения", "超频升级"] },
   { at: 45, label: ["Core Signal boss", "Çekirdek Sinyali bossu", "Chefe Sinal do Núcleo", "Jefe Señal del Núcleo", "Босс: Сигнал Ядра", "核心信号首领"] },
   { at: FINALE_UNLOCK_ASCENSION, label: ["Final Breach", "Son Saldırı", "Invasão Final", "Brecha Final", "Финальный взлом", "最终突破"] },

@@ -38,14 +38,14 @@ export interface AbyssBoonDef {
 
 export const ABYSS_BOONS: AbyssBoonDef[] = [
   {
-    id: "surge", color: "#22d3ee", productionBoost: 20,
+    id: "surge", color: "#22d3ee", productionBoost: 10,
     name: ["Abyssal Surge", "Uçurum Dalgası", "Surto Abissal", "Oleada Abisal", "Всплеск бездны", "深渊涌流"],
-    desc: ["+20% production", "+%20 üretim", "+20% de produção", "+20% de producción", "+20% производства", "产量 +20%"],
+    desc: ["+10% production", "+%10 üretim", "+10% de produção", "+10% de producción", "+10% производства", "产量 +10%"],
   },
   {
-    id: "miner", color: "#f59e0b", cryptoBoost: 20,
+    id: "miner", color: "#f59e0b", cryptoBoost: 10,
     name: ["Deep Ledger", "Derin Defter", "Livro Profundo", "Libro Profundo", "Глубинный реестр", "深层账本"],
-    desc: ["+20% crypto", "+%20 kripto", "+20% de cripto", "+20% de cripto", "+20% крипты", "加密币 +20%"],
+    desc: ["+10% crypto", "+%10 kripto", "+10% de cripto", "+10% de cripto", "+10% крипты", "加密币 +10%"],
   },
   {
     id: "striker", color: "#a3e635", clickBoost: 25,

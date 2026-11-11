@@ -326,8 +326,15 @@ export const scaleEventMods = (mods: Partial<RunMods> | undefined, power: number
   };
 };
 
-export const rollNextEventDelaySec = (first: boolean, eventRate: number): number => {
-  const [min, max] = first ? [FIRST_EVENT_MIN_SEC, FIRST_EVENT_MAX_SEC] : [EVENT_GAP_MIN_SEC, EVENT_GAP_MAX_SEC];
+// v1.04 sim: late runs last 1-3 minutes, so a first event at 90-150 s almost never happened after ~asc 20.
+export const LATE_FIRST_EVENT_ASCENSION = 20;
+export const LATE_FIRST_EVENT_MIN_SEC = 30;
+export const LATE_FIRST_EVENT_MAX_SEC = 60;
+export const rollNextEventDelaySec = (first: boolean, eventRate: number, ascensions = 0): number => {
+  const late = ascensions >= LATE_FIRST_EVENT_ASCENSION;
+  const [min, max] = first
+    ? (late ? [LATE_FIRST_EVENT_MIN_SEC, LATE_FIRST_EVENT_MAX_SEC] : [FIRST_EVENT_MIN_SEC, FIRST_EVENT_MAX_SEC])
+    : [EVENT_GAP_MIN_SEC, EVENT_GAP_MAX_SEC];
   return Math.round((min + Math.random() * (max - min)) / Math.max(0.25, eventRate));
 };
 

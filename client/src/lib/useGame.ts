@@ -3259,13 +3259,14 @@ export const PARAGON_UPGRADES: ParagonUpgrade[] = [
     effect: { type: 'boss_time_seconds', value: 1 },
   },
   // v1.04 Endless: after the Core falls, prestige had nothing left to buy. The Abyss Core has no cap; each
-  // level costs 12% more, so it keeps giving a reason to push deeper.
+  // level costs 25% more (was 12%: with the Surge/Deep Ledger boons the sim showed Endless runs getting
+  // shorter the deeper you went), so it keeps giving a reason to push deeper without running away.
   {
     id: 'abyss_core',
     name: 'Abyss Core',
     description: '+5% production per level, no level cap. Endless only: unlocks after you break the Core.',
     baseCost: 4000,
-    costMultiplier: 1.12,
+    costMultiplier: 1.25,
     maxLevel: 9999,
     requiresFinale: true,
     uncapped: true,
@@ -9525,10 +9526,10 @@ useEffect(() => {
     // offline report): the player can't see the banner there, and choice/cache events would just time out.
     if (typeof document !== 'undefined' && document.querySelector(NETWORK_EVENT_BLOCKING_SELECTOR)) return;
     if (stats.totalUpgradesPurchased < EVENTS_MIN_UPGRADES) return;
-    if (nextNetworkEventInRef.current < 0) nextNetworkEventInRef.current = rollNextEventDelaySec(true, runMods.eventRate);
+    if (nextNetworkEventInRef.current < 0) nextNetworkEventInRef.current = rollNextEventDelaySec(true, runMods.eventRate, stats.totalAscensions);
     nextNetworkEventInRef.current -= 1;
     if (nextNetworkEventInRef.current > 0) return;
-    nextNetworkEventInRef.current = rollNextEventDelaySec(false, runMods.eventRate);
+    nextNetworkEventInRef.current = rollNextEventDelaySec(false, runMods.eventRate, stats.totalAscensions);
 
     const forced = debugForcedNetworkEventRef.current;
     debugForcedNetworkEventRef.current = null;

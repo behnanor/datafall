@@ -14,7 +14,7 @@ import {
 import {
   RUN_PROTOCOLS, rollProtocolOffer, combineRunMods, NETWORK_EVENTS, scaleEventMods, SIGNAL_FORK_OPTIONS,
   ENCRYPTED_CACHE_CLICKS, ENCRYPTED_CACHE_SECONDS, ENCRYPTED_CACHE_DATA_SECONDS, ENCRYPTED_CACHE_CRYPTO_SECONDS,
-  ROGUE_BROKER_COST_SHARE, FIRST_EVENT_MIN_SEC, FIRST_EVENT_MAX_SEC, EVENT_GAP_MIN_SEC, EVENT_GAP_MAX_SEC,
+  ROGUE_BROKER_COST_SHARE, LATE_FIRST_EVENT_ASCENSION, LATE_FIRST_EVENT_MIN_SEC, LATE_FIRST_EVENT_MAX_SEC, FIRST_EVENT_MIN_SEC, FIRST_EVENT_MAX_SEC, EVENT_GAP_MIN_SEC, EVENT_GAP_MAX_SEC,
   type RunMods, type RunProtocolId, type NetworkEventId,
 } from '../../client/src/lib/runVariety';
 import { ABYSS_BOONS, getAbyssBoonOffer, computeAbyssBoonTotals, ABYSS_BOON_EVERY_DEPTHS, type AbyssBoonId } from '../../client/src/lib/abyssBoons';
@@ -66,6 +66,10 @@ const boonTotals = () => computeAbyssBoonTotals(boons);
 
 interface RunResult { cv?: number; t: number; crypto: number; longestGap: number; gapAt: number; events: number; contractCrypto: number; contractPrestige: number }
 
+const rollFirst = (r: () => number, rate: number) => {
+  const [lo, hi] = asc >= LATE_FIRST_EVENT_ASCENSION ? [LATE_FIRST_EVENT_MIN_SEC, LATE_FIRST_EVENT_MAX_SEC] : [FIRST_EVENT_MIN_SEC, FIRST_EVENT_MAX_SEC];
+  return Math.round((lo + r() * (hi - lo)) / Math.max(0.25, rate));
+};
 function oneRun(protocol: RunProtocolId | null, seed: number, CRYPTO_VALUE = BASE_CRYPTO_VALUE): RunResult {
   const ups: Upgrade[] = (INITIAL_STATE.upgrades as Upgrade[]).map(u => ({ ...u, count: asc > 0 && (u.id === 'unlock_click_upgrades' || u.id === 'unlock_crypto_mining' || u.id === 'zero_day') ? 1 : 0 }));
   const get = (id: string) => ups.find(u => u.id === id)!;
@@ -82,7 +86,7 @@ function oneRun(protocol: RunProtocolId | null, seed: number, CRYPTO_VALUE = BAS
   // events
   let evMods: Partial<RunMods> | null = null, evEnds = 0;
   const baseMods = combineRunMods(proto);
-  let nextEventIn = Math.round((FIRST_EVENT_MIN_SEC + r() * (FIRST_EVENT_MAX_SEC - FIRST_EVENT_MIN_SEC)) / Math.max(0.25, baseMods.eventRate));
+  let nextEventIn = rollFirst(r, baseMods.eventRate);
   let lastEv: NetworkEventId | null = null;
   // contracts: a set every 60 s from the start of the run (claim the crypto ones, then refresh)
   let contractSetsLeft = OPT.contracts ? CONTRACT_SETS : 0, nextContractAt = 30, cCrypto = 0, cPrestige = 0;

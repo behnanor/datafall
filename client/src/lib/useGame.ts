@@ -1,3 +1,4 @@
+import { emitJuiceBanner } from './juice';
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -674,7 +675,7 @@ const INITIAL_STATE = {
 };
 
 // Calculate checkpoint multiplier
-const getCheckpointMultiplier = (count: number, category?: string): number => {
+export const getCheckpointMultiplier = (count: number, category?: string): number => {
   // Crypto mining uses 25-level checkpoints
   if (category === 'crypto_mining') {
     if (count >= 100) return 8; // Was 4
@@ -5289,6 +5290,21 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     }
   }, []);
 
+  // Game feel: fast manual clicking raises the click pitch a little (up to +6 semitones),
+  // and every click gets a tiny random detune so long sessions don't sound like one repeated beep.
+  const clickStreakRef = useRef<{ count: number; last: number }>({ count: 0, last: 0 });
+  const noteManualClickForSound = useCallback((now: number) => {
+    const streak = clickStreakRef.current;
+    streak.count = now - streak.last < 400 ? streak.count + 1 : 0;
+    streak.last = now;
+  }, []);
+  const getClickPitchFactor = () => {
+    const streak = clickStreakRef.current;
+    const active = Date.now() - streak.last < 400 ? streak.count : 0;
+    const semitones = Math.min(24, active) * 0.25;
+    return Math.pow(2, semitones / 12) * (1 + (Math.random() - 0.5) * 0.06);
+  };
+
   // Cyberpunk-themed sounds
   const playSound = useCallback((type: 'click' | 'buy_fab' | 'buy_black' | 'sell' | 'crit' | 'checkpoint' | 'achievement' | 'pickup' | 'job_claim' | 'boss_hit' | 'weakspot_hit' | 'ascend_available' | 'prestige_realm' | 'loot_open' | 'loot_reveal_rare' | 'loot_reveal_epic' | 'loot_reveal_legendary' | 'loot_reveal_fallback' | 'timewarp_open' | 'timewarp_close' | 'open_cosmetics' | 'celebrate' | 'shop_unlock' | 'legendary' | 'finale') => {
     const ctx = getAudioContext();
@@ -5333,14 +5349,15 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
 
     if (type === 'click') {
       // Sharp digital click - two quick beeps
+      const pitch = getClickPitchFactor();
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
       
       osc1.type = 'square';
-      osc1.frequency.setValueAtTime(1200, ctx.currentTime);
-      osc1.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.06);
+      osc1.frequency.setValueAtTime(1200 * pitch, ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(800 * pitch, ctx.currentTime + 0.06);
       gain1.gain.setValueAtTime(0.12 * vol, ctx.currentTime);
       gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
       osc1.start();
@@ -5353,8 +5370,8 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
       gain2.connect(ctx.destination);
       
       osc2.type = 'square';
-      osc2.frequency.setValueAtTime(900, ctx.currentTime + 0.08);
-      osc2.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.13);
+      osc2.frequency.setValueAtTime(900 * pitch, ctx.currentTime + 0.08);
+      osc2.frequency.exponentialRampToValueAtTime(600 * pitch, ctx.currentTime + 0.13);
       gain2.gain.setValueAtTime(0.08 * vol, ctx.currentTime + 0.08);
       gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.13);
       osc2.start(ctx.currentTime + 0.08);
@@ -5407,6 +5424,18 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
       osc.start();
       osc.stop(ctx.currentTime + 0.15);
+      // Game feel: a short low "thump" under the crit chime so crits feel like an impact.
+      const thump = ctx.createOscillator();
+      const thumpGain = ctx.createGain();
+      thump.connect(thumpGain);
+      thumpGain.connect(ctx.destination);
+      thump.type = 'sine';
+      thump.frequency.setValueAtTime(150, ctx.currentTime);
+      thump.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.12);
+      thumpGain.gain.setValueAtTime(0.22 * vol, ctx.currentTime);
+      thumpGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
+      thump.start();
+      thump.stop(ctx.currentTime + 0.15);
     } else if (type === 'buy_fab') {
       // Fabrication buy sound
       const osc = ctx.createOscillator();
@@ -6753,6 +6782,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
 
     const { value: finalValue, isCrit } = getClickOutcome(now);
 
+    if (source === 'manual') noteManualClickForSound(now);
     playSound(isCrit ? 'crit' : 'click');
 
     setResources(prev => {
@@ -6803,7 +6833,7 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     }
 
     return { value: finalValue, isCrit };
-  }, [checkAchievements, clickTuning.dropChance, getClickOutcome, getScaledNodeFloaterValue, playSound, queueContractProgress, resources.data.perSecond, scheduleFloatingPickupRemoval, clearFloatingPickupRemovalTimeout, stats.totalAscensions]);
+  }, [checkAchievements, clickTuning.dropChance, getClickOutcome, getScaledNodeFloaterValue, noteManualClickForSound, playSound, queueContractProgress, resources.data.perSecond, scheduleFloatingPickupRemoval, clearFloatingPickupRemovalTimeout, stats.totalAscensions]);
 
   const clickResourceBurst = useCallback((type: ResourceType, count: number, options?: { timestamp?: number; source?: 'manual' | 'autoclick'; intervalMs?: number }) => {
     if (count <= 0) {
@@ -7020,6 +7050,15 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
             // Play checkpoint sound if we passed a checkpoint
             if (newCheckpoints > oldCheckpoints) {
               playSound('checkpoint');
+              // Game feel: big "CHECKPOINT!" banner (JuiceBanners in Game.tsx) instead of only the small toast.
+              if (!options?.silent) {
+                emitJuiceBanner({
+                  kind: 'checkpoint',
+                  upgradeName: localizeUpgradeText(u, language).name,
+                  level: newCheckpoints * interval,
+                  multiplier: getCheckpointMultiplier(newCount, u.category),
+                });
+              }
               // Unlock checkpoint achievement
               unlockAchievement('checkpoint_hit');
               // Track checkpoint milestones

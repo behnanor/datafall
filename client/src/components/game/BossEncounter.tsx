@@ -24,6 +24,9 @@ interface BossEncounterProps {
   variant?: BossVariant;
   // v1.04: permanent click power in % (prestige Eternal Strike + Paragon click modules); part of it becomes boss damage.
   permanentClickPercent?: number;
+  // v1.04 endgame: extra damage and timer seconds from Paragon III (and Abyss Boons), for every boss kind.
+  bossDamageMultiplier?: number;
+  bonusTimeSeconds?: number;
   playSound?: (type: 'click' | 'buy_fab' | 'buy_black' | 'sell' | 'crit' | 'checkpoint' | 'achievement' | 'pickup' | 'boss_hit' | 'weakspot_hit') => void;
 }
 
@@ -106,7 +109,7 @@ interface BreachSequence {
   progress: number;
 }
 
-export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound, isFinale = false, critChance = 0.05, finaleWeaken = 0, variant, permanentClickPercent = 0 }: BossEncounterProps) {
+export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGain, ascensionLevel, dataPerClick, isMainScreen = false, playSound, isFinale = false, critChance = 0.05, finaleWeaken = 0, variant, permanentClickPercent = 0, bossDamageMultiplier = 1, bonusTimeSeconds = 0 }: BossEncounterProps) {
   const kind = isFinale ? "finale" : variant?.kind ?? "normal";
   const modList: BossModifierId[] = isFinale ? [] : variant?.modifiers ?? [];
   const mods = new Set<BossModifierId>(modList);
@@ -146,10 +149,10 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
   const assistAllowed = kind === "normal";
   const [assistOn, setAssistOn] = useState<boolean>(() => readBossAssist());
   const assistActive = assistAllowed && assistOn;
-  const powerMultiplier = kind === "normal" || kind === "signal" ? getBossPowerMultiplier(permanentClickPercent) : 1;
+  const powerMultiplier = (kind === "normal" || kind === "signal" ? getBossPowerMultiplier(permanentClickPercent) : 1) * Math.max(1, bossDamageMultiplier);
   const [retriesLeft, setRetriesLeft] = useState(BOSS_RETRIES_PER_FIGHT);
   const toggleAssist = () => setAssistOn(prev => { writeBossAssist(!prev); return !prev; });
-  const timeLimit = Math.round(currentBoss.timeLimit * (mods.has("swift") ? 0.8 : 1) * (assistActive ? BOSS_ASSIST_TIME_MULTIPLIER : 1));
+  const timeLimit = Math.round(currentBoss.timeLimit * (mods.has("swift") ? 0.8 : 1) * (assistActive ? BOSS_ASSIST_TIME_MULTIPLIER : 1)) + Math.max(0, Math.floor(bonusTimeSeconds));
   const echoTier = kind === "echo" ? Math.max(1, Math.floor((variant?.depth ?? 10) / 10)) : 0;
   const currentBossName = localizeText(currentBoss.name, language);
   
@@ -683,12 +686,12 @@ export function BossEncounter({ isOpen, onClose, onVictory, onDefeat, prestigeGa
                 {powerMultiplier > 1 && (
                   <p className="text-xs text-emerald-300" data-testid="boss-power-bonus">
                     {pick6(language, [
-                      `Permanent power: +${Math.round((powerMultiplier - 1) * 100)}% boss damage (from Eternal Strike and Paragon click upgrades)`,
-                      `Kalıcı güç: +%${Math.round((powerMultiplier - 1) * 100)} boss hasarı (Ebedi Darbe ve Paragon tıklama yükseltmelerinden)`,
-                      `Poder permanente: +${Math.round((powerMultiplier - 1) * 100)}% de dano ao chefe (Golpe Eterno e melhorias de clique Paragon)`,
-                      `Poder permanente: +${Math.round((powerMultiplier - 1) * 100)}% de daño al jefe (Golpe Eterno y mejoras de clic Paragon)`,
-                      `Постоянная сила: +${Math.round((powerMultiplier - 1) * 100)}% урона боссу (Вечный удар и улучшения клика Paragon)`,
-                      `永久力量：Boss 伤害 +${Math.round((powerMultiplier - 1) * 100)}%（来自永恒打击和 Paragon 点击升级）`,
+                      `Permanent power: +${Math.round((powerMultiplier - 1) * 100)}% boss damage (from your permanent upgrades)`,
+                      `Kalıcı güç: +%${Math.round((powerMultiplier - 1) * 100)} boss hasarı (kalıcı yükseltmelerinden)`,
+                      `Poder permanente: +${Math.round((powerMultiplier - 1) * 100)}% de dano ao chefe (das suas melhorias permanentes)`,
+                      `Poder permanente: +${Math.round((powerMultiplier - 1) * 100)}% de daño al jefe (de tus mejoras permanentes)`,
+                      `Постоянная сила: +${Math.round((powerMultiplier - 1) * 100)}% урона боссу (от постоянных улучшений)`,
+                      `永久力量：Boss 伤害 +${Math.round((powerMultiplier - 1) * 100)}%（来自永久升级）`,
                     ])}
                   </p>
                 )}

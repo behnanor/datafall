@@ -403,6 +403,11 @@ export default function GamePage() {
     const prestigeClick = prestigeUpgrades.reduce((sum, upgrade) => (upgrade.effect.type === 'click_boost' ? sum + upgrade.effect.value * upgrade.count * 100 : sum), 0);
     return prestigeClick + computeParagonBonuses(cosmetics.paragonLevels).clickBoostPercent;
   }, [prestigeUpgrades, cosmetics.paragonLevels]);
+  // v1.04 Paragon III: boss damage and boss timer bonuses.
+  const paragonBossBonuses = useMemo(() => {
+    const bonuses = computeParagonBonuses(cosmetics.paragonLevels);
+    return { damageMultiplier: bonuses.bossDamageMultiplier, bonusSeconds: bonuses.bossTimeSeconds };
+  }, [cosmetics.paragonLevels]);
   const handleAscendVictory = (variant: BossVariant) => {
     const reward = ascendVictory(variant.kind === 'echo' ? ECHO_PRESTIGE_MULTIPLIER : 1);
     if (variant.kind === 'signal') {
@@ -445,12 +450,13 @@ export default function GamePage() {
       [15, l('Automation unlocked', 'Otomasyon açıldı', 'Automação liberada', 'Automatización desbloqueada')],
       [20, l('Paragon Lab unlocked', 'Paragon Lab açıldı', 'Paragon Lab liberado', 'Paragon Lab desbloqueado')],
       [30, l('Challenges unlocked', 'Meydan okumalar açıldı', 'Desafios liberados', 'Desafíos desbloqueados')],
+      [35, pick6(language, ['Paragon III unlocked', 'Paragon III açıldı', 'Paragon III liberado', 'Paragon III desbloqueado', 'Paragon III открыт', 'Paragon III 已解锁'])],
       [40, l('Overclock tier unlocked', 'Overclock seviyesi açıldı', 'Nível Overclock liberado', 'Nivel Overclock desbloqueado')],
       [50, l('The Core awaits', 'Çekirdek seni bekliyor', 'O Núcleo te espera', 'El Núcleo te espera')],
     ];
     const reached = unlocks.filter(([level]) => previous < level && stats.totalAscensions >= level).pop();
     if (reached) celebrate('shop', reached[1]);
-  }, [stats.totalAscensions, celebrate, l]);
+  }, [stats.totalAscensions, celebrate, l, language]);
 
   // Test builds only: Ctrl+Shift+F9 toggles a popup-free room view for screenshots.
   useEffect(() => {
@@ -2296,6 +2302,8 @@ export default function GamePage() {
             ascensionLevel={stats.totalAscensions}
             dataPerClick={getDataPerClick()}
             permanentClickPercent={permanentClickPercent}
+            bossDamageMultiplier={paragonBossBonuses.damageMultiplier}
+            bonusTimeSeconds={paragonBossBonuses.bonusSeconds}
             isMainScreen={true}
             playSound={playSound}
           />

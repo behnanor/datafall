@@ -3055,7 +3055,9 @@ export type ParagonUpgradeId =
   | 'overclock_lattice'
   | 'quantum_ledger'
   | 'singularity_tap'
-  | 'critical_cascade';
+  | 'critical_cascade'
+  | 'breach_driver'
+  | 'chrono_siege';
 
 export interface ParagonUpgrade {
   id: ParagonUpgradeId;
@@ -3075,12 +3077,18 @@ export interface ParagonUpgrade {
       | 'pickup_spawn_pct'
       | 'time_warp_power_pct'
       | 'crit_chance_pct'
-      | 'time_warp_cooldown_pct';
+      | 'time_warp_cooldown_pct'
+      | 'boss_damage_pct'
+      | 'boss_time_seconds';
     value: number;
   };
 }
 
 export const PARAGON_II_UNLOCK_ASCENSION = 25;
+// v1.04 Paragon III: late modules with effects no other shop has (boss damage, boss time), so the stretch
+// from ascension 35 to the Core has new things to buy and the final fights feel easier for it.
+export const PARAGON_III_UNLOCK_ASCENSION = 35;
+export const PARAGON_III_SECOND_UNLOCK_ASCENSION = 45;
 export const PARAGON_UPGRADES: ParagonUpgrade[] = [
   {
     id: 'softcap_breaker',
@@ -3196,7 +3204,29 @@ export const PARAGON_UPGRADES: ParagonUpgrade[] = [
     requiredAscensions: PARAGON_II_UNLOCK_ASCENSION,
     effect: { type: 'crit_chance_pct', value: 3.5 },
   },
+  {
+    id: 'breach_driver',
+    name: 'Breach Driver',
+    description: '+5% damage against every boss per level. Paragon III.',
+    baseCost: 900,
+    costMultiplier: 1.45,
+    maxLevel: 10,
+    requiredAscensions: PARAGON_III_UNLOCK_ASCENSION,
+    effect: { type: 'boss_damage_pct', value: 5 },
+  },
+  {
+    id: 'chrono_siege',
+    name: 'Chrono Siege',
+    description: '+1 second on every boss timer per level. Paragon III.',
+    baseCost: 1500,
+    costMultiplier: 1.6,
+    maxLevel: 5,
+    requiredAscensions: PARAGON_III_SECOND_UNLOCK_ASCENSION,
+    effect: { type: 'boss_time_seconds', value: 1 },
+  },
 ];
+export const getParagonTierLabel = (requiredAscensions: number | undefined): string =>
+  (requiredAscensions ?? 0) >= PARAGON_III_UNLOCK_ASCENSION ? 'Paragon III' : 'Paragon II';
 
 export const ASCENSION_ROOM_THEMES: RoomTheme[] = [
   {
@@ -4631,6 +4661,8 @@ export const computeParagonBonuses = (paragonLevels: Record<string, number> | un
     timeWarpPowerPercent: 0,
     critChancePercent: 0,
     timeWarpCooldownPercent: 0,
+    bossDamagePercent: 0,
+    bossTimeSeconds: 0,
   };
 
   Object.entries(paragonLevels || {}).forEach(([upgradeId, rawLevel]) => {
@@ -4655,6 +4687,10 @@ export const computeParagonBonuses = (paragonLevels: Record<string, number> | un
       totals.critChancePercent += totalValue;
     } else if (upgrade.effect.type === 'time_warp_cooldown_pct') {
       totals.timeWarpCooldownPercent += totalValue;
+    } else if (upgrade.effect.type === 'boss_damage_pct') {
+      totals.bossDamagePercent += totalValue;
+    } else if (upgrade.effect.type === 'boss_time_seconds') {
+      totals.bossTimeSeconds += totalValue;
     }
   });
 
@@ -4669,6 +4705,7 @@ export const computeParagonBonuses = (paragonLevels: Record<string, number> | un
     timeWarpPowerMultiplier: 1 + totals.timeWarpPowerPercent / 100,
     critChanceBonus: totals.critChancePercent / 100,
     timeWarpCooldownMultiplier: Math.max(0.45, 1 - totals.timeWarpCooldownPercent / 100),
+    bossDamageMultiplier: 1 + totals.bossDamagePercent / 100,
   };
 };
 

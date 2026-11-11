@@ -5,6 +5,8 @@ import type { CharacterSkin, RoomTheme, CharacterAccessory, CharacterHeadStyle, 
 import { localizeInlineText, useI18n } from '@/lib/i18n';
 import { getBoostLines, getRarityLabel } from '@/lib/gameLocale';
 import { CurrencyIcon } from '@/components/game/CurrencyIcon';
+import { SlotStatBadge, CosmeticsGuide, EquipBestButton, AscensionSetMeter, type BestPickSlot } from '@/components/game/cosmeticsHelp';
+import { ASCENSION_SET_BONUS_PER_ITEM, ASCENSION_SET_BONUS_MAX } from '@/lib/useGame';
 
 const CryptoIcon = () => <CurrencyIcon kind="crypto" className="w-4 h-4" />;
 
@@ -1063,6 +1065,25 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
   const equippedPetBoost = findEquippedBoost(activePet, pets);
   const [activeTab, setActiveTab] = useState<'character' | 'rooms' | 'pets' | 'ascension'>('character');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [equipBestMsg, setEquipBestMsg] = useState('');
+  useEffect(() => {
+    if (!equipBestMsg) return;
+    const t = window.setTimeout(() => setEquipBestMsg(''), 4000);
+    return () => window.clearTimeout(t);
+  }, [equipBestMsg]);
+  // v1.04: same rule as the game's set bonus (ascension skin, head, accessory, room theme).
+  const ascSet = (list: Array<{ id: string }>) => new Set(list.map(i => i.id));
+  const ascSkinIds = ascSet(ascensionSkins), ascHeadIds = ascSet(ascensionHeadStyles), ascAccIds = ascSet(ascensionAccessories), ascThemeIds = ascSet(ascensionThemes);
+  const equippedAscensionSetItems = [ascSkinIds.has(activeSkin), ascHeadIds.has(activeHeadStyle), ascAccIds.has(activeAccessory), ascThemeIds.has(activeTheme)].filter(Boolean).length;
+  const bestSlots: BestPickSlot[] = [
+    { current: activeSkin, items: [...skins, ...ascensionSkins], owned: ownedSkins, setItems: ascSkinIds, equip: onEquipSkin },
+    { current: activeHeadStyle, items: [...headStyles, ...ascensionHeadStyles], owned: ownedHeadStyles, setItems: ascHeadIds, equip: onEquipHeadStyle },
+    { current: activeAccessory, items: [...accessories, ...ascensionAccessories], owned: ownedAccessories, setItems: ascAccIds, equip: onEquipAccessory },
+    { current: activeTheme, items: [...themes, ...ascensionThemes], owned: ownedThemes, setItems: ascThemeIds, equip: onEquipTheme },
+    { current: activePet, items: pets, owned: ownedPets, equip: onEquipPet },
+    { current: activeClickEffect, items: clickEffects, owned: ownedClickEffects, equip: onEquipClickEffect },
+    { current: activeAscensionPet, items: ascensionPets, owned: ownedAscensionPets, equip: onEquipAscensionPet },
+  ];
 
   useEffect(() => {
     if (!scrollContainerRef.current) return;
@@ -1083,7 +1104,6 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
   ];
 
   const creditsLabel = l('Nodes', 'Dizin', 'Nodes', 'Nodos');
-  const ascensionLabel = l('Ascension', 'Yükseliş', 'Ascensão', 'Ascensión');
   const lootBoxExclusiveLabel = l('(Loot Box Exclusive)', '(Kutuya Özel)', '(Exclusivo de Loot Box)', '(Exclusivo de Loot Box)');
   const ascensionCurrencyLabel = l('(Ascension)', '(Yükseliş)', '(Ascensão)', '(Ascensión)');
   const ascensionIntro = l(
@@ -1132,16 +1152,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
 
   return (
     <div className="h-full min-h-0 flex flex-col" data-testid="cosmetics-panel">
-      <div className="flex gap-4 mb-4 text-sm flex-wrap">
-        <div className="flex items-center gap-1">
-          <span className="text-amber-400 text-[11px] uppercase tracking-wider">{creditsLabel}</span>
-          <span className="text-white" data-testid="cosmetics-credits">{formatNumber(credits)}</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-fuchsia-300 text-[11px] uppercase tracking-wider">{ascensionLabel}</span>
-          <span className="text-white" data-testid="cosmetics-ascension">{formatNumber(ascension)}</span>
-        </div>
-      </div>
+      <CosmeticsGuide language={language} credits={credits} prestige={ascension} formatNumber={formatNumber} />
 
       {(() => {
         const activeLines = getBoostLines(activeBoosts, language);
@@ -1156,6 +1167,10 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
               <p className="text-slate-400">{l('None yet. Equip items with bonuses to get them.', 'Henüz yok. Bonus almak için bonuslu eşyaları kuşan.', 'Nenhum ainda. Equipe itens com bônus para obtê-los.', 'Ninguno aún. Equipa objetos con bonos para obtenerlos.', 'Пока нет. Экипируйте предметы с бонусами.')}</p>
             )}
             <p className="mt-1 text-[10px] text-slate-500">{l('Only equipped items count, one per slot. Owning an item without equipping it gives no bonus.', 'Sadece kuşanılan eşyalar sayılır, her slotta bir tane. Kuşanılmayan eşya bonus vermez.', 'Só itens equipados contam, um por espaço. Ter um item sem equipá-lo não dá bônus.', 'Solo cuentan los objetos equipados, uno por ranura. Tener un objeto sin equiparlo no da bono.', 'Считаются только экипированные предметы, по одному на слот.')}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <EquipBestButton language={language} slots={bestSlots} onDone={setEquipBestMsg} />
+              {equipBestMsg && <span className="text-[10px] text-emerald-300" data-testid="equip-best-result">{equipBestMsg}</span>}
+            </div>
           </div>
         );
       })()}
@@ -1186,6 +1201,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Palette className="w-4 h-4 text-cyan-400" />
                 <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider">{characterSkinsLabel}</h3>
                 <span className="text-xs text-slate-500">({creditsLabel})</span>
+                <SlotStatBadge stat="production" language={language} />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
@@ -1216,6 +1232,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <User className="w-4 h-4 text-rose-400" />
                 <h3 className="text-sm font-semibold text-rose-400 uppercase tracking-wider">{headStylesLabel}</h3>
                 <span className="text-xs text-slate-500">({creditsLabel})</span>
+                <SlotStatBadge stat="production" language={language} />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
@@ -1246,6 +1263,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Crown className="w-4 h-4 text-fuchsia-400" />
                 <h3 className="text-sm font-semibold text-fuchsia-400 uppercase tracking-wider">{accessoriesLabel}</h3>
                 <span className="text-xs text-slate-500">({creditsLabel})</span>
+                <SlotStatBadge stat="production" language={language} />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
@@ -1276,6 +1294,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Zap className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">{clickEffectsLabel}</h3>
                 <span className="text-xs text-slate-500">{lootBoxExclusiveLabel}</span>
+                <SlotStatBadge stat="crit" language={language} />
               </div>
               <p className="mb-3 text-xs text-slate-400">
                 {clickEffectsSubtitle}
@@ -1337,6 +1356,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Sparkles className="w-4 h-4 text-cyan-300" />
                 <h3 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">{lootBoxSkinsLabel}</h3>
                 <span className="text-xs text-slate-500">{lootBoxExclusiveLabel}</span>
+                <SlotStatBadge stat="style" language={language} />
               </div>
               <p className="mb-3 text-xs text-slate-400">
                 {lootBoxSkinsSubtitle}
@@ -1402,6 +1422,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
               <Home className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">{roomThemesLabel}</h3>
               <span className="text-xs text-slate-500">({creditsLabel})</span>
+              <SlotStatBadge stat="crypto" language={language} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <AnimatePresence>
@@ -1435,6 +1456,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Cat className="w-4 h-4 text-emerald-400" />
                 <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">{companionPetsLabel}</h3>
                 <span className="text-xs text-slate-500">({creditsLabel})</span>
+                <SlotStatBadge stat="click" language={language} />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
@@ -1468,12 +1490,14 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
             <div className="mb-4 p-3 bg-fuchsia-500/10 border border-fuchsia-500/30 rounded-lg">
               <p className="text-xs text-fuchsia-300">{ascensionIntro}</p>
             </div>
+            <AscensionSetMeter language={language} equipped={equippedAscensionSetItems} perItem={ASCENSION_SET_BONUS_PER_ITEM} max={ASCENSION_SET_BONUS_MAX} />
 
             <section>
               <div className="flex items-center gap-2 mb-3">
                 <Palette className="w-4 h-4 text-fuchsia-400" />
                 <h3 className="text-sm font-semibold text-fuchsia-400 uppercase tracking-wider">{ascensionSkinsLabel}</h3>
                 <span className="text-xs text-slate-500">{ascensionCurrencyLabel}</span>
+                <SlotStatBadge stat="production" language={language} />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
@@ -1506,6 +1530,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <User className="w-4 h-4 text-fuchsia-400" />
                 <h3 className="text-sm font-semibold text-fuchsia-400 uppercase tracking-wider">{ascensionHeadStylesLabel}</h3>
                 <span className="text-xs text-slate-500">{ascensionCurrencyLabel}</span>
+                <SlotStatBadge stat="production" language={language} />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
@@ -1538,6 +1563,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Crown className="w-4 h-4 text-fuchsia-400" />
                 <h3 className="text-sm font-semibold text-fuchsia-400 uppercase tracking-wider">{ascensionAccessoriesLabel}</h3>
                 <span className="text-xs text-slate-500">{ascensionCurrencyLabel}</span>
+                <SlotStatBadge stat="production" language={language} />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <AnimatePresence>
@@ -1570,6 +1596,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Home className="w-4 h-4 text-fuchsia-400" />
                 <h3 className="text-sm font-semibold text-fuchsia-400 uppercase tracking-wider">{ascensionRoomThemesLabel}</h3>
                 <span className="text-xs text-slate-500">{ascensionCurrencyLabel}</span>
+                <SlotStatBadge stat="crypto" language={language} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <AnimatePresence>
@@ -1602,6 +1629,7 @@ export const CosmeticsPanel = React.memo(function CosmeticsPanel({
                 <Star className="w-4 h-4 text-fuchsia-400" />
                 <h3 className="text-sm font-semibold text-fuchsia-400 uppercase tracking-wider">{ascensionPetsLabel}</h3>
                 <span className="text-xs text-slate-500">{milestoneUnlocksLabel}</span>
+                <SlotStatBadge stat="click" language={language} />
               </div>
               <p className="text-xs text-slate-400 mb-3">{ascensionPetsSubtitle}</p>
               <div className="grid grid-cols-3 gap-2">

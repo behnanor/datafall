@@ -92,6 +92,7 @@ export default function GamePage() {
     localizeInlineText(language, en, tr, pt, es, ru)
   ), [language]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isWhatsNewManualOpen, setIsWhatsNewManualOpen] = useState(false);
   const [isPrestigeOpen, setIsPrestigeOpen] = useState(false);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
@@ -1936,6 +1937,7 @@ export default function GamePage() {
           tutorialSkipped={tutorial.skipped}
           onSkipTutorial={skipTutorial}
           onResetTutorial={resetTutorial}
+          onOpenWhatsNew={IS_DEMO_BUILD ? undefined : () => { setIsSettingsOpen(false); setIsWhatsNewManualOpen(true); }}
           onSetFullscreen={setFullscreen}
           onSetWindowed={setWindowed}
           reduceSceneGlow={reduceSceneGlow}
@@ -2089,11 +2091,13 @@ export default function GamePage() {
         />
       )}
       {IS_DEMO_BUILD && !showDemoEnd && <DemoPrompts language={language} cryptoMiningUnlocked={(upgrades.find(u => u.id === 'unlock_crypto_mining')?.count ?? 0) > 0} />}
-      {!IS_DEMO_BUILD && whatsNew.seenVersion !== WHATS_NEW_VERSION && !isBossEncounterActive && (
+      {!IS_DEMO_BUILD && (whatsNew.seenVersion !== WHATS_NEW_VERSION || isWhatsNewManualOpen) && !isBossEncounterActive && (
         <WhatsNewDialog language={language} ascensions={stats.totalAscensions} giftClaimed={whatsNew.giftClaimed}
+          seenVersion={whatsNew.seenVersion} manual={isWhatsNewManualOpen && whatsNew.seenVersion === WHATS_NEW_VERSION}
           onClaimGift={() => {
             const reward = claimWelcomeGift();
             markWhatsNewSeen();
+            setIsWhatsNewManualOpen(false);
             if (reward) {
               clearLootBoxOpeningSequence();
               setLootBoxReward(reward);
@@ -2103,7 +2107,7 @@ export default function GamePage() {
               setIsLootBoxMinimized(false);
             }
           }}
-          onClose={markWhatsNewSeen} />
+          onClose={() => { markWhatsNewSeen(); setIsWhatsNewManualOpen(false); }} />
       )}
       {saveLoadError !== null && <SaveLoadErrorScreen language={language} reason={saveLoadError} onRetry={retrySaveLoad} onOpenFolder={openSaveFolder} onContinueWithout={continueWithoutUnreadableSave} />}
       {showDemoEnd && !isBossEncounterActive && <DemoEndScreen language={language} ascensions={stats.totalAscensions} onQuit={() => { void saveGame(); setTimeout(() => window.close(), 300); }} />}

@@ -222,7 +222,7 @@ const EXTRA_ZH_CN_TEXTS: Record<string, string> = {
   "After Buy": "购买后",
   "Total": "总计",
   "Checkpoint": "检查点",
-  "Next: 2x multiplier at lvl {level}": "下一个：等级 {level} 时获得 2x 倍率",
+  "Next: {mult}x multiplier at lvl {level}": "下一个：等级 {level} 时获得 {mult}x 倍率",
   "Unlocked": "已解锁",
   "Unlock {category}": "解锁 {category}",
   "No bonus yet": "暂无加成",

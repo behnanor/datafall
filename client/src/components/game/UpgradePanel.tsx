@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, FileText, Zap, Database, Coins, Bitcoin } from "lucide-react";
 import { CurrencyIcon } from "@/components/game/CurrencyIcon";
-import { memo, useMemo } from "react";
-import { getCheckpointProgress, getEffectiveValue, getAutoSellPlan, type NodeSaleRate } from "@/lib/useGame";
+import { memo, useMemo, useRef, useState, useEffect } from "react";
+import { bumpElement, clickJuiceAllowed } from "@/lib/juice";
+import { getCheckpointProgress, getCheckpointMultiplier, getEffectiveValue, getAutoSellPlan, type NodeSaleRate } from "@/lib/useGame";
 import { progressionText } from "@/lib/progressionText";
 import { ContractsTerminal } from "./ContractsTerminal";
 import { translate, useI18n, type Language } from "@/lib/i18n";
@@ -220,8 +221,29 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
   const progressPercent = (checkpointProgress.current / checkpointProgress.max) * 100;
   const isOnline = upgrade.count > 0;
 
+  // Game feel: the card bumps and flashes on purchase and a "+N" pops up from it.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [buyPops, setBuyPops] = useState<{ id: number; n: number }[]>([]);
+  useEffect(() => {
+    if (buyPops.length === 0) return;
+    const timeout = window.setTimeout(() => setBuyPops([]), 700);
+    return () => window.clearTimeout(timeout);
+  }, [buyPops]);
+  const handleBuy = () => {
+    onBuy(upgrade.id, quantity);
+    if (!clickJuiceAllowed()) return;
+    bumpElement(cardRef.current, 1.025, 180);
+    cardRef.current?.animate?.([{ filter: 'brightness(1.5)' }, { filter: 'brightness(1)' }], { duration: 260, easing: 'ease-out' });
+    if (!isOneTimeUnlock) setBuyPops(prev => [...prev.slice(-3), { id: Date.now() + Math.random(), n: quantity }]);
+  };
+
   return (
-    <div className="transition-transform active:scale-[0.98]">
+    <div ref={cardRef} className="relative transition-transform active:scale-[0.98]">
+      {buyPops.map(pop => (
+        <span key={pop.id} className={`df-buy-pop pointer-events-none absolute right-4 top-2 z-10 font-mono font-bold text-sm ${styles.accentText}`}>
+          +{pop.n}
+        </span>
+      ))}
       <Button
         variant="outline"
         className={`w-full min-w-0 h-auto p-4 flex flex-col items-stretch justify-start gap-3 text-left whitespace-normal border-l-4 transition-all duration-200
@@ -230,7 +252,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
             : 'border-l-muted opacity-50 cursor-not-allowed hover:bg-transparent'
           }`}
         disabled={!canAfford}
-        onClick={() => onBuy(upgrade.id, quantity)}
+        onClick={handleBuy}
       >
         <div className="flex w-full flex-wrap items-start gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -319,7 +341,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
             />
           </div>
           <div className={`text-[10px] font-mono ${styles.previewText}`}>
-            {translate(language, 'upgradePanel.nextMultiplier', { level: checkpointProgress.nextCheckpoint })}
+            {translate(language, 'upgradePanel.nextMultiplier', { level: checkpointProgress.nextCheckpoint, mult: getCheckpointMultiplier(checkpointProgress.nextCheckpoint, category) })}
           </div>
         </div>
         )}

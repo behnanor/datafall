@@ -55,12 +55,9 @@ export function bumpElement(el: HTMLElement | null, peak = 1.08, durationMs = 16
 }
 
 // ---- Banner events (checkpoints, production milestones). Tiny pub/sub so useGame does not need new props. ----
-export type JuiceBannerKind = 'checkpoint' | 'milestone';
-export interface JuiceBannerEvent {
-  kind: JuiceBannerKind;
-  title: string;
-  subtitle?: string;
-}
+export type JuiceBannerEvent =
+  | { kind: 'checkpoint'; upgradeName: string; level: number; multiplier: number }
+  | { kind: 'milestone'; perSecond: number };
 
 type Listener = (event: JuiceBannerEvent) => void;
 const bannerListeners = new Set<Listener>();

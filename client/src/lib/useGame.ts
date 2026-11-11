@@ -1,3 +1,4 @@
+import { emitJuiceBanner } from './juice';
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -7049,6 +7050,15 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
             // Play checkpoint sound if we passed a checkpoint
             if (newCheckpoints > oldCheckpoints) {
               playSound('checkpoint');
+              // Game feel: big "CHECKPOINT!" banner (JuiceBanners in Game.tsx) instead of only the small toast.
+              if (!options?.silent) {
+                emitJuiceBanner({
+                  kind: 'checkpoint',
+                  upgradeName: localizeUpgradeText(u, language).name,
+                  level: newCheckpoints * interval,
+                  multiplier: getCheckpointMultiplier(newCount, u.category),
+                });
+              }
               // Unlock checkpoint achievement
               unlockAchievement('checkpoint_hit');
               // Track checkpoint milestones

@@ -93,6 +93,8 @@ interface FloatingText {
   count?: number;
   isUpgrade?: boolean;
   expiresAt?: number;
+  /** Small random sideways drift so stacked numbers fan out instead of overlapping. */
+  dx?: number;
 }
 
 type ClickBurstShape = 'dot' | 'line' | 'diamond';
@@ -114,6 +116,9 @@ interface ClickBurst {
   ringColor: string;
   particles: ClickBurstParticle[];
   expiresAt: number;
+  /** Default spark (no cosmetic equipped): drawn with pure CSS animation instead of framer-motion. */
+  cheap?: boolean;
+  isCrit?: boolean;
 }
 
 interface ClickEffectVisualConfig {
@@ -587,6 +592,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
       isCrit,
       count,
       expiresAt: Date.now() + FLOATING_TEXT_LIFETIME_MS,
+      dx: (Math.random() - 0.5) * (isCrit ? 50 : 34),
     };
 
     setClicks(prev => {
@@ -596,10 +602,26 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
     });
   }, [FLOATING_TEXT_LIFETIME_MS, createClickLabel]);
 
-  const spawnClickBurst = useCallback((x: number, y: number, isCrit: boolean) => {
+  const spawnClickBurst = useCallback((x: number, y: number, isCrit: boolean, options?: { auto?: boolean }) => {
     if (!getClickEffectsEnabled()) return; // v1.04 Settings: click effects off
     const baseVisual = CLICK_EFFECT_VISUALS[activeClickEffectId] ?? (abyssHue !== null ? CLICK_EFFECT_VISUALS.ion_arc : undefined);
-    if (!baseVisual) return;
+    if (!baseVisual) {
+      // Game feel: no cosmetic equipped still gets a small, cheap cyan spark (red on crits).
+      // Auto-click skips it so the boost does not flood the screen.
+      if (options?.auto) return;
+      const burstId = Date.now() + Math.random();
+      const count = isCrit ? 7 : 5;
+      const particles: ClickBurstParticle[] = Array.from({ length: count }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / count + (Math.random() - 0.5) * 0.6;
+        const distance = (isCrit ? 48 : 34) * (0.6 + Math.random() * 0.5);
+        return { id: burstId + index / 1000, dx: Math.cos(angle) * distance, dy: Math.sin(angle) * distance, size: 4, color: '', glow: '', shape: 'dot' };
+      });
+      setClickBursts(prev => {
+        const next = [...prev, { id: burstId, x: x + 20, y: y - 30, ringColor: '', particles, expiresAt: Date.now() + 500, cheap: true, isCrit }];
+        return next.length > 20 ? next.slice(next.length - 20) : next;
+      });
+      return;
+    }
     // Abyss palette: rotate the effect's colours (shiftColorHue works on hex and rgba) and add two particles.
     const visual = abyssHue === null ? baseVisual : {
       ...baseVisual,
@@ -699,7 +721,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
               }
 
               pushFloatingText(clickX, clickY, burstResult.totalValue, burstResult.hadCrit, burstResult.processedClicks);
-              spawnClickBurst(clickX, clickY, burstResult.hadCrit);
+              spawnClickBurst(clickX, clickY, burstResult.hadCrit, { auto: true });
             }
           } else {
             let burstHadCrit = false;
@@ -717,7 +739,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
               pushFloatingText(clickX, clickY, value, isCrit);
             }
 
-            spawnClickBurst(clickX, clickY, burstHadCrit);
+            spawnClickBurst(clickX, clickY, burstHadCrit, { auto: true });
           }
         }
 
@@ -1357,8 +1379,25 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
         />
       )}
 
+      {clickBursts.map((burst) => burst.cheap ? (
+        <div
+          key={burst.id}
+          className={`absolute pointer-events-none z-40 ${reduceSceneGlow ? '' : 'df-spark-glow'} ${burst.isCrit ? 'df-spark-crit' : ''}`}
+          style={{ left: `${burst.x}px`, top: `${burst.y}px` }}
+        >
+          <span className="df-spark-ring" />
+          {burst.particles.map((particle) => (
+            <span
+              key={particle.id}
+              className="df-spark-dot"
+              style={{ ['--df-dx' as string]: `${particle.dx}px`, ['--df-dy' as string]: `${particle.dy}px` } as React.CSSProperties}
+            />
+          ))}
+        </div>
+      ) : null)}
+
       <AnimatePresence>
-        {clickBursts.map((burst) => (
+        {clickBursts.filter((burst) => !burst.cheap).map((burst) => (
           <div
             key={burst.id}
             className="absolute pointer-events-none z-40"
@@ -1405,13 +1444,16 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
         {clicks.map(click => (
           <motion.div
             key={click.id}
-            initial={{ opacity: 1, scale: click.isCrit ? 1.3 : 1 }}
-            animate={{ 
-              opacity: 0, 
-              y: -120,
+            // Game feel: numbers pop in, overshoot, then drift up and fade (crits pop harder).
+            initial={{ opacity: 0, scale: 0.5, x: 0, y: 0 }}
+            animate={{
+              opacity: [0, 1, 1, 0],
+              scale: click.isCrit ? [0.5, 1.75, 1.3, 1.2] : [0.5, 1.2, 1, 0.95],
+              x: [0, (click.dx ?? 0) * 0.3, click.dx ?? 0, (click.dx ?? 0) * 1.2],
+              y: [0, -14, -80, -120],
             }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.2, ease: "linear" }}
+            transition={{ duration: 1.2, times: [0, 0.1, 0.65, 1], ease: 'easeOut' }}
             className={`absolute pointer-events-none font-mono font-bold z-50 whitespace-nowrap ${
               click.isCrit 
                 ? 'text-red-400 text-2xl drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]' 
@@ -1424,6 +1466,9 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
             }}
           >
             +{formatNumber(click.value)}
+            {click.isCrit && (
+              <span className="ml-1 text-xs align-middle tracking-widest text-red-200">{l('CRIT!', 'KRİTİK!', 'CRÍTICO!', '¡CRÍTICO!', 'КРИТ!')}</span>
+            )}
             {click.count && click.count > 1 && (
               <span className="ml-1 text-[11px] align-middle text-white/80">x{click.count}</span>
             )}

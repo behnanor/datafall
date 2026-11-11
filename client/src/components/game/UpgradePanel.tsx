@@ -7,7 +7,7 @@ import { Lock, FileText, Zap, Database, Coins, Bitcoin } from "lucide-react";
 import { CurrencyIcon } from "@/components/game/CurrencyIcon";
 import { memo, useMemo, useRef, useState, useEffect } from "react";
 import { bumpElement, clickJuiceAllowed } from "@/lib/juice";
-import { getCheckpointProgress } from "@/lib/useGame";
+import { getCheckpointProgress, getCheckpointMultiplier } from "@/lib/useGame";
 import { ContractsTerminal } from "./ContractsTerminal";
 import { translate, useI18n, type Language } from "@/lib/i18n";
 import { getResourceLabel, getUpgradeCategoryLabel } from "@/lib/gameText";
@@ -320,7 +320,7 @@ const UpgradeCard = memo(({ upgrade, category, resources, onBuy, getUpgradePrevi
             />
           </div>
           <div className={`text-[10px] font-mono ${styles.previewText}`}>
-            {translate(language, 'upgradePanel.nextMultiplier', { level: checkpointProgress.nextCheckpoint })}
+            {translate(language, 'upgradePanel.nextMultiplier', { level: checkpointProgress.nextCheckpoint, mult: getCheckpointMultiplier(checkpointProgress.nextCheckpoint, category) })}
           </div>
         </div>
         )}

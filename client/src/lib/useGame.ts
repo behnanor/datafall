@@ -675,7 +675,7 @@ const INITIAL_STATE = {
 };
 
 // Calculate checkpoint multiplier
-const getCheckpointMultiplier = (count: number, category?: string): number => {
+export const getCheckpointMultiplier = (count: number, category?: string): number => {
   // Crypto mining uses 25-level checkpoints
   if (category === 'crypto_mining') {
     if (count >= 100) return 8; // Was 4

@@ -112,7 +112,7 @@ const CORE_RU_TEXTS: Record<string, string> = {
   "After Buy": "После покупки",
   "Total": "Итого",
   "Checkpoint": "Контрольная точка",
-  "Next: 2x multiplier at lvl {level}": "Дальше: множитель 2x на ур. {level}",
+  "Next: {mult}x multiplier at lvl {level}": "Дальше: множитель {mult}x на ур. {level}",
   "Unlocked": "Открыто",
   "Unlock {category}": "Открыть {category}",
   "No bonus yet": "Пока без бонуса",

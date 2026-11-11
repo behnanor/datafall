@@ -1,4 +1,5 @@
 import { getClickEffectsEnabled } from '@/lib/displayPrefs';
+import { bumpElement, shakeElement } from '@/lib/juice';
 import { shiftColorHue } from '@/lib/colorEra';
 import { memo, useRef, useState, useEffect, useMemo, useCallback, type RefObject } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -318,6 +319,9 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
   const liveEditLabel = l('Arrange Room', 'Odayı Düzenle', 'Organizar Sala', 'Organizar Sala');
   const exitEditLabel = l('Exit Edit', 'Düzenlemeyi Kapat', 'Sair da Edição', 'Salir de Edición');
   const containerRef = useRef<HTMLDivElement>(null);
+  // Game feel: the room layer shakes on crits, the Total Data number bumps on clicks.
+  const roomShakeRef = useRef<HTMLDivElement>(null);
+  const dataCounterRef = useRef<HTMLDivElement>(null);
   const blackMarketShipRef = useRef<HTMLButtonElement>(null);
   const cryptoRelicShipRef = useRef<HTMLButtonElement>(null);
   const paragonShipRef = useRef<HTMLButtonElement>(null);
@@ -792,6 +796,8 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
 
     pushFloatingText(x + 20, y - 30, value, isCrit);
     spawnClickBurst(x, y, isCrit);
+    bumpElement(dataCounterRef.current, isCrit ? 1.14 : 1.06);
+    if (isCrit) shakeElement(roomShakeRef.current, 1);
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -1000,6 +1006,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
     >
       {/* Pixel Art Isometric Room Background */}
       <div 
+        ref={roomShakeRef}
         style={{ 
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           transformOrigin: 'center center',
@@ -1099,6 +1106,7 @@ export const MainView = memo(function MainView({ onClick, onAutoClickBurst, onRi
       <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20 text-center flex gap-12">
         <div className="text-center">
           <div 
+            ref={dataCounterRef}
             className="font-mono font-bold text-cyan-400 glow-text tracking-tight"
             style={{ fontSize: `clamp(1.5rem, 2.5rem, 3rem)` }}
           >

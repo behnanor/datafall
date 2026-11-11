@@ -99,11 +99,11 @@ const PRESTIGE_UPGRADE_TEXTS: Record<string, TextEntry> = {
   },
   p_crit: {
     name: { en: "Cursed Fate", tr: "Lanetli Kader", "pt-BR": "Destino Amaldiçoado", es: "Destino Maldito" },
-    description: { en: "+0.5% crit chance per level.", tr: "Seviye başına +0.5% kritik şansı.", "pt-BR": "+0.5% de chance crítica por nível.", es: "+0.5% de prob. crítica por nivel." },
+    description: { en: "+1% crit chance per level.", tr: "Seviye başına +1% kritik şansı.", "pt-BR": "+1% de chance crítica por nível.", es: "+1% de prob. crítica por nivel." },
   },
   p_crit_mult: {
     name: { en: "Lethal Precision", tr: "Ölümcül Hassasiyet", "pt-BR": "Precisão Letal", es: "Precisión Letal" },
-    description: { en: "+8% crit damage per level.", tr: "Seviye başına +8% kritik hasarı.", "pt-BR": "+8% de dano crítico por nível.", es: "+8% de daño crítico por nivel." },
+    description: { en: "+12% crit damage per level.", tr: "Seviye başına +12% kritik hasarı.", "pt-BR": "+12% de dano crítico por nível.", es: "+12% de daño crítico por nivel." },
   },
   p_luck: {
     name: { en: "Fortune Protocol", tr: "Talih Protokolü", "pt-BR": "Protocolo da Fortuna", es: "Protocolo de Fortuna" },
@@ -131,7 +131,7 @@ const PRESTIGE_UPGRADE_TEXTS: Record<string, TextEntry> = {
   },
   p_sell: {
     name: { en: "Market Arbitrage", tr: "Piyasa Arbitrajı", "pt-BR": "Arbitragem de Mercado", es: "Arbitraje de Mercado" },
-    description: { en: "+4% more Nodes when selling data, per level.", tr: "Veri satarken seviye başına +4% daha fazla Dizin.", "pt-BR": "+4% mais Nodes ao vender dados, por nível.", es: "+4% más Nodos al vender datos, por nivel." },
+    description: { en: "+6% more Nodes when selling data, per level.", tr: "Veri satarken seviye başına +6% daha fazla Dizin.", "pt-BR": "+6% mais Nodes ao vender dados, por nível.", es: "+6% más Nodos al vender datos, por nivel." },
   },
   p_prestige: {
     name: { en: "Ascension Catalyst", tr: "Yükseliş Katalizörü", "pt-BR": "Catalisador de Ascensão", es: "Catalizador de Ascensión" },

@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { useI18n, type Language } from '@/lib/i18n';
 import { FPS_CAP_OPTIONS, getFpsCap, setFpsCap, type FpsCap } from '@/lib/fpsLimiter';
 import { canOpenLogsFolder, openLogsFolder } from '@/lib/errorLog';
-import { UI_SCALE_OPTIONS, setUiScale, setClickEffectsEnabled, useDisplayPrefs } from '@/lib/displayPrefs';
+import { UI_SCALE_OPTIONS, setUiScale, setClickEffectsEnabled, setScreenShakeEnabled, useDisplayPrefs } from '@/lib/displayPrefs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
@@ -570,10 +570,13 @@ const UI_SCALE_LABEL: Record<Language, string> = {
 const CLICK_FX_LABEL: Record<Language, string> = {
   en: 'Click effects', tr: 'Tıklama efektleri', 'pt-BR': 'Efeitos de clique', es: 'Efectos de clic', ru: 'Эффекты кликов', 'zh-CN': '点击特效',
 };
+const SCREEN_SHAKE_LABEL: Record<Language, string> = {
+  en: 'Screen shake', tr: 'Ekran sarsıntısı', 'pt-BR': 'Tremor de tela', es: 'Vibración de pantalla', ru: 'Тряска экрана', 'zh-CN': '屏幕震动',
+};
 const ON_LABEL: Record<Language, string> = { en: 'On', tr: 'Açık', 'pt-BR': 'Ligado', es: 'Activado', ru: 'Вкл', 'zh-CN': '开' };
 const OFF_LABEL: Record<Language, string> = { en: 'Off', tr: 'Kapalı', 'pt-BR': 'Desligado', es: 'Desactivado', ru: 'Выкл', 'zh-CN': '关' };
 function DisplayPrefsSelector({ language }: { language: Language }) {
-  const { uiScale, clickEffects } = useDisplayPrefs();
+  const { uiScale, clickEffects, screenShake } = useDisplayPrefs();
   const btn = (active: boolean) => active
     ? 'h-8 text-[10px] font-mono bg-cyan-600/40 text-cyan-200 border border-cyan-400'
     : 'h-8 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600';
@@ -594,6 +597,13 @@ function DisplayPrefsSelector({ language }: { language: Language }) {
         <div className="grid grid-cols-2 gap-2">
           <Button size="sm" aria-pressed={clickEffects} data-testid="click-fx-on" onClick={() => setClickEffectsEnabled(true)} className={btn(clickEffects)}>{ON_LABEL[language] ?? ON_LABEL.en}</Button>
           <Button size="sm" aria-pressed={!clickEffects} data-testid="click-fx-off" onClick={() => setClickEffectsEnabled(false)} className={btn(!clickEffects)}>{OFF_LABEL[language] ?? OFF_LABEL.en}</Button>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">{SCREEN_SHAKE_LABEL[language] ?? SCREEN_SHAKE_LABEL.en}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="sm" aria-pressed={screenShake} data-testid="screen-shake-on" onClick={() => setScreenShakeEnabled(true)} className={btn(screenShake)}>{ON_LABEL[language] ?? ON_LABEL.en}</Button>
+          <Button size="sm" aria-pressed={!screenShake} data-testid="screen-shake-off" onClick={() => setScreenShakeEnabled(false)} className={btn(!screenShake)}>{OFF_LABEL[language] ?? OFF_LABEL.en}</Button>
         </div>
       </div>
     </div>

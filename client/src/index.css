@@ -210,3 +210,37 @@ body[data-dev-room-view="1"] .fixed.backdrop-blur-sm,
 body[data-dev-room-view="1"] .fixed.top-0.flex-col-reverse {
   display: none !important;
 }
+
+/* Game feel: default click spark (used when no cosmetic click effect is equipped).
+   Pure CSS transform/opacity animation, so it runs on the compositor and costs almost no CPU. */
+@keyframes dfSparkRing {
+  from { transform: translate(-50%, -50%) scale(0.3); opacity: 0.85; }
+  to { transform: translate(-50%, -50%) scale(1.25); opacity: 0; }
+}
+@keyframes dfSparkDot {
+  from { transform: translate(-50%, -50%) translate(0, 0) scale(1); opacity: 1; }
+  to { transform: translate(-50%, -50%) translate(var(--df-dx), var(--df-dy)) scale(0.3); opacity: 0; }
+}
+.df-spark-ring {
+  position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 999px;
+  border: 2px solid rgba(34, 211, 238, 0.75);
+  animation: dfSparkRing 0.42s ease-out forwards;
+}
+.df-spark-dot {
+  position: absolute; left: 0; top: 0; width: 4px; height: 4px; border-radius: 999px;
+  background: #67e8f9;
+  animation: dfSparkDot 0.45s ease-out forwards;
+}
+.df-spark-glow .df-spark-ring { box-shadow: 0 0 10px rgba(34, 211, 238, 0.6); }
+.df-spark-glow .df-spark-dot { box-shadow: 0 0 6px rgba(103, 232, 249, 0.8); }
+.df-spark-crit .df-spark-ring { border-color: rgba(248, 113, 113, 0.85); width: 40px; height: 40px; }
+.df-spark-crit .df-spark-dot { background: #fca5a5; }
+.df-spark-glow.df-spark-crit .df-spark-ring { box-shadow: 0 0 14px rgba(248, 113, 113, 0.7); }
+
+/* Game feel: "+N" that rises off an upgrade card when you buy it. */
+@keyframes dfBuyPop {
+  0% { transform: translateY(4px) scale(0.6); opacity: 0; }
+  20% { transform: translateY(-4px) scale(1.25); opacity: 1; }
+  100% { transform: translateY(-34px) scale(1); opacity: 0; }
+}
+.df-buy-pop { animation: dfBuyPop 0.65s ease-out forwards; text-shadow: 0 0 6px currentColor; }

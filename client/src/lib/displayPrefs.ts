@@ -6,6 +6,7 @@ export type UiScale = (typeof UI_SCALE_OPTIONS)[number];
 
 const SCALE_KEY = "datafall_ui_scale";
 const CLICK_FX_KEY = "datafall_click_effects";
+const SCREEN_SHAKE_KEY = "datafall_screen_shake";
 const EVENT = "datafall:display-prefs";
 
 const read = (key: string): string | null => { try { return localStorage.getItem(key); } catch { return null; } };
@@ -38,10 +39,20 @@ export function setClickEffectsEnabled(enabled: boolean) {
   window.dispatchEvent(new Event(EVENT));
 }
 
+// Game feel: small screen shake on crits and big moments (on by default, off = no shake at all).
+export function getScreenShakeEnabled(): boolean {
+  return read(SCREEN_SHAKE_KEY) !== "off";
+}
+
+export function setScreenShakeEnabled(enabled: boolean) {
+  write(SCREEN_SHAKE_KEY, enabled ? "on" : "off");
+  window.dispatchEvent(new Event(EVENT));
+}
+
 export function useDisplayPrefs() {
-  const [state, setState] = useState(() => ({ uiScale: getUiScale(), clickEffects: getClickEffectsEnabled() }));
+  const [state, setState] = useState(() => ({ uiScale: getUiScale(), clickEffects: getClickEffectsEnabled(), screenShake: getScreenShakeEnabled() }));
   useEffect(() => {
-    const onChange = () => setState({ uiScale: getUiScale(), clickEffects: getClickEffectsEnabled() });
+    const onChange = () => setState({ uiScale: getUiScale(), clickEffects: getClickEffectsEnabled(), screenShake: getScreenShakeEnabled() });
     window.addEventListener(EVENT, onChange);
     return () => window.removeEventListener(EVENT, onChange);
   }, []);

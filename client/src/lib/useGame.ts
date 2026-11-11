@@ -1,6 +1,6 @@
 import { isSpecialBoss, BOSS_DEFEAT_PRESTIGE_SHARE, pick6 } from './bossVariants';
 import { getUnlockedAbyssVariants } from './endless';
-import { combineRunMods, scaleEventMods, rollNextEventDelaySec, pickNetworkEvent, getNetworkEvent, SIGNAL_FORK_OPTIONS, ENCRYPTED_CACHE_CLICKS, ENCRYPTED_CACHE_DATA_SECONDS, ENCRYPTED_CACHE_CRYPTO_SECONDS, ROGUE_BROKER_COST_SHARE, CHOICE_DECIDE_SECONDS, EVENTS_MIN_UPGRADES, type ActiveNetworkEvent, type NetworkEventId, type RunMods } from './runVariety';
+import { combineRunMods, getRunProtocol, migrateRunProtocol, rollProtocolOffer, INITIAL_RUN_PROTOCOL, RUN_PROTOCOL_UNLOCK_ASCENSION, type RunProtocolId, type RunProtocolState, scaleEventMods, rollNextEventDelaySec, pickNetworkEvent, getNetworkEvent, SIGNAL_FORK_OPTIONS, ENCRYPTED_CACHE_CLICKS, ENCRYPTED_CACHE_DATA_SECONDS, ENCRYPTED_CACHE_CRYPTO_SECONDS, ROGUE_BROKER_COST_SHARE, CHOICE_DECIDE_SECONDS, EVENTS_MIN_UPGRADES, type ActiveNetworkEvent, type NetworkEventId, type RunMods } from './runVariety';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { unlockSteamAchievement, isSteamAvailable } from './steamIntegration';
 import { localizeInlineText, useI18n } from './i18n';
@@ -4333,6 +4333,8 @@ export interface SaveData {
   challenges?: ChallengeState;
   finale?: FinaleState;
   whatsNew?: WhatsNewState;
+  // v1.04 run variety (optional, older saves load without it).
+  runProtocol?: RunProtocolState;
 }
 
 // v1.03: returning players (saves from before v1.03) see a one-time "What's new" screen and get one loot box.
@@ -5002,14 +5004,16 @@ export const useGame = () => {
   const [whatsNew, setWhatsNew] = useState<WhatsNewState>(SEEN_WHATS_NEW);
   const challengesRef = useRef<ChallengeState>(INITIAL_CHALLENGES);
   challengesRef.current = challenges;
-  // v1.04 run variety: the Network Event running right now (not saved).
+  // v1.04 run variety: this run's protocol (saved) and the Network Event running right now (not saved).
+  const [runProtocol, setRunProtocol] = useState<RunProtocolState>(INITIAL_RUN_PROTOCOL);
   const [networkEvent, setNetworkEvent] = useState<ActiveNetworkEvent | null>(null);
   const networkEventRef = useRef<ActiveNetworkEvent | null>(null);
   networkEventRef.current = networkEvent;
   // Multipliers from the run's protocol and the running event, applied to production, clicks and selling.
   const runMods = useMemo<RunMods>(() => combineRunMods(
+    getRunProtocol(runProtocol.active)?.mods,
     networkEvent?.phase === 'active' ? networkEvent.mods : null,
-  ), [networkEvent]);
+  ), [networkEvent, runProtocol.active]);
 
   useEffect(() => {
     statsRef.current = stats;
@@ -5163,6 +5167,8 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
             paragonCryptoMultiplier: offlineParagon.cryptoMultiplier,
             adjacencyProductionBoost: offlineAdjacency ? offlineAdjacency.productionBoostPercent / 100 : 0,
             adjacencyCryptoBoost: offlineAdjacency ? offlineAdjacency.cryptoBoostPercent / 100 : 0,
+            runDataMultiplier: getRunProtocol(migrateRunProtocol(base.runProtocol).active)?.mods.data ?? 1,
+            runCryptoMultiplier: getRunProtocol(migrateRunProtocol(base.runProtocol).active)?.mods.crypto ?? 1,
           });
 
           // Offline earns 50% of the online rate, plus Passive Matrix (offline_boost) on top.
@@ -5215,6 +5221,13 @@ const applyLoadedState = useCallback((rawBase: SaveData) => {
     setAutomation(migrateAutomation(base.automation));
     setChallenges(migrateChallenges(base.challenges));
     setFinale(migrateFinale(base.finale));
+    {
+      // v1.04: players who already ascended get their first protocol choice right away.
+      const savedAscensions = Number(baseStats.totalAscensions ?? 0);
+      setRunProtocol(base.runProtocol === undefined && savedAscensions >= RUN_PROTOCOL_UNLOCK_ASCENSION && !IS_DEMO_BUILD
+        ? { ...INITIAL_RUN_PROTOCOL, offer: rollProtocolOffer(savedAscensions, null), pending: true }
+        : migrateRunProtocol(base.runProtocol));
+    }
     // A save from before v1.03 (with real progress) is a returning player: show What's new + gift once.
     {
       const saved = base.whatsNew as Partial<WhatsNewState> | undefined;
@@ -7945,6 +7958,7 @@ useEffect(() => {
     challenges,
     finale,
     whatsNew,
+    runProtocol,
     version: 3,
     lastSaveTimestamp: Date.now(),
   });
@@ -9146,7 +9160,34 @@ useEffect(() => {
     nextNetworkEventInRef.current = -1;
     networkEventRef.current = null;
     setNetworkEvent(null);
+    // Run Protocols: offer 3 for the new run. With auto-ascend on, the last pick carries over silently.
+    const newAscensions = stats.totalAscensions + 1;
+    if (newAscensions < RUN_PROTOCOL_UNLOCK_ASCENSION || IS_DEMO_BUILD) return;
+    const autoPick = automation.autoAscend && stats.totalAscensions >= AUTOMATION_UNLOCK_ASCENSION ? runProtocol.last : null;
+    setRunProtocol(prev => {
+      const offer = rollProtocolOffer(newAscensions, prev.active);
+      if (autoPick === 'standard') return { ...prev, active: null, offer: [], pending: false };
+      if (autoPick) {
+        return { ...prev, active: autoPick, offer: [], pending: false, runs: { ...prev.runs, [autoPick]: (prev.runs[autoPick] ?? 0) + 1 } };
+      }
+      return { ...prev, active: null, offer, pending: true };
+    });
   };
+
+  // Pick this run's protocol (null = Standard). Only while a choice is pending, once per run.
+  const chooseRunProtocol = useCallback((id: RunProtocolId | null) => {
+    setRunProtocol(prev => {
+      if (!prev.pending || (id !== null && !prev.offer.includes(id))) return prev;
+      return {
+        ...prev,
+        active: id,
+        pending: false,
+        offer: [],
+        last: id ?? 'standard',
+        runs: id ? { ...prev.runs, [id]: (prev.runs[id] ?? 0) + 1 } : prev.runs,
+      };
+    });
+  }, []);
 
   // Restart the current run (prestige, cosmetics and stats are kept) to enter or leave a challenge.
   const restartRunForChallenge = useCallback(() => {
@@ -9464,6 +9505,6 @@ useEffect(() => {
   const getLocalizedActiveLootBoxSkin = useCallback(() => localizeCatalogEntry(getActiveLootBoxSkin(), language), [getActiveLootBoxSkin, language]);
   const getLocalizedActiveMachineBoxSkin = useCallback(() => localizeCatalogEntry(getActiveMachineBoxSkin(), language), [getActiveMachineBoxSkin, language]);
 
-  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder, networkEvent, respondToNetworkEvent, runMods, forceDebugNetworkEvent };
+  return { resources, upgrades: localizedUpgrades, clickResource, clickResourceBurst, buyUpgrade, sellResource, sellAllResource, playSound, lastUpgradeInfo, setLastUpgradeInfo, getUpgradePreview, addDebugData, addDebugData100k, addDebugCredits, addDebugCrypto, addDebugPrestige, addDebugAscensionCount, setDebugTime, spawnDebugPickup, spawnAllDebugPickups, forceDebugTimeWarp, getTotalCritChance, getBulkProductionGain, masterVolume, toggleMasterVolume, musicVolume, setMusicVolume, sfxVolume, setSfxVolume, isMusicPlaying, toggleMusic, skipTrack, elapsedTime, floatingPickups, removeFloatingPickup, setPickupSpawningPaused, ascend, ascendVictory, ascendDefeat, getPrestigeGain, buyPrestigeUpgrade, buyPrestigeUpgradeMax, upgradePaceDelayMultiplier, automation, setAutomation, challenges, startChallenge, abandonChallenge, finale, completeFinale, recordFinaleDefeat, clearCoreSignal, whatsNew, markWhatsNewSeen, claimWelcomeGift, setAbyssVariant, onPickupClick, prestigeUpgrades: localizedPrestigeUpgrades, onCritPickupClick, achievements: localizedAchievements, stats, newlyUnlockedAchievement: localizedNewlyUnlockedAchievement, newlyUnlockedAscensionPet: localizedNewlyUnlockedAscensionPet, newlyUnlockedTutorialReward, claimAscensionPetUnlock, claimTutorialRewardUnlock, equipAscensionPetUnlock, claimAchievementReward, claimAllAchievements, unclaimedAchievements, autoClickBoostEndTime, critBoostEndTime, activeTimeWarpMiniGame, timeWarpFeedback, clearTimeWarpFeedback, onTimeWarpMiniGameClick, cosmetics, buyCosmetic, buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin: getLocalizedActiveSkin, getActiveTheme: getLocalizedActiveTheme, getActiveAccessory: getLocalizedActiveAccessory, getActiveCape: getLocalizedActiveCape, getActiveWing: getLocalizedActiveWing, getActiveHeadStyle: getLocalizedActiveHeadStyle, getActivePet: getLocalizedActivePet, getActiveAscensionPet: getLocalizedActiveAscensionPet, getActiveClickEffect: getLocalizedActiveClickEffect, getActiveLootBoxSkin: getLocalizedActiveLootBoxSkin, getActiveMachineBoxSkin: getLocalizedActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, clearOfflineProgress, contracts: localizedContracts, refreshContracts, updateContractProgress, claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, resetGame, setFullscreen, setWindowed, saveLoadError, retrySaveLoad, continueWithoutUnreadableSave, openSaveFolder, networkEvent, respondToNetworkEvent, runMods, forceDebugNetworkEvent, runProtocol, chooseRunProtocol };
 };
 

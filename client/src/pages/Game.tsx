@@ -19,7 +19,7 @@ import { usePublishLiveResources } from '@/lib/liveResources';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { FloatingPickup } from '@/components/game/FloatingPickup';
 import { TutorialPanel } from '@/components/game/TutorialPanel';
-import { NetworkEventBanner } from '@/components/game/RunVarietyHud';
+import { NetworkEventBanner, RunProtocolPicker, RunProtocolChip } from '@/components/game/RunVarietyHud';
 import { CSSCharacter } from '@/components/game/CyberpunkRoom';
 import { CurrencyIcon } from '@/components/game/CurrencyIcon';
 import { toast } from '@/hooks/use-toast';
@@ -124,6 +124,9 @@ export default function GamePage() {
   const [endlessLeaderboardLoading, setEndlessLeaderboardLoading] = useState(false);
   const [endlessLeaderboardError, setEndlessLeaderboardError] = useState<string | null>(null);
   const [isFinaleEncounter, setIsFinaleEncounter] = useState(false);
+  // v1.04 Run Protocols: "Decide later" hides the picker until the player clicks the chip.
+  const [protocolPickerDismissed, setProtocolPickerDismissed] = useState(false);
+
   const [showFinaleCredits, setShowFinaleCredits] = useState(false);
   const lastSubmittedEndlessRef = React.useRef(-1);
   const [celebration, setCelebration] = useState<{ kind: CelebrationKind; title?: string; subtitle?: string; key: number } | null>(null);
@@ -160,7 +163,7 @@ export default function GamePage() {
       buyCryptoRelic, buyBlackMarketUpgrade, buyParagonUpgrade, getParagonUpgradeLevel, equipCosmetic, getActiveSkin, getActiveTheme, getActiveAccessory, getActiveCape, getActiveWing, getActiveHeadStyle, 
       getActivePet, getActiveAscensionPet, getActiveClickEffect, getActiveLootBoxSkin, getActiveMachineBoxSkin, getPetBoosts, getAdjacencyFormationBonus, getDataPerClick, offlineProgress, 
       clearOfflineProgress, contracts, refreshContracts, updateContractProgress, 
-      networkEvent, respondToNetworkEvent, runMods, forceDebugNetworkEvent,
+      networkEvent, respondToNetworkEvent, runMods, forceDebugNetworkEvent, runProtocol, chooseRunProtocol,
       claimContractReward, roomLayout, updateMachinePosition, removeMachinePosition, 
       getMachinePosition, tutorial, startTutorial, skipTutorial, resetTutorial, 
       completeTutorialObjective, getCurrentTutorialPhase, isTutorialComplete, saveGame, 
@@ -184,6 +187,10 @@ export default function GamePage() {
 
     return Math.max(40, Math.floor(100 * Math.max(0.4, 1 - nodeConversionPercent / 100)));
   }, [cosmetics.paragonLevels]);
+  const protocolOfferKey = runProtocol.offer.join(',');
+  // Keep the run-variety HUD centred on the play area when the side panels are open (320 px / 384 px).
+  const playAreaShiftX = ((leftPanelOpen ? 320 : 0) - (rightPanelOpen ? 384 : 0)) / 2;
+  useEffect(() => { setProtocolPickerDismissed(false); }, [protocolOfferKey]);
   const conversionNodeGain = useMemo(() => {
     const sellBoost = prestigeUpgrades.reduce((total, upgrade) => {
       if (upgrade.count <= 0 || upgrade.effect.type !== 'sell_boost') return total;
@@ -458,7 +465,7 @@ export default function GamePage() {
   // Test builds only: console hooks for checking Network Events quickly.
   useEffect(() => {
     if (!IS_TEST_BUILD) return;
-    (window as unknown as Record<string, unknown>).__datafallDebug = { forceDebugNetworkEvent, addDebugData, addDebugCredits, addDebugCrypto, addDebugAscensionCount, buyUpgrade };
+    (window as unknown as Record<string, unknown>).__datafallDebug = { forceDebugNetworkEvent, addDebugData, addDebugCredits, addDebugCrypto, addDebugAscensionCount, buyUpgrade, ascendVictory };
   });
 
   // Test builds only: Ctrl+Shift+F9 toggles a popup-free room view for screenshots.
@@ -2413,10 +2420,20 @@ export default function GamePage() {
         </div>
       </motion.div>
 
-      {/* v1.04 Network Events */}
+      {/* v1.04 Network Events + Run Protocols */}
       {!isBossEncounterActive && (
-        <NetworkEventBanner event={networkEvent} language={language} onRespond={respondToNetworkEvent} />
+        <NetworkEventBanner event={networkEvent} language={language} onRespond={respondToNetworkEvent} shiftX={playAreaShiftX} />
       )}
+      {!isBossEncounterActive && !showDemoEnd && (
+        <RunProtocolChip state={runProtocol} language={language} onOpenPicker={() => setProtocolPickerDismissed(false)} shiftX={playAreaShiftX} />
+      )}
+      <RunProtocolPicker
+        open={runProtocol.pending && !protocolPickerDismissed && !isBossEncounterActive && !isLootBoxDialogOpen && !offlineProgress && !showDemoEnd && whatsNew.seenVersion === WHATS_NEW_VERSION}
+        offer={runProtocol.offer}
+        language={language}
+        onChoose={(id) => { chooseRunProtocol(id); setProtocolPickerDismissed(false); }}
+        onLater={() => setProtocolPickerDismissed(true)}
+      />
 
       {/* Tutorial Panel */}
       <TutorialPanel

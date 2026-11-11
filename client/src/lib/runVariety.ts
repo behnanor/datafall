@@ -126,8 +126,8 @@ export interface RunProtocolState {
   // The 3 choices offered for the current run while `pending` is true.
   offer: RunProtocolId[];
   pending: boolean;
-  // Last protocol the player picked; automation (auto-ascend) reuses it without asking.
-  last: RunProtocolId | null;
+  // Last protocol the player picked ('standard' = none); automation (auto-ascend) reuses it without asking.
+  last: RunProtocolId | "standard" | null;
   // Runs played with each protocol (stats only).
   runs: Partial<Record<RunProtocolId, number>>;
 }
@@ -145,7 +145,7 @@ export const migrateRunProtocol = (saved: unknown): RunProtocolState => {
     active: isRunProtocolId(s.active) ? s.active : null,
     offer,
     pending: !!s.pending && offer.length > 0,
-    last: isRunProtocolId(s.last) ? s.last : null,
+    last: isRunProtocolId(s.last) || s.last === "standard" ? s.last : null,
     runs,
   };
 };

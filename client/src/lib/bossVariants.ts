@@ -48,6 +48,18 @@ const FINALE_ASCENSION = 50;
 export const ECHO_EVERY_DEPTHS = 10;
 // Reward multipliers on the ascension's prestige gain.
 export const ECHO_PRESTIGE_MULTIPLIER = 1.5;
+// v1.04: each deeper Echo pays more (+0.25x per tier: x1.5 at depth 10, x1.75 at 20 ... max x3 at 70),
+// matching its +15% HP per tier, so the deeper fights are worth chasing.
+export const ECHO_PRESTIGE_STEP = 0.25;
+export const ECHO_PRESTIGE_MAX = 3;
+export const getEchoTier = (depth: number): number => Math.max(1, Math.floor(Math.max(0, depth) / ECHO_EVERY_DEPTHS));
+export const getEchoPrestigeMultiplier = (depth: number): number =>
+  Math.min(ECHO_PRESTIGE_MAX, ECHO_PRESTIGE_MULTIPLIER + ECHO_PRESTIGE_STEP * (getEchoTier(depth) - 1));
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+export const getEchoTierLabel = (depth: number): string => {
+  const tier = getEchoTier(depth);
+  return tier <= ROMAN.length ? ROMAN[tier - 1] : String(tier);
+};
 
 // Deterministic per ascension, so a lost fight cannot be re-rolled into an easier one.
 const seeded = (seed: number) => {

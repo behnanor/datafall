@@ -10,3 +10,4 @@ vite.config.ts.*
 release/
 tmp/
 tools/sim/.sim.cjs
+tools/sim/.full-sim.cjs

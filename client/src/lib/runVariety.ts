@@ -77,9 +77,10 @@ export const RUN_PROTOCOLS: RunProtocol[] = [
   {
     id: "crypto_rush",
     style: "idle",
-    mods: { crypto: 1.4, data: 0.75 },
+    // v1.04 sim: at x1.4 / x0.75 every simulated player finished slower than with no protocol (data feeds the rigs).
+    mods: { crypto: 1.5, data: 0.9 },
     name: ["Crypto Rush", "Kripto Hücumu", "Corrida Cripto", "Fiebre Cripto", "Крипто-лихорадка", "加密狂潮"],
-    desc: ["Crypto production +40%. Data production -25%.", "Kripto üretimi +%40. Veri üretimi -%25.", "Produção de cripto +40%. Produção de dados -25%.", "Producción de cripto +40%. Producción de datos -25%.", "Добыча крипты +40%. Производство данных -25%.", "加密货币产量 +40%。数据产量 -25%。"],
+    desc: ["Crypto production +50%. Data production -10%.", "Kripto üretimi +%50. Veri üretimi -%10.", "Produção de cripto +50%. Produção de dados -10%.", "Producción de cripto +50%. Producción de datos -10%.", "Добыча крипты +50%. Производство данных -10%.", "加密货币产量 +50%。数据产量 -10%。"],
   },
   {
     id: "market_maker",

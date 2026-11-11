@@ -1178,6 +1178,9 @@ export const getPrestigeGainBreakdown = (
 export const calculatePrestigeGain = (crypto: number, ascensionCount: number = 0): number =>
   getPrestigeGainBreakdown(crypto, ascensionCount).total;
 
+// v1.04: Cursed Fate (+0.5% -> +1% crit chance), Lethal Precision (+8% -> +12% crit damage) and
+// Market Arbitrage (+4% -> +6% Nodes) gave too little to notice per level. Only counts are saved, so
+// existing levels get the new values on load.
 export const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   // v1.03: costs re-targeted so the whole shop (~300k) is affordable by about ascension 50.
   { id: 'p_click', name: 'Eternal Strike', description: '+5% click power per level.', cost: 25, costMultiplier: 1.10, maxLevel: 40, effect: { type: 'click_boost', value: 0.05 }, count: 0 },
@@ -1185,8 +1188,8 @@ export const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   { id: 'p_prod', name: 'Legacy Production', description: '+10% production per level.', cost: 30, costMultiplier: 1.10, maxLevel: 60, effect: { type: 'production_boost', value: 0.10 }, count: 0 },
   { id: 'p_starting', name: 'Head Start', description: 'Start each run with 1 minute of your last run\'s data production per level.', cost: 50, costMultiplier: 1.6, maxLevel: 10, effect: { type: 'starting_bonus', value: 60 }, count: 0 },
 
-  { id: 'p_crit', name: 'Cursed Fate', description: '+0.5% crit chance per level.', cost: 50, costMultiplier: 1.12, maxLevel: 30, effect: { type: 'crit_chance_boost', value: 0.005 }, count: 0 },
-  { id: 'p_crit_mult', name: 'Lethal Precision', description: '+8% crit damage per level.', cost: 60, costMultiplier: 1.12, maxLevel: 25, effect: { type: 'crit_mult_boost', value: 0.08 }, count: 0 },
+  { id: 'p_crit', name: 'Cursed Fate', description: '+1% crit chance per level.', cost: 50, costMultiplier: 1.12, maxLevel: 30, effect: { type: 'crit_chance_boost', value: 0.01 }, count: 0 },
+  { id: 'p_crit_mult', name: 'Lethal Precision', description: '+12% crit damage per level.', cost: 60, costMultiplier: 1.12, maxLevel: 25, effect: { type: 'crit_mult_boost', value: 0.12 }, count: 0 },
   // Capped where the click drop chance reaches 100% (30% base + 24 x 3%).
   { id: 'p_luck', name: 'Fortune Protocol', description: '+3% chance per level that a click drops a pickup.', cost: 45, costMultiplier: 1.15, maxLevel: 24, effect: { type: 'luck_boost', value: 0.03 }, count: 0 },
   { id: 'p_pickup', name: 'Scavenger Network', description: '+10% pickup value per level.', cost: 48, costMultiplier: 1.12, maxLevel: 30, effect: { type: 'pickup_value', value: 0.1 }, count: 0 },
@@ -1195,7 +1198,7 @@ export const PRESTIGE_UPGRADES: PrestigeUpgrade[] = [
   { id: 'p_timewarp_power', name: 'Chrono Compression', description: '+90s production burst per Time Warp trigger.', cost: 260, costMultiplier: 1.25, maxLevel: 14, effect: { type: 'time_warp_seconds', value: 90 }, count: 0 },
   { id: 'p_timewarp_sync', name: 'Phase Lock', description: '-6s Time Warp cooldown per level (min 30s).', cost: 300, costMultiplier: 1.25, maxLevel: 10, effect: { type: 'time_warp_cooldown', value: 6 }, count: 0 },
 
-  { id: 'p_sell', name: 'Market Arbitrage', description: '+4% more Nodes when selling data, per level.', cost: 110, costMultiplier: 1.18, maxLevel: 20, effect: { type: 'sell_boost', value: 0.04 }, count: 0 },
+  { id: 'p_sell', name: 'Market Arbitrage', description: '+6% more Nodes when selling data, per level.', cost: 110, costMultiplier: 1.18, maxLevel: 20, effect: { type: 'sell_boost', value: 0.06 }, count: 0 },
   { id: 'p_prestige', name: 'Ascension Catalyst', description: '+4% prestige gain per level.', cost: 150, costMultiplier: 1.25, maxLevel: 15, effect: { type: 'prestige_mult', value: 0.04 }, count: 0 },
   { id: 'p_offline', name: 'Passive Matrix', description: '+5% offline earnings per level.', cost: 90, costMultiplier: 1.18, maxLevel: 20, effect: { type: 'offline_boost', value: 0.05 }, count: 0 },
 

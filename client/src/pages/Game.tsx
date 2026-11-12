@@ -398,7 +398,8 @@ export default function GamePage() {
     if (!IS_DEMO_BUILD || stats.totalAscensions < DEMO_ASCENSION_LIMIT) return;
     // Right after the ascension, let the ASCENDED celebration finish first; on load show it at once.
     const delay = performance.now() < 15000 ? 0 : 3500;
-    const id = setTimeout(() => setShowDemoEnd(true), delay);
+    // Close the loot box dialog first: its modal overlay would otherwise swallow the first click on the end screen.
+    const id = setTimeout(() => { setIsLootBoxDialogOpen(false); setShowDemoEnd(true); }, delay);
     return () => clearTimeout(id);
   }, [stats.totalAscensions]);
   const handleStartBossEncounter = useCallback(() => {

@@ -215,7 +215,7 @@ export const EVENT_GAP_MAX_SEC = 330;
 // Players need a few machines before events start (the first minutes stay calm for the tutorial).
 export const EVENTS_MIN_UPGRADES = 5;
 // Full-screen windows that hold back the next Network Event while open (Radix dialogs + the game's own overlays).
-export const NETWORK_EVENT_BLOCKING_SELECTOR = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [data-testid="run-protocol-picker"], [data-testid="whats-new"], [data-testid="abyss-boon-dialog"], [data-testid="modal-offline-progress"]';
+export const NETWORK_EVENT_BLOCKING_SELECTOR = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [data-testid="run-protocol-picker"], [data-testid="whats-new"], [data-testid="abyss-boon-dialog"], [data-testid="modal-offline-progress"], [data-testid="demo-end-screen"]';
 
 export const NETWORK_EVENTS: NetworkEventDef[] = [
   {
